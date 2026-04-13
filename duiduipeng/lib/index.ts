@@ -15,3 +15,19 @@ export {
   createInitialBoard,
   type CreateInitialBoardOptions,
 } from "./create-initial-board";
+export type {
+  CellPos,
+  AdjacentSwapInput,
+  SwapPickState,
+  AdjacentSwapAttemptResult,
+} from "./swap-types";
+export {
+  areOrthogonalAdjacent,
+  attemptAdjacentSwap,
+} from "./swap-legality";
+export {
+  createSwapInteractionState,
+  reduceSwapInteraction,
+  type SwapInteractionEvent,
+  type SwapInteractionState,
+} from "./swap-input";

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SwapPlayground } from "@/components/SwapPlayground";
 
 export default function Home() {
   return (
@@ -34,10 +35,13 @@ export default function Home() {
           id="duiduipeng-game-main"
           className="duiduipeng-game-main w-full min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400"
         >
-          游戏棋盘与逻辑将在后续任务中接入；开发服务器默认端口{" "}
-          <span className="font-mono text-zinc-200">3001</span>（与连连看
-          <span className="font-mono text-zinc-200"> 3000 </span>
-          错开）。
+          <p className="mb-6 text-zinc-400">
+            相邻交换合法性（任务 4）：先点一格再点正交相邻格尝试交换；无效交换会回滚。开发服务器默认端口{" "}
+            <span className="font-mono text-zinc-200">3001</span>（与连连看
+            <span className="font-mono text-zinc-200"> 3000 </span>
+            错开）。
+          </p>
+          <SwapPlayground />
         </section>
       </main>
     </div>
