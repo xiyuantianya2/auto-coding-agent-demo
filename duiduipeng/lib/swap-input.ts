@@ -26,9 +26,22 @@ export type SwapInteractionEvent =
 
 /**
  * 每波连锁结束态之间的间隔（毫秒）。为 0 时交换接受后一次性稳定化，行为与接入步骤序列前一致。
- * UI 应用同一常量驱动定时器。
+ * 分步动画接入后，实际播放节奏由 {@link MATCH_HIGHLIGHT_MS} / {@link MATCH_CLEAR_MS} 等驱动；
+ * 保留本常量供需要「整波总时长」估算或降级路径使用。
  */
 export const STABILIZATION_PLAYBACK_MS_PER_WAVE = 320;
+
+/** 本批待消格高亮（与 zinc/emerald 协调的 ring/缩放）持续时间 */
+export const MATCH_HIGHLIGHT_MS = 260;
+
+/** 单格消除时 opacity/scale 过渡时长（CSS transition 对齐） */
+export const MATCH_CLEAR_MS = 300;
+
+/**
+ * 按行主序相邻待消格之间的启动错开（毫秒），使消除顺序更易辨认。
+ * 总消除阶段约等于 `MATCH_CLEAR_MS + (n-1) * MATCH_CLEAR_STAGGER_MS`（n 为本批格数）。
+ */
+export const MATCH_CLEAR_STAGGER_MS = 40;
 
 /** 交换已接受、正按 {@link StabilizationStepSequence} 分步展示盘面时尚未写入本步得分与连锁统计 */
 export interface StabilizationPlaybackState {

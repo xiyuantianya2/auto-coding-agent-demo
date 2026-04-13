@@ -32,6 +32,9 @@ export {
 } from "./swap-legality";
 export {
   createSwapInteractionState,
+  MATCH_CLEAR_MS,
+  MATCH_CLEAR_STAGGER_MS,
+  MATCH_HIGHLIGHT_MS,
   reduceSwapInteraction,
   STABILIZATION_PLAYBACK_MS_PER_WAVE,
   type SwapInteractionEvent,

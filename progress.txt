@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: 匹配高亮与消除可见动效（duiduipeng id=27）
+
+### What was done:
+- `lib/swap-input.ts`：新增可配置常量 `MATCH_HIGHLIGHT_MS`、`MATCH_CLEAR_MS`、`MATCH_CLEAR_STAGGER_MS`（高亮 → 按行主序错开消除过渡 → `playback_advance`）；`STABILIZATION_PLAYBACK_MS_PER_WAVE` 保留为整波时长参考。
+- `components/SwapPlayground.tsx`：连锁播放时用 `state.playback.sequence.steps[completedWaves].clearedPositions` 驱动本批 emerald ring/轻微缩放高亮，再以 opacity/scale 过渡后推进 reducer；容器增加 `data-ddp-match-fx`；棋盘网格 `overflow-visible` 避免描边裁切。
+- `lib/index.ts`：导出上述 MATCH_* 常量。
+- `duiduipeng/task.json`：id=27 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build` 均通过。
+
+### Notes:
+- 每波在格子仍含符号时完成高亮与消除动效，再与任务 25/26 的步骤序列对齐进入下一波或终局结算；下落/补位动效见 task 28。
+
+---
+
 ## 2026-04-14 - Task: 稳定化动画事件序列（纯逻辑）（duiduipeng id=25）
 
 ### What was done:

@@ -15,8 +15,10 @@ import { mulberry32 } from "@/lib/seeded-random";
 import { cn } from "@/lib/utils";
 import {
   createSwapInteractionState,
+  MATCH_CLEAR_MS,
+  MATCH_CLEAR_STAGGER_MS,
+  MATCH_HIGHLIGHT_MS,
   reduceSwapInteraction,
-  STABILIZATION_PLAYBACK_MS_PER_WAVE,
   type SwapInteractionEvent,
   type SwapInteractionState,
 } from "@/lib/swap-input";
@@ -61,6 +63,22 @@ const symbolEmoji: Record<CellSymbol, string> = {
 
 function posEq(a: CellPos, b: CellPos): boolean {
   return a.row === b.row && a.col === b.col;
+}
+
+function posKey(p: CellPos): string {
+  return `${p.row},${p.col}`;
+}
+
+type MatchFxPhase = "idle" | "highlight" | "clear";
+
+function staggerIndexForCell(
+  positions: readonly CellPos[],
+  r: number,
+  c: number,
+): number {
+  const k = `${r},${c}`;
+  const idx = positions.findIndex((p) => posKey(p) === k);
+  return idx;
 }
 
 function rejectionToast(reason?: string): string {
@@ -118,6 +136,7 @@ export function SwapPlayground() {
   );
   const [hintCooldownUntil, setHintCooldownUntil] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
+  const [matchFx, setMatchFx] = useState<MatchFxPhase>("idle");
 
   const playbackActive = state.playback !== null;
   const ended = state.meetsWinTarget || state.isFailed;
@@ -262,16 +281,60 @@ export function SwapPlayground() {
     return () => window.clearTimeout(id);
   }, [toastMessage]);
 
-  /** 分步推进连锁稳定化；暂停或终局时冻结，恢复后继续 */
+  /**
+   * 每波：高亮本批待消坐标（与 stabilization-steps 中 clearedPositions 一致）→ CSS 消除过渡 → playback_advance。
+   * 错开时间由 MATCH_CLEAR_STAGGER_MS 配置，与逻辑层行主序一致。
+   */
   useEffect(() => {
-    if (!playbackActive || isPaused || ended) return;
-    const ms = STABILIZATION_PLAYBACK_MS_PER_WAVE;
-    if (ms <= 0) return;
-    const id = window.setInterval(() => {
-      dispatch({ type: "playback_advance" });
-    }, ms);
-    return () => window.clearInterval(id);
-  }, [playbackActive, isPaused, ended, dispatch]);
+    if (!playbackActive || isPaused || ended) {
+      setMatchFx("idle");
+      return;
+    }
+    const pb = state.playback;
+    if (!pb) {
+      setMatchFx("idle");
+      return;
+    }
+    const { sequence, completedWaves } = pb;
+    if (completedWaves >= sequence.steps.length) {
+      setMatchFx("idle");
+      return;
+    }
+
+    const step = sequence.steps[completedWaves]!;
+    const n = step.clearedCellCount;
+    const clearPhaseMs =
+      MATCH_CLEAR_MS + (n > 1 ? (n - 1) * MATCH_CLEAR_STAGGER_MS : 0);
+
+    setMatchFx("highlight");
+    let cancelled = false;
+    let idAdvance: number | undefined;
+
+    const idHighlight = window.setTimeout(() => {
+      if (cancelled) return;
+      setMatchFx("clear");
+      idAdvance = window.setTimeout(() => {
+        if (cancelled) return;
+        dispatch({ type: "playback_advance" });
+        setMatchFx("idle");
+      }, clearPhaseMs);
+    }, MATCH_HIGHLIGHT_MS);
+
+    return () => {
+      cancelled = true;
+      if (idHighlight !== undefined) window.clearTimeout(idHighlight);
+      if (idAdvance !== undefined) window.clearTimeout(idAdvance);
+      setMatchFx("idle");
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- matchFx 更新不应重跑本 effect，仅随播放进度/暂停变化
+  }, [
+    playbackActive,
+    isPaused,
+    ended,
+    state.playback?.completedWaves,
+    state.playback?.sequence,
+    dispatch,
+  ]);
 
   useEffect(() => {
     const lr = state.lastResult;
@@ -322,6 +385,13 @@ export function SwapPlayground() {
 
   const rows = state.board.length;
   const cols = state.board[0]?.length ?? 0;
+
+  const playback = state.playback;
+  const pendingMatchStep =
+    playback !== null &&
+    playback.completedWaves < playback.sequence.steps.length
+      ? playback.sequence.steps[playback.completedWaves]
+      : null;
 
   const statusText =
     playbackActive && isPaused && !ended
@@ -531,6 +601,7 @@ export function SwapPlayground() {
           boardPulse && "scale-[0.99]",
         )}
         data-ddp-playback={playbackActive ? "true" : "false"}
+        data-ddp-match-fx={matchFx}
       >
         {isPaused && !ended ? (
           <div
@@ -545,7 +616,7 @@ export function SwapPlayground() {
         <div className="inline-block min-w-min p-2 sm:p-3">
           <div
             className={cn(
-              "inline-grid gap-1 rounded-xl border border-zinc-800/80 bg-zinc-900/80 p-2 shadow-inner shadow-black/30 sm:gap-1.5 sm:p-3",
+              "inline-grid gap-1 overflow-visible rounded-xl border border-zinc-800/80 bg-zinc-900/80 p-2 shadow-inner shadow-black/30 sm:gap-1.5 sm:p-3",
               boardShake && "ddp-board-shake",
               "[--cell:1.65rem] [--emoji:text-sm] sm:[--cell:2rem] sm:[--emoji:text-base] md:[--cell:2.5rem] md:[--emoji:text-lg]",
             )}
@@ -571,13 +642,21 @@ export function SwapPlayground() {
                 (posEq(hintPair[0], { row: r, col: c }) ||
                   posEq(hintPair[1], { row: r, col: c }));
 
+              const stIdx = pendingMatchStep
+                ? staggerIndexForCell(pendingMatchStep.clearedPositions, r, c)
+                : -1;
+              const inMatchBatch = stIdx >= 0;
+              const matchHighlight =
+                inMatchBatch && matchFx === "highlight" && !empty;
+              const matchClear = inMatchBatch && matchFx === "clear" && !empty;
+
               return (
                 <button
                   key={`${r}-${c}`}
                   type="button"
                   disabled={ended || isPaused || playbackActive}
                   className={cn(
-                    "flex aspect-square min-h-[var(--cell)] min-w-[var(--cell)] items-center justify-center rounded-lg text-[length:var(--emoji)] transition-[transform,box-shadow] duration-150",
+                    "flex aspect-square min-h-[var(--cell)] min-w-[var(--cell)] items-center justify-center rounded-lg text-[length:var(--emoji)] transition-[transform,box-shadow,opacity] duration-150",
                     empty &&
                       "cursor-default border border-dashed border-zinc-600 bg-zinc-950/70 text-zinc-500",
                     !empty &&
@@ -592,8 +671,23 @@ export function SwapPlayground() {
                       "z-[7] shadow-[0_0_0_2px_theme(colors.sky.400),0_0_0_5px_theme(colors.zinc.900)]",
                     isFlash &&
                       "z-[8] shadow-[0_0_0_2px_theme(colors.amber.400),0_0_0_5px_theme(colors.zinc.900)]",
+                    matchHighlight &&
+                      "z-[16] scale-[1.03] shadow-[0_0_0_2px_rgba(52,211,153,0.92),0_0_18px_rgba(16,185,129,0.38)]",
                     ended && !empty && "opacity-60",
                   )}
+                  style={
+                    matchClear
+                      ? {
+                          transitionProperty: "opacity, transform",
+                          transitionDuration: `${MATCH_CLEAR_MS}ms`,
+                          transitionTimingFunction:
+                            "cubic-bezier(0.33, 1, 0.68, 1)",
+                          transitionDelay: `${stIdx * MATCH_CLEAR_STAGGER_MS}ms`,
+                          opacity: 0,
+                          transform: "scale(0.82)",
+                        }
+                      : undefined
+                  }
                   aria-pressed={picked}
                   aria-label={
                     empty
