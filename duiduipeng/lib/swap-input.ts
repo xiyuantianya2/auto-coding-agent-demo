@@ -1,5 +1,6 @@
 import type { Board } from "./board-types";
 import type { AdjacentSwapAttemptResult, CellPos, SwapPickState } from "./swap-types";
+import { applyMatchClear } from "./match-clear";
 import { attemptAdjacentSwap } from "./swap-legality";
 
 /**
@@ -14,10 +15,12 @@ export interface SwapInteractionState {
   readonly board: Board;
   readonly pick: SwapPickState;
   readonly lastResult: AdjacentSwapAttemptResult | null;
+  /** 最近一次有效交换后，三消消除阶段累计的基础分（无三消、仅对碰预备时保持 0） */
+  readonly turnMatchScore: number;
 }
 
 export function createSwapInteractionState(board: Board): SwapInteractionState {
-  return { board, pick: { phase: "idle" }, lastResult: null };
+  return { board, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
 }
 
 /**
@@ -28,17 +31,17 @@ export function reduceSwapInteraction(
   event: SwapInteractionEvent,
 ): SwapInteractionState {
   if (event.type === "clear_selection") {
-    return { ...state, pick: { phase: "idle" }, lastResult: null };
+    return { ...state, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
   }
 
   const cell = event.cell;
   if (state.pick.phase === "idle") {
-    return { ...state, pick: { phase: "first", first: cell }, lastResult: null };
+    return { ...state, pick: { phase: "first", first: cell }, lastResult: null, turnMatchScore: 0 };
   }
 
   const first = state.pick.first;
   if (first.row === cell.row && first.col === cell.col) {
-    return { ...state, pick: { phase: "idle" }, lastResult: null };
+    return { ...state, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
   }
 
   const result = attemptAdjacentSwap(state.board, first, cell);
@@ -48,6 +51,7 @@ export function reduceSwapInteraction(
       ...state,
       lastResult: result,
       pick: { phase: "first", first },
+      turnMatchScore: 0,
     };
   }
 
@@ -57,12 +61,15 @@ export function reduceSwapInteraction(
       board: result.board,
       lastResult: result,
       pick: { phase: "idle" },
+      turnMatchScore: 0,
     };
   }
 
+  const cleared = applyMatchClear(result.board);
   return {
-    board: result.board,
+    board: cleared.board,
     lastResult: result,
     pick: { phase: "idle" },
+    turnMatchScore: cleared.score,
   };
 }

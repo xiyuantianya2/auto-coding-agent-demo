@@ -1,4 +1,4 @@
-import type { Board } from "./board-types";
+import { EMPTY_CELL, type Board, isEmptyCell } from "./board-types";
 import type { AdjacentSwapAttemptResult, CellPos } from "./swap-types";
 
 /**
@@ -45,6 +45,9 @@ function horizontalRunLength(board: Board, row: number, col: number): number {
     return 0;
   }
   const v = board[row]![col]!;
+  if (isEmptyCell(v)) {
+    return 0;
+  }
   let c = col;
   while (c > 0 && board[row]![c - 1] === v) {
     c -= 1;
@@ -65,6 +68,9 @@ function verticalRunLength(board: Board, row: number, col: number): number {
     return 0;
   }
   const v = board[row]![col]!;
+  if (isEmptyCell(v)) {
+    return 0;
+  }
   let r = row;
   while (r > 0 && board[r - 1]![col] === v) {
     r -= 1;
@@ -81,6 +87,9 @@ function hasOrthogonalNeighborSame(board: Board, row: number, col: number): bool
   const rows = board.length;
   const cols = board[0]?.length ?? 0;
   const v = board[row]![col]!;
+  if (isEmptyCell(v)) {
+    return false;
+  }
   const dirs = [
     [-1, 0],
     [1, 0],
@@ -134,6 +143,9 @@ export function attemptAdjacentSwap(
 
   const va = board[a.row]![a.col]!;
   const vb = board[b.row]![b.col]!;
+  if (va === EMPTY_CELL || vb === EMPTY_CELL) {
+    return { kind: "ignored", board, reason: "empty_cell" };
+  }
   if (va === vb) {
     return { kind: "rejected", board, reason: "same_symbol_noop" };
   }

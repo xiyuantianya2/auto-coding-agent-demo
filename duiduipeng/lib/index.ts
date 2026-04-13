@@ -1,10 +1,13 @@
 export {
   CellSymbol,
   DEFAULT_CELL_SYMBOLS,
+  EMPTY_CELL,
   type Board,
   type BoardSize,
+  type CellValue,
   type LevelConfig,
   isCellSymbol,
+  isEmptyCell,
 } from "./board-types";
 export {
   type LevelProgressionConfig,
@@ -31,3 +34,9 @@ export {
   type SwapInteractionEvent,
   type SwapInteractionState,
 } from "./swap-input";
+export {
+  applyMatchClear,
+  BASE_SCORE_PER_CELL,
+  findAllMatchPositions,
+  hasAnyMatch,
+} from "./match-clear";

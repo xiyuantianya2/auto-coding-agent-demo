@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CellSymbol, type Board } from "./board-types";
+import { CellSymbol, EMPTY_CELL, type Board } from "./board-types";
 import { attemptAdjacentSwap, areOrthogonalAdjacent } from "./swap-legality";
 import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
 
-function boardFromLines(lines: CellSymbol[][]): Board {
+function boardFromLines(lines: (CellSymbol | typeof EMPTY_CELL)[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
 }
 
@@ -81,6 +81,16 @@ describe("attemptAdjacentSwap", () => {
     expect(r.kind).toBe("rejected");
     expect(r.reason).toBe("same_symbol_noop");
     expect(r.board).toBe(before);
+  });
+
+  it("ignores swaps involving empty cells", () => {
+    const before = boardFromLines([
+      [CellSymbol.Ruby, EMPTY_CELL],
+      [CellSymbol.Emerald, CellSymbol.Sapphire],
+    ]);
+    const r = attemptAdjacentSwap(before, { row: 0, col: 0 }, { row: 0, col: 1 });
+    expect(r.kind).toBe("ignored");
+    expect(r.reason).toBe("empty_cell");
   });
 });
 

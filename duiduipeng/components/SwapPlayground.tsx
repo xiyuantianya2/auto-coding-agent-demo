@@ -2,7 +2,7 @@
 
 import { useMemo, useReducer } from "react";
 import { createInitialBoard } from "@/lib/create-initial-board";
-import { CellSymbol } from "@/lib/board-types";
+import { CellSymbol, isEmptyCell } from "@/lib/board-types";
 import {
   createSwapInteractionState,
   reduceSwapInteraction,
@@ -48,7 +48,9 @@ export function SwapPlayground() {
     state.lastResult === null
       ? "点选一格，再点相邻一格尝试交换（仅上下左右）。"
       : state.lastResult.kind === "accepted"
-        ? "交换有效：已形成三消或可合并对。"
+        ? state.turnMatchScore > 0
+          ? `交换有效：已消除匹配格，本回合基础分 +${state.turnMatchScore}。`
+          : "交换有效：已触发对碰预备（三消消除见匹配时）；盘面无三连，未进入消除。"
         : state.lastResult.kind === "rejected"
           ? `交换无效：${state.lastResult.reason ?? "未触发消除或合并"}，盘面已回滚。`
           : `未尝试交换：${state.lastResult.reason ?? "非相邻或对角线忽略"}。`;
@@ -66,6 +68,7 @@ export function SwapPlayground() {
           const r = Math.floor(i / cols);
           const c = i % cols;
           const sym = state.board[r]![c]!;
+          const empty = isEmptyCell(sym);
           const picked =
             state.pick.phase === "first" &&
             state.pick.first.row === r &&
@@ -74,13 +77,15 @@ export function SwapPlayground() {
             <button
               key={`${r}-${c}`}
               type="button"
-              className={`flex h-9 w-9 items-center justify-center rounded-md text-[10px] font-semibold text-white shadow-inner ring-offset-2 ring-offset-zinc-900 transition ${symbolClass[sym]} ${
-                picked ? "ring-2 ring-amber-300" : "hover:brightness-110"
+              className={`flex h-9 w-9 items-center justify-center rounded-md text-[10px] font-semibold shadow-inner ring-offset-2 ring-offset-zinc-900 transition ${
+                empty
+                  ? "border border-dashed border-zinc-600 bg-zinc-900/80 text-zinc-500"
+                  : `text-white ${symbolClass[sym as CellSymbol]} ${picked ? "ring-2 ring-amber-300" : "hover:brightness-110"}`
               }`}
               aria-label={`cell ${r} ${c}`}
               onClick={() => dispatch({ row: r, col: c })}
             >
-              {sym}
+              {empty ? "·" : sym}
             </button>
           );
         })}

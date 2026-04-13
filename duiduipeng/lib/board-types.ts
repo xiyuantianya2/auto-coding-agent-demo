@@ -19,8 +19,20 @@ export const DEFAULT_CELL_SYMBOLS: readonly CellSymbol[] = [
   CellSymbol.Amethyst,
 ] as const;
 
+/**
+ * 消除后的空位占位（任务 5+）；不参与连线匹配，重力与补位在任务 6。
+ */
+export const EMPTY_CELL = -1 as const;
+
+/** 棋盘格取值：普通符号或空位 */
+export type CellValue = CellSymbol | typeof EMPTY_CELL;
+
 /** 行优先：第一维行、第二维列 */
-export type Board = readonly (readonly CellSymbol[])[];
+export type Board = readonly (readonly CellValue[])[];
+
+export function isEmptyCell(value: CellValue): value is typeof EMPTY_CELL {
+  return value === EMPTY_CELL;
+}
 
 export interface BoardSize {
   readonly rows: number;
