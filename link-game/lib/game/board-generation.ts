@@ -27,8 +27,19 @@ export function maxRandomAttemptsForLevel(level: LevelConfig): number {
   }
 }
 
-/** 随机洗牌探测时使用的 DFS 节点预算（避免在「不可解」随机布局上指数级爆搜）；构造备用路径用无预算完整判定。 */
-function maxDfsNodesForRandomProbe(level: LevelConfig): number {
+/**
+ * 对**已生成**棋盘做二次全盘可解校验时使用的 DFS 节点上限（与构造备用路径末尾校验一致）。
+ * 开发自检 `board-selftest` 亦用此上界，避免无预算 DFS 在异常盘面上耗时过长。
+ */
+export function maxDfsNodesForOutputVerification(level: LevelConfig): number {
+  return level.id === 1 ? 6_000_000 : level.id === 2 ? 4_000_000 : 3_000_000;
+}
+
+/**
+ * 随机洗牌探测时使用的 DFS 节点预算（避免在「不可解」随机布局上指数级爆搜）；构造备用路径末尾用 `maxDfsNodesForOutputVerification` 做完整度校验。
+ * 已导出供 `board-selftest` 等对生成结果做「与生成器相同标准」的快速复验。
+ */
+export function maxDfsNodesForRandomProbe(level: LevelConfig): number {
   switch (level.id) {
     case 1:
       return 4_000_000;
@@ -158,8 +169,7 @@ export function generateBoardFromLevel(
   }
 
   const fallback = buildConstructiveStripeBoard(level);
-  const verifyBudget =
-    level.id === 1 ? 6_000_000 : level.id === 2 ? 4_000_000 : 3_000_000;
+  const verifyBudget = maxDfsNodesForOutputVerification(level);
   if (!isBoardFullySolvable(fallback, { maxDfsNodes: verifyBudget })) {
     throw new Error(
       `generateBoardFromLevel: constructive stripe layout is not fully solvable within verify budget (level id=${level.id}); adjust LevelConfig or fallback strategy.`,

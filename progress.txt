@@ -1,5 +1,23 @@
 # Progress Log
 
+## 2026-04-13 - Task: 更新棋盘生成自检与开发入口（id=15）
+
+### What was done:
+- `link-game/lib/game/board-selftest.ts`：每次 `generateBoardFromLevel` 后调用 `assertGeneratedBoardGloballySolvable` — 先用与生成器随机阶段相同的 `maxDfsNodesForRandomProbe` 复验，未命中再用 `maxDfsNodesForOutputVerification`（与构造备用末尾校验一致）。保留成对/尺寸校验；棋盘格数 >30（当前即 6×8）时不再做「全量枚举 vs 布尔」以免 `enumerateConnectablePairs` 过重，仅保留 `hasAtLeastOneConnectablePair`；第 3 关自检轮次降为 5，避免大棋盘上 DFS×枚举组合最坏耗时过长。
+- `link-game/lib/game/board-generation.ts`：导出 `maxDfsNodesForOutputVerification`、`maxDfsNodesForRandomProbe` 供自检与生成逻辑共用同一预算常量。
+
+### Testing:
+- `cd link-game && npm run board-selftest`（约 21s）通过。
+- `npm run lint`、`npm run build` 通过。
+- `npm run test:unit`：5/5 通过。
+- `npx playwright test --headed`：6/6 通过。
+
+### Notes:
+- 仓库根 `./init.sh` 在本环境（无 `bash`）未执行；已在 `link-game` 下 `npm install` 并完成基线 E2E。
+- 大棋盘全盘 DFS 若与全量「枚举所有可连对」叠加会极慢；自检策略与轮次已按上述折中，若将来优化连通枚举可再提高 L3 回归轮次。
+
+---
+
 ## 2026-04-13 - Task: 生成终止保障与性能基线（id=14）
 
 ### What was done:
