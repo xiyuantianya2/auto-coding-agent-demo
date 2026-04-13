@@ -20,8 +20,11 @@ test.describe("游戏说明", () => {
     await expect(dialog).toContainText("合法与步数");
     await expect(dialog).toContainText("目标分");
     await expect(dialog).toContainText("剩余步数");
+    await expect(dialog).toContainText("检测三消 → 消除 → 下落补位");
     await expect(dialog).toContainText("BASE_SCORE_PER_CELL");
     await expect(dialog).toContainText("CHAIN_BONUS_PER_EXTRA_WAVE");
+    await expect(dialog).not.toContainText("MERGE_PAIR_SCORE");
+    await expect(dialog).not.toContainText("对碰合并");
 
     await page.getByTestId("game-instructions-close").click();
     await expect(dialog).toBeHidden();
@@ -39,5 +42,7 @@ test.describe("游戏说明", () => {
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText("合法与步数");
     await expect(dialog).toContainText("连锁波次");
+    await expect(dialog).toContainText("检测三消 → 消除 → 下落补位");
+    await expect(dialog).not.toContainText("MERGE_PAIR_SCORE");
   });
 });

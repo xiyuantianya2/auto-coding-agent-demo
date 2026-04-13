@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-14 - Task: E2E 断言更新（duiduipeng id=22）
+
+### What was done:
+- `e2e/instructions.spec.ts`：在说明对话框内断言任务 20 的稳定化管线文案「检测三消 → 消除 → 下落补位」；增加回归断言对话框不出现 `MERGE_PAIR_SCORE` 与「对碰合并」；内联入口用例同步管线文案与 `MERGE_PAIR_SCORE` 负例。
+- `duiduipeng/task.json`：id=22 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`、`npm run test:e2e` 均通过。
+
+### Notes:
+- 负例仅针对 `game-instructions-dialog`，避免与页面标题「对对碰」混淆。
+
+---
+
 ## 2026-04-14 - Task: 单元与集成测试全面去对碰化（duiduipeng id=21）
 
 ### What was done:

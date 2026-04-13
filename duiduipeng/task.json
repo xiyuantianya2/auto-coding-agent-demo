@@ -251,7 +251,7 @@
         "在 duiduipeng/ 下 npm run test:e2e 通过。",
         "用例仍不依赖随机棋盘终局，仅静态文案/入口。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 23,
