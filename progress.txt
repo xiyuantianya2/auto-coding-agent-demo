@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 棋盘与 HUD 界面（id=6）
+
+### What was done:
+- 新增 `link-game/components/game/BoardGrid.tsx`：客户端棋盘网格，emoji 图案、选中态（缩放 + 渐变底 + 双层描边）、空位与胜利态样式；外层 `overflow-x/y-auto` + `overscroll-x-contain`，小屏可横向滚动；格子尺寸用 `--cell` 响应式变量缩小（`1.6rem` → `md:2.65rem`）。
+- 更新 `link-game/components/game/LinkGame.tsx`：顶部 HUD 展示「第 N 关」徽章、关卡名称、棋盘规格与图案种数；「重新开始本关」与 HUD 并排/堆叠布局。
+- 根目录 `task.json` id=6 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- 基线：`http://127.0.0.1:3000` HTTP 200（本机已有 dev 时端口可能不同）。
+
+### Notes:
+- 大棋盘（如 6×8）窄屏依赖横向滚动；后续多关卡/计时可继续复用 `BoardGrid` 与 HUD 结构。
+
+---
+
 ## 2026-04-13 - Task: 点击、消除与胜负（id=5）
 
 ### What was done:
