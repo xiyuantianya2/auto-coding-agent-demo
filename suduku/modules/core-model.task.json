@@ -79,7 +79,7 @@
         "执行 suduku 下全部单元测试命令（如 npm test 或项目约定脚本）且全部通过",
         "测试文件位于 suduku 约定目录（如 lib/core 旁或 tests/），且不引用 lib/solver"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

@@ -35,3 +35,11 @@ export const SOLVED_GRID_SAMPLE: Grid9 = [
   [6, 7, 8, 9, 1, 2, 3, 4, 5],
   [9, 1, 2, 3, 4, 5, 6, 7, 8],
 ] as Grid9;
+
+/**
+ * Same as {@link SOLVED_GRID_SAMPLE} but one playable cell `(8,8)` is empty (`0`).
+ * The unique completing digit is `8` — one legal `setValue` reaches a winning state.
+ */
+export const ALMOST_SOLVED_ONE_EMPTY: Grid9 = SOLVED_GRID_SAMPLE.map((row, r) =>
+  r === 8 ? row.map((n, c) => (c === 8 ? 0 : n)) : [...row],
+) as Grid9;
