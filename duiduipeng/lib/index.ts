@@ -27,6 +27,7 @@ export type {
 export {
   areOrthogonalAdjacent,
   attemptAdjacentSwap,
+  findFirstValidSwap,
 } from "./swap-legality";
 export {
   createSwapInteractionState,

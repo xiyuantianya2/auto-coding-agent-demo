@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, EMPTY_CELL, type Board } from "./board-types";
-import { attemptAdjacentSwap, areOrthogonalAdjacent } from "./swap-legality";
+import {
+  attemptAdjacentSwap,
+  areOrthogonalAdjacent,
+  findFirstValidSwap,
+} from "./swap-legality";
 import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
 
 function boardFromLines(lines: (CellSymbol | typeof EMPTY_CELL)[][]): Board {
@@ -91,6 +95,24 @@ describe("attemptAdjacentSwap", () => {
     const r = attemptAdjacentSwap(before, { row: 0, col: 0 }, { row: 0, col: 1 });
     expect(r.kind).toBe("ignored");
     expect(r.reason).toBe("empty_cell");
+  });
+});
+
+describe("findFirstValidSwap", () => {
+  it("returns a pair when a horizontal triple can be completed", () => {
+    const before = boardFromLines([
+      [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Ruby],
+      [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Emerald],
+      [CellSymbol.Emerald, CellSymbol.Emerald, CellSymbol.Ruby],
+    ]);
+    const pair = findFirstValidSwap(before);
+    expect(pair).not.toBeNull();
+    expect(attemptAdjacentSwap(before, pair![0], pair![1]).kind).toBe("accepted");
+  });
+
+  it("returns null when no adjacent pair can be swapped legally", () => {
+    const before = boardFromLines([[CellSymbol.Ruby]]);
+    expect(findFirstValidSwap(before)).toBeNull();
   });
 });
 

@@ -163,3 +163,33 @@ export function attemptAdjacentSwap(
 
   return { kind: "accepted", board: trial };
 }
+
+/**
+ * 在当前盘面寻找第一组「交换后可触发三消或对碰」的正交相邻格对（确定性顺序：先行后列，先右后下）。
+ * 纯函数：不消耗随机种子，不改变盘面。
+ */
+export function findFirstValidSwap(
+  board: Board,
+): readonly [CellPos, CellPos] | null {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
+  for (let r = 0; r < rows; r += 1) {
+    for (let c = 0; c < cols; c += 1) {
+      if (c + 1 < cols) {
+        const a: CellPos = { row: r, col: c };
+        const b: CellPos = { row: r, col: c + 1 };
+        if (attemptAdjacentSwap(board, a, b).kind === "accepted") {
+          return [a, b];
+        }
+      }
+      if (r + 1 < rows) {
+        const a: CellPos = { row: r, col: c };
+        const b: CellPos = { row: r + 1, col: c };
+        if (attemptAdjacentSwap(board, a, b).kind === "accepted") {
+          return [a, b];
+        }
+      }
+    }
+  }
+  return null;
+}
