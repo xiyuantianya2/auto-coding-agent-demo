@@ -21,7 +21,11 @@ export type {
   TechniqueId,
 } from "./types";
 
-export { TECHNIQUE_IDS, type KnownTechniqueId } from "./techniques";
+export {
+  TECHNIQUE_IDS,
+  TECHNIQUE_RESOLUTION_ORDER,
+  type KnownTechniqueId,
+} from "./techniques";
 export { createEmptyCandidatesGrid } from "./candidates";
 export {
   CandidatesComputationError,
@@ -32,7 +36,7 @@ export {
 } from "./compute-candidates";
 
 /**
- * 枚举当前盘面可观察的技巧步骤（任务 3 起实现：裸单 / 隐单；后续任务扩展更多技法）。
+ * 枚举当前盘面可观察的技巧步骤（含裸单 / 隐单、裸隐数对、pointing / claiming 等；后续任务可继续扩展）。
  */
 export function findTechniques(state: GameState): SolveStep[] {
   return findTechniquesImpl(state);

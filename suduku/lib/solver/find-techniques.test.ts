@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createGameStateFromGivens } from "../core";
 import type { Grid9 } from "../core";
 import { ALMOST_SOLVED_ONE_EMPTY } from "../core/fixture";
-import { TECHNIQUE_IDS } from "./techniques";
+import { candidatesGridToSnapshot, computeCandidates } from "./compute-candidates";
+import { TECHNIQUE_IDS, TECHNIQUE_RESOLUTION_ORDER } from "./techniques";
 import { findTechniques } from "./find-techniques";
+import type { CandidateElimination, CandidatesGrid } from "./types";
 
 /** 经典易题（常见于教程）：开局含隐单（某数字在某行/列/宫仅一处候选）。 */
 const EASY_PUZZLE_WITH_HIDDEN: Grid9 = [
@@ -17,6 +19,38 @@ const EASY_PUZZLE_WITH_HIDDEN: Grid9 = [
   [0, 0, 0, 4, 1, 9, 0, 0, 5],
   [0, 0, 0, 0, 8, 0, 0, 7, 9],
 ] as Grid9;
+
+/** HoDoKu 教材「Naked Pair」示例原题（81 字符，`.` 为空）。 */
+const HODOKU_NAKED_PAIR_LINE =
+  "7....9.3....1.5..64..26...9..2.83951..7........56.............31......6......4.1.";
+
+function gridFrom81Line(line: string): Grid9 {
+  if (line.length !== 81) {
+    throw new Error(`expected 81 chars, got ${line.length}`);
+  }
+  const g: number[][] = [];
+  for (let r = 0; r < 9; r++) {
+    const row: number[] = [];
+    for (let c = 0; c < 9; c++) {
+      const ch = line[r * 9 + c]!;
+      row.push(ch === "." ? 0 : Number(ch));
+    }
+    g.push(row);
+  }
+  return g as Grid9;
+}
+
+function cloneCandidates(grid: CandidatesGrid): CandidatesGrid {
+  return grid.map((row) => row.map((s) => new Set(s)));
+}
+
+function applyEliminations(grid: CandidatesGrid, elims: CandidateElimination[]): void {
+  for (const e of elims) {
+    for (const d of e.digits) {
+      grid[e.r][e.c].delete(d);
+    }
+  }
+}
 
 describe("findTechniques (naked & hidden singles)", () => {
   it("naked single: almost-solved grid has one placement at (8,8) digit 8", () => {
@@ -51,5 +85,86 @@ describe("findTechniques (naked & hidden singles)", () => {
     const a = findTechniques(state);
     const b = findTechniques(state);
     expect(a).toEqual(b);
+  });
+});
+
+describe("findTechniques (pairs & intersections)", () => {
+  it("naked pair: eliminations remove digits that were present in candidates", () => {
+    const state = createGameStateFromGivens(gridFrom81Line(HODOKU_NAKED_PAIR_LINE));
+    const cand = computeCandidates(state);
+    const steps = findTechniques(state).filter((s) => s.technique === TECHNIQUE_IDS.NAKED_PAIR);
+    expect(steps.length).toBeGreaterThanOrEqual(1);
+    const step = steps[0]!;
+    expect(step.eliminations?.length).toBeGreaterThan(0);
+    const before = candidatesGridToSnapshot(cand);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(cand[e.r][e.c].has(d)).toBe(true);
+      }
+    }
+    const next = cloneCandidates(cand);
+    applyEliminations(next, step.eliminations!);
+    const after = candidatesGridToSnapshot(next);
+    expect(after).not.toEqual(before);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(next[e.r][e.c].has(d)).toBe(false);
+      }
+    }
+  });
+
+  it("hidden pair: classic easy puzzle yields hidden-pair steps with consistent eliminations", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const cand = computeCandidates(state);
+    const steps = findTechniques(state).filter((s) => s.technique === TECHNIQUE_IDS.HIDDEN_PAIR);
+    expect(steps.length).toBeGreaterThanOrEqual(1);
+    const step = steps[0]!;
+    expect(step.eliminations?.length).toBeGreaterThan(0);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(cand[e.r][e.c].has(d)).toBe(true);
+      }
+    }
+    const next = cloneCandidates(cand);
+    applyEliminations(next, step.eliminations!);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(next[e.r][e.c].has(d)).toBe(false);
+      }
+    }
+  });
+
+  it("pointing: eliminations match current candidate sets", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const cand = computeCandidates(state);
+    const steps = findTechniques(state).filter((s) => s.technique === TECHNIQUE_IDS.POINTING);
+    expect(steps.length).toBeGreaterThanOrEqual(1);
+    const step = steps[0]!;
+    expect(step.eliminations?.length).toBeGreaterThan(0);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(cand[e.r][e.c].has(d)).toBe(true);
+      }
+    }
+  });
+
+  it("claiming: eliminations match current candidate sets", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const cand = computeCandidates(state);
+    const steps = findTechniques(state).filter((s) => s.technique === TECHNIQUE_IDS.CLAIMING);
+    expect(steps.length).toBeGreaterThanOrEqual(1);
+    const step = steps[0]!;
+    expect(step.eliminations?.length).toBeGreaterThan(0);
+    for (const e of step.eliminations!) {
+      for (const d of e.digits) {
+        expect(cand[e.r][e.c].has(d)).toBe(true);
+      }
+    }
+  });
+
+  it("TECHNIQUE_RESOLUTION_ORDER lists mid-tier techniques after singles", () => {
+    const iPair = TECHNIQUE_RESOLUTION_ORDER.indexOf(TECHNIQUE_IDS.NAKED_PAIR);
+    const iPointing = TECHNIQUE_RESOLUTION_ORDER.indexOf(TECHNIQUE_IDS.POINTING);
+    expect(iPair).toBeLessThan(iPointing);
   });
 });

@@ -46,7 +46,7 @@
         "单元测试覆盖裸数对、隐数对、pointing、claiming 各至少一例，验证消除后候选变化符合预期",
         "技法 id 与 module-plan / curriculum 后续可对齐的命名方式一致（英文 snake 或 kebab 统一即可）"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

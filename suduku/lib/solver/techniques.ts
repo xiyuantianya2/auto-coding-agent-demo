@@ -26,3 +26,15 @@ export const TECHNIQUE_IDS = {
 
 export type KnownTechniqueId =
   (typeof TECHNIQUE_IDS)[keyof typeof TECHNIQUE_IDS];
+
+/**
+ * 当同一组候选消除可被多类技法解释时，保留列表中**较前**的技法 id（与 {@link findTechniques} 合并逻辑一致）。
+ */
+export const TECHNIQUE_RESOLUTION_ORDER: readonly TechniqueId[] = [
+  TECHNIQUE_IDS.NAKED_SINGLE,
+  TECHNIQUE_IDS.HIDDEN_SINGLE,
+  TECHNIQUE_IDS.NAKED_PAIR,
+  TECHNIQUE_IDS.HIDDEN_PAIR,
+  TECHNIQUE_IDS.POINTING,
+  TECHNIQUE_IDS.CLAIMING,
+];

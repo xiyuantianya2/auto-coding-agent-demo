@@ -53,4 +53,15 @@ test.describe("Suduku solver engine (contract smoke)", () => {
     expect(hidden.length).toBeGreaterThanOrEqual(1);
     expect(hidden[0]!.highlights.length).toBeGreaterThan(0);
   });
+
+  test("findTechniques: mid-tier pairs and intersections on easy classic puzzle", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const steps = findTechniques(state);
+    const byId = (id: string) => steps.filter((s) => s.technique === id);
+    expect(byId(TECHNIQUE_IDS.HIDDEN_PAIR).length).toBeGreaterThanOrEqual(1);
+    expect(byId(TECHNIQUE_IDS.POINTING).length).toBeGreaterThanOrEqual(1);
+    expect(byId(TECHNIQUE_IDS.CLAIMING).length).toBeGreaterThanOrEqual(1);
+    const withElims = steps.filter((s) => s.eliminations && s.eliminations.length > 0);
+    expect(withElims.length).toBeGreaterThanOrEqual(1);
+  });
 });

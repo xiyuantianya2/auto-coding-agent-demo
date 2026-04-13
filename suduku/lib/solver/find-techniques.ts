@@ -9,8 +9,10 @@ import {
 } from "../core";
 import type { GameState } from "../core";
 import { computeCandidates } from "./compute-candidates";
+import { claimingFromCandidates, pointingFromCandidates } from "./technique-intersections";
+import { hiddenPairsFromCandidates, nakedPairsFromCandidates } from "./technique-pairs";
 import { TECHNIQUE_IDS } from "./techniques";
-import type { CandidatesGrid, SolveStep } from "./types";
+import type { CandidateElimination, CandidatesGrid, SolveStep } from "./types";
 
 function boxTopLeft(boxIndex: number): { br: number; bc: number } {
   const row = Math.floor(boxIndex / BOX_SIZE);
@@ -136,14 +138,54 @@ function hiddenSinglesFromCandidates(
   return steps;
 }
 
+function eliminationKey(eliminations: CandidateElimination[]): string {
+  return eliminations
+    .map((e) => {
+      const ds = [...e.digits].sort((a, b) => a - b).join(",");
+      return `${e.r},${e.c},${ds}`;
+    })
+    .sort()
+    .join("|");
+}
+
 /**
- * 基于 {@link computeCandidates} 识别裸单与隐单；顺序稳定：先全部裸单（行优先），再全部隐单（行→列→宫，数字 1–9）。
+ * 合并带 eliminations 的步骤：按「裸数对 → 隐数对 → pointing → claiming」顺序，
+ * **同一组消除**（{@link eliminationKey} 相同）只保留最先出现的一条，避免多单位重复或与低优先级技法冲突。
+ * 裸单 / 隐单无 eliminations，不参与去重。
+ */
+function mergeEliminationSteps(batches: SolveStep[][]): SolveStep[] {
+  const seen = new Set<string>();
+  const out: SolveStep[] = [];
+  for (const batch of batches) {
+    for (const step of batch) {
+      if (!step.eliminations?.length) continue;
+      const k = eliminationKey(step.eliminations);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(step);
+    }
+  }
+  return out;
+}
+
+/**
+ * 基于 {@link computeCandidates} 识别技巧；顺序稳定：
+ * 1. 全部裸单（行优先）
+ * 2. 全部隐单（行 → 列 → 宫，数字 1–9）
+ * 3. 中阶带消除步骤：裸数对 → 隐数对 → pointing → claiming（组内顺序见各实现），并对消除集合去重
  */
 export function findTechniques(state: GameState): SolveStep[] {
   const cand = computeCandidates(state);
   const grid = gridFromGameState(state);
+  const mid = mergeEliminationSteps([
+    nakedPairsFromCandidates(grid, cand),
+    hiddenPairsFromCandidates(grid, cand),
+    pointingFromCandidates(grid, cand),
+    claimingFromCandidates(grid, cand),
+  ]);
   return [
     ...nakedSinglesFromCandidates(grid, cand),
     ...hiddenSinglesFromCandidates(grid, cand),
+    ...mid,
   ];
 }
