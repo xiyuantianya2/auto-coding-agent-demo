@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-「对对碰」是本仓库内与「连连看」并列的**单机网页**益智游戏子项目：玩家在固定步数内达成目标分数；核心机制为**相邻交换**形成**三消**，并包含**两格对碰合并**、**重力下落与补位**，关卡无限递进、目标分随关卡升高。
+「对对碰」是本仓库内与「连连看」并列的**单机网页**益智游戏子项目：玩家在固定步数内达成目标分数；核心机制为**相邻交换**且**仅当能触发三消（含连锁）时步数才生效**，配合**重力下落与补位**直至盘面稳定；**已移除**旧版「未形成三消时两格同色对碰合并」玩法。关卡无限递进、目标分随关卡升高。
 
 ## 技术栈
 
@@ -55,13 +55,13 @@ duiduipeng/
 
 1. **棋盘与符号模型** — `board-types.ts`、`create-initial-board.ts`
 2. **输入与交换** — `swap-input.ts`、`swap-legality.ts`
-3. **匹配、消除、对碰、重力、连锁** — `match-clear.ts`、`stabilization.ts`
+3. **匹配、消除、重力、连锁稳定化** — `match-clear.ts`、`stabilization.ts`（稳定化管线仅三消，无相邻两格合并分支）
 4. **关卡与胜负** — `level-progression.ts`；UI 层 `SwapPlayground.tsx`
 5. **暂停与提示** — `SwapPlayground.tsx`
 
 ## 关卡与计分（与实现一致）
 
-- **计分常量**：`BASE_SCORE_PER_CELL`、`MERGE_PAIR_SCORE`、`CHAIN_BONUS_PER_EXTRA_WAVE` 定义于 `lib/match-clear.ts` 与 `lib/stabilization.ts`；游戏内「游戏说明」对话框从同一常量渲染，避免文案与代码漂移。
+- **计分常量**：`BASE_SCORE_PER_CELL`（每格基础分）与 `CHAIN_BONUS_PER_EXTRA_WAVE`（连锁波次加成，见 `lib/stabilization.ts`）定义于实现中；游戏内「游戏说明」对话框从同一常量渲染，避免文案与代码漂移。无单独「对碰合并」得分项。
 - **前期关卡表**（`EARLY_GAME_LEVEL_CONFIG`，`lib/level-progression.ts`）：索引 0～5 单独配置目标分与步数；第 6 关起由第 5 关锚点按 `DEFAULT_LEVEL_PROGRESSION` 线性延伸，保证目标分严格递增、步数不减。
 
 | 关卡（显示） | levelIndex | 目标分 | 步数上限 |
@@ -80,7 +80,7 @@ duiduipeng/
 | 维度 | 连连看 `link-game/` | 对对碰 `duiduipeng/` |
 |------|---------------------|----------------------|
 | **默认开发端口** | 3000 | **3001** |
-| **玩法** | 路径连接消对 | **三消 + 对碰合并 + 步数/目标分** |
+| **玩法** | 路径连接消对 | **纯三消（合法交换须触发三消）+ 步数/目标分** |
 | **工程** | 同 major 的 Next/React/ESLint/Tailwind | 同上 |
 | **视觉** | zinc 底、emerald 强调 | 同源风格（见 `app/layout.tsx`、`globals.css`） |
 | **浏览器 E2E** | Playwright（`e2e/`，端口 3000） | Playwright（`e2e/`，端口 **3001**），浏览器二进制与 `link-game` 共享 |

@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: 整体验收与回归（duiduipeng id=24）
+
+### What was done:
+- 在 `duiduipeng/` 执行并通过：`npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`（3 条 Playwright：说明 ×2、游戏控制/HUD ×1）。
+- `architecture.md`：与当前纯三消规则对齐，移除「两格对碰合并」/`MERGE_PAIR_SCORE` 表述；对比表与核心模块说明同步。
+- `duiduipeng/task.json`：id=24 `passes: true`。
+
+### Testing:
+- 四条 npm 命令全部通过；E2E 覆盖暂停、提示冷却、说明文案与 HUD 前期表一致性。
+- 手测结论（与既有 E2E + 任务 16 记录一致）：合法步仅三消触发；胜负与进关路径在先前迭代已验证，本步未发现回归。
+
+### Notes:
+- `README.md` 未再描述对碰合并玩法，无需改动。
+
+---
+
 ## 2026-04-14 - Task: E2E 断言更新（duiduipeng id=22）
 
 ### What was done:
