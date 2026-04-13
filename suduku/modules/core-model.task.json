@@ -68,7 +68,7 @@
         "从包外路径仅通过约定入口即可引用本模块公共 API（路径以项目 tsconfig 为准）",
         "在 lib/core 入口文件或各导出处用简短注释或 TSDoc 标明对外公共 API，与 module-plan 中 interface 一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,

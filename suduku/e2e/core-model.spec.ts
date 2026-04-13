@@ -3,10 +3,10 @@ import {
   cloneGameState,
   createGameStateFromGivens,
   deserializeGameState,
+  isWinningState,
   serializeGameState,
 } from "@/lib/core";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
-import { isWinningState } from "@/lib/core/rules";
 
 test.describe("Suduku core model (page smoke)", () => {
   test("loads home and renders a 9×9 board from GameState", async ({ page }) => {
