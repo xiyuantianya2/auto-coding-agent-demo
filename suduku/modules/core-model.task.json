@@ -1,0 +1,85 @@
+{
+  "project": "数独",
+  "module": "core-model",
+  "moduleTitle": "核心数据模型与规则",
+  "description": "定义九宫格盘面、单元格状态（给定/填数/笔记）、合法移动与胜负判定、游戏模式与存档用的纯数据结构。不包含求解算法，仅负责规则校验与状态序列化边界。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "核心类型、常量与 GameState 骨架",
+      "description": "在 suduku/lib/core 下建立类型定义：Grid9、CellState（given/value/notes）、游戏模式与无尽/教学等存档所需字段的 GameState；导出盘面尺寸等常量；提供创建空盘面或从给定数初始化盘面的纯函数（不涉及求解）。为后续规则与序列化提供单一数据源。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build，确保类型文件无报错且工程可构建",
+        "TypeScript 严格模式下 Grid9、CellState、GameState 定义完整，无 any 滥用；CellState 中 given 与玩家填入 value 的语义在注释或类型上可区分",
+        "至少包含一种「从仅含给定数的 Grid9 生成初始 GameState」的工厂函数，供后续任务与测试复用"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "行/列/宫工具与 isValidPlacement",
+      "description": "实现数独规则下的放置校验：给定盘面 grid、行列与候选数字 n，判断在 (r,c) 填入 n 是否与同行、同列、同宫已有非零冲突（约定 0 表示空）。不包含任何回溯或唯一解推理，仅规则层 isValidPlacement(grid, r, c, n)。可拆分内部 peer 索引辅助函数以便单测。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "对边界行列（0-8）与 n∈1..9 行为符合标准数独规则；与 module-plan 中声明的函数签名一致",
+        "补充针对同行/同列/同宫冲突与空格的单元测试用例（若项目已配置 Vitest；否则在本任务中一并添加最小测试配置以可运行）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "合法移动语义与胜负/完成判定",
+      "description": "在不引入求解器的前提下，用纯函数描述「可否对某格操作」：给定格不可改；填数与笔记的业务约定（例如有 value 时笔记清空或互斥规则）在代码中固定并实现校验辅助函数。实现完成态与胜利判定（例如全盘填满且每格与整体满足规则），以及可选的「存在明显冲突」检测供 UI 提示（若纳入 GameState 或独立函数需文档化）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "胜负/完成判定与给定格不可修改规则有对应测试用例覆盖典型与边界情况",
+        "对外行为与 module-plan 中「合法移动与胜负判定」描述一致，且不依赖 lib/solver"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "cloneGameState 深拷贝",
+      "description": "实现 cloneGameState(state)，对嵌套数组与 CellState.notes（Set<number>）等引用类型做深拷贝，保证克隆后与原始状态互不影响。不包含业务逻辑变更，仅拷贝语义正确。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "修改克隆副本的某一格 notes 或 value 不改变原 state 的单元测试",
+        "函数签名与 module-plan 中声明一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "serializeGameState 与 deserializeGameState",
+      "description": "实现 JSON 序列化与反序列化：将 GameState 转为字符串及还原；Set<number> 在 JSON 中映射为有序数字数组（或项目内统一约定）并在反序列化时恢复为 Set；对非法 JSON、版本/字段缺失、数字越界等输入给出可预测的失败行为（抛错 or Result 类型，需在模块内统一）。可考虑可选的 formatVersion 字段以便后续扩展。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "round-trip：serialize → deserialize 后与 clone 等价（结构相等、Set 内容一致）的测试",
+        "非法输入测试至少覆盖非 JSON 字符串与结构不符两类"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "对外 API 汇总与 lib/core 导出面",
+      "description": "在 suduku/lib/core 提供统一入口（如 index.ts），导出 Grid9、CellState、GameState 类型及 isValidPlacement、cloneGameState、serializeGameState、deserializeGameState 与本模块实现的其它公开规则函数；避免循环依赖；与 module-plan.json 中本模块 interface 字符串对齐。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "从包外路径仅通过约定入口即可引用本模块公共 API（路径以项目 tsconfig 为准）",
+        "在 lib/core 入口文件或各导出处用简短注释或 TSDoc 标明对外公共 API，与 module-plan 中 interface 一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "core-model 模块集成测试与回归",
+      "description": "在 suduku 测试框架下编写覆盖本模块的集成级用例：组合「初始盘面 → 若干合法操作 → 胜负判断 → 序列化往返 → 克隆修改」流程；固定若干小型棋盘 fixture。确保本模块交付可作为 solver-engine 等下游模块的稳定契约。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "执行 suduku 下全部单元测试命令（如 npm test 或项目约定脚本）且全部通过",
+        "测试文件位于 suduku 约定目录（如 lib/core 旁或 tests/），且不引用 lib/solver"
+      ],
+      "passes": false
+    }
+  ]
+}
