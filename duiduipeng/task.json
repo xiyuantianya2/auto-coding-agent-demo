@@ -132,7 +132,7 @@
         "architecture.md 中技术栈与目录与实际代码一致；task.json 中已完成任务 passes 已更新。",
         "若增加 E2E，需在文档中写明命令；否则写明推荐的手动验收路径。"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

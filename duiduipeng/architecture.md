@@ -11,24 +11,37 @@
 | 框架 | **Next.js 16**（App Router） | 与 `link-game/` 一致，便于 UI 风格对齐 |
 | 语言 | **TypeScript** | 严格模式 |
 | UI | **React 19** + **Tailwind CSS 4** | 工具类与 `link-game` 的 `globals.css` 变量对齐 |
-| 工具 | `clsx` + `tailwind-merge` | 条件 class 合并（后续组件使用） |
+| 工具 | `clsx` + `tailwind-merge` | 条件 class 合并 |
+| 测试 | **Vitest**（`lib/**/*.test.ts`） | 逻辑层单元测试；**未**引入 Playwright 与本项目 E2E |
 
-开发服务器默认端口 **3001**，避免与本仓库 `link-game` 默认 **3000** 冲突。
+开发服务器默认端口 **3001**（`package.json` 中 `next dev -p 3001`），避免与本仓库 `link-game` 默认 **3000** 冲突。
 
-## 目录结构（规划）
+## 目录结构（与代码一致）
 
 ```
 duiduipeng/
-├── app/                    # App Router：页面与布局
+├── app/
 │   ├── layout.tsx          # 根布局（字体、背景、metadata）
-│   ├── page.tsx            # 入口页（游戏壳）
+│   ├── page.tsx            # 首页：说明 + 游戏主区域锚点
 │   └── globals.css         # Tailwind 与 CSS 变量（与连连看一致）
-├── components/             # UI 组件（后续：棋盘、HUD、对话框）
-├── lib/                    # 纯逻辑（后续：棋盘状态、三消、下落、关卡）
-│   └── game/               # 建议：board、match、gravity、level 等模块
-├── public/                 # 静态资源（可选）
+├── components/
+│   └── SwapPlayground.tsx  # 客户端：棋盘、HUD、暂停/提示、胜负 overlay
+├── lib/                    # 纯逻辑与类型（平铺，无 lib/game 子目录）
+│   ├── board-types.ts      # 网格与符号枚举
+│   ├── create-initial-board.ts
+│   ├── level-progression.ts
+│   ├── match-clear.ts
+│   ├── stabilization.ts    # 消除、下落、补位、连锁稳定化
+│   ├── swap-input.ts       # 选格与交换状态机
+│   ├── swap-legality.ts
+│   ├── swap-types.ts
+│   ├── seeded-random.ts
+│   ├── utils.ts
+│   ├── index.ts
+│   └── *.test.ts           # Vitest 用例
 ├── task.json               # 功能任务与验收步骤
 ├── architecture.md         # 本文件
+├── vitest.config.ts
 ├── next.config.ts
 ├── package.json
 ├── tsconfig.json
@@ -36,39 +49,27 @@ duiduipeng/
 └── eslint.config.mjs
 ```
 
-## 核心模块（实现阶段）
+## 核心模块（已实现方向）
 
-1. **棋盘与符号模型**  
-   二维网格、符号/颜色枚举、不可变或受控更新策略，便于测试与回放。
+1. **棋盘与符号模型** — `board-types.ts`、`create-initial-board.ts`
+2. **输入与交换** — `swap-input.ts`、`swap-legality.ts`
+3. **匹配、消除、对碰、重力、连锁** — `match-clear.ts`、`stabilization.ts`
+4. **关卡与胜负** — `level-progression.ts`；UI 层 `SwapPlayground.tsx`
+5. **暂停与提示** — `SwapPlayground.tsx`
 
-2. **输入与交换**  
-   选中相邻两格并交换；非法交换（不产生任何可消除/对碰结果时）应回滚或拒绝，并明确是否仍消耗步数（由任务清单约定）。
+## 与连连看（link-game）的对齐与差异
 
-3. **匹配与消除**  
-   横向/纵向连续 ≥3 判定；消除后计分。
+| 维度 | 连连看 `link-game/` | 对对碰 `duiduipeng/` |
+|------|---------------------|----------------------|
+| **默认开发端口** | 3000 | **3001** |
+| **玩法** | 路径连接消对 | **三消 + 对碰合并 + 步数/目标分** |
+| **工程** | 同 major 的 Next/React/ESLint/Tailwind | 同上 |
+| **视觉** | zinc 底、emerald 强调 | 同源风格（见 `app/layout.tsx`、`globals.css`） |
+| **浏览器 E2E** | 仓库内另有 Playwright 流程（见 `link-game`） | **本项目未配置 E2E**；验收见 `README.md` 手动路径 |
 
-4. **对碰合并**  
-   与三消规则并列的「两格对碰合并」逻辑（具体合并规则在对应任务中细化并实现）。
+运行方式均为：在各自子目录执行 `npm run dev`，浏览器本地自玩。
 
-5. **重力与补位**  
-   消除后上方下落，顶部生成新格（或按设计从池中填充）。
+## 后续可选扩展（非当前范围）
 
-6. **连锁**  
-   下落后再检测匹配，直到稳定。
-
-7. **关卡与胜负**  
-   每关：目标分数 + 剩余步数；达标胜利进入下一关（目标递增）；步数耗尽未达标则失败。支持重开当前关。
-
-8. **周边功能**  
-   **暂停**（冻结输入与计时若有）、**提示**（高亮一步可行交换或提示区域）。
-
-## 与连连看的对齐点
-
-- **视觉**：`layout` 的 `bg-zinc-950`、`text-zinc-100`、强调色 `emerald` 系列按钮与边框风格保持一致。  
-- **工程**：同 major 版本的 Next/React/ESLint/Tailwind，降低心智负担。  
-- **运行方式**：本地 `npm run dev` 浏览器自玩，无额外部署约束。
-
-## 后续可选扩展（非脚手架范围）
-
-- Playwright E2E（与 `link-game` 同型）  
-- 从仓库根或 `link-game` 入口页链到 `http://localhost:3001` 的说明或导航
+- Playwright E2E（与 `link-game` 同型）
+- 从仓库根或 `link-game` 入口页链到 `http://localhost:3001` 的导航说明
