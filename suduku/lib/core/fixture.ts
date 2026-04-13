@@ -22,3 +22,16 @@ export const SAMPLE_PLACEMENT_CASES = {
   boxConflict: { r: 1, c: 2, n: 7, valid: false },
   ok: { r: 3, c: 3, n: 4, valid: true },
 } as const;
+
+/** A fully filled, classically valid Sudoku grid (for win-state tests). */
+export const SOLVED_GRID_SAMPLE: Grid9 = [
+  [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  [4, 5, 6, 7, 8, 9, 1, 2, 3],
+  [7, 8, 9, 1, 2, 3, 4, 5, 6],
+  [2, 3, 4, 5, 6, 7, 8, 9, 1],
+  [5, 6, 7, 8, 9, 1, 2, 3, 4],
+  [8, 9, 1, 2, 3, 4, 5, 6, 7],
+  [3, 4, 5, 6, 7, 8, 9, 1, 2],
+  [6, 7, 8, 9, 1, 2, 3, 4, 5],
+  [9, 1, 2, 3, 4, 5, 6, 7, 8],
+] as Grid9;

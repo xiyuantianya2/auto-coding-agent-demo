@@ -1,4 +1,7 @@
 import { test, expect } from "@playwright/test";
+import { createGameStateFromGivens } from "@/lib/core";
+import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
+import { isWinningState } from "@/lib/core/rules";
 
 test.describe("Suduku core model (page smoke)", () => {
   test("loads home and renders a 9×9 board from GameState", async ({ page }) => {
@@ -32,5 +35,12 @@ test.describe("Suduku core model (page smoke)", () => {
     await expect(el).toHaveAttribute("data-placement-col", "false");
     await expect(el).toHaveAttribute("data-placement-box", "false");
     await expect(el).toHaveAttribute("data-placement-ok", "true");
+  });
+});
+
+test.describe("Suduku core rules (Node-side)", () => {
+  test("isWinningState on solved fixture grid", () => {
+    const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
+    expect(isWinningState(state)).toBe(true);
   });
 });

@@ -1,6 +1,7 @@
 /**
- * Core Sudoku data model: grid types, cell state, {@link GameState}, and pure factories.
- * Rule helpers (`cloneGameState`, serialize/deserialize) are added in later tasks.
+ * Core Sudoku data model: grid types, cell state, {@link GameState}, pure factories,
+ * placement checks, and legal-move / win / conflict helpers (`rules`).
+ * (`cloneGameState`, serialize/deserialize) follow in later tasks.
  */
 
 export {
@@ -36,3 +37,19 @@ export {
   isValidPlacement,
   rowPeerPositions,
 } from "./placement";
+
+export {
+  canModifyCell,
+  cellStateMeetsModelInvariants,
+  effectiveDigit,
+  findObviousConflictPositions,
+  gameStateMeetsModelInvariants,
+  gridFromGameState,
+  hasObviousConflict,
+  isBoardComplete,
+  isGivenCell,
+  isLegalClearValue,
+  isLegalSetValue,
+  isLegalToggleNote,
+  isWinningState,
+} from "./rules";
