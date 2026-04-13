@@ -1,0 +1,96 @@
+{
+  "project": "数独",
+  "module": "puzzle-generator",
+  "moduleTitle": "唯一解题目生成与难度分档",
+  "description": "生成满足唯一解且符合最少提示（给定数）约束的题目，按目标难度档（简单/普通/困难/地狱）约束所依赖技巧层级与难度分数区间，并产出可复现的随机种子与元数据。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "generator 模块目录、公开类型与 API 骨架",
+      "description": "在 suduku/lib/generator 建立模块：定义并导出与 module-plan 一致的 PuzzleSpec（seed、givens: Grid9、difficultyScore、requiredTechniques: TechniqueId[]）；DifficultyTier 与 lib/core 已有类型对齐（可 re-export 或从 core 导入避免重复）。声明 generatePuzzle(options: { tier: DifficultyTier; rng: () => number }): PuzzleSpec 与 verifyUniqueSolution(givens: Grid9): boolean 的函数签名与 JSDoc，提供占位实现（抛错或返回固定占位值）以便后续任务逐步替换。建立 index.ts 导出路径，仅依赖 lib/core 与 lib/solver 的公开入口（类型与函数签名），不写具体生成算法。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build，确保新增骨架不破坏工程",
+        "PuzzleSpec 中 Grid9 语义与 core 一致（0 表示空格，1–9 为给定数字）；TechniqueId 与 lib/solver 命名空间一致",
+        "模块内用简短注释说明 generatePuzzle 与 verifyUniqueSolution 的职责边界及与 solver-engine 的协作方式"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "可复现随机：种子字符串与 PRNG 适配",
+      "description": "实现用于题目生成的确定性随机流：约定 PuzzleSpec.seed 的编码格式（例如十六进制或 URL-safe 字符串），提供从种子构造 rng: () => number 的工具（如 Mulberry32 或等价算法），保证同一 seed 在同一平台/实现下得到相同随机序列。generatePuzzle 在成功路径上必须填充可解析、可反推随机流的 seed 字段；若采用「外部注入 rng」策略，需在文档中说明 seed 与 rng 的对应关系（例如内部用种子初始化 rng）。不依赖 Node 专有 API，便于浏览器与 Vitest 共用。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：固定若干 seed，断言连续多次 rng() 输出与预期快照或可重复序列一致",
+        "不修改 lib/core、lib/solver 已有实现，仅在 lib/generator 新增工具模块"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "verifyUniqueSolution：唯一解判定",
+      "description": "实现 verifyUniqueSolution(givens: Grid9): boolean：判定在标准数独规则下完整解的数量是否恰好为 1。实现可采用「回溯计数至 2 即提前退出」或等价正确算法，确保对非法/多解盘面返回 false、对唯一解返回 true。输入需与 core 的 Grid9 约定一致（空格为 0）。本任务不强制调用 solver 的 findTechniques；若内部需 GameState，可使用 core 的工厂/辅助从 givens 构造。为性能考虑在注释中说明最坏情况与剪枝策略。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：使用已知唯一解、多解、无解（或矛盾）小样例网格，断言返回值正确",
+        "函数签名与 module-plan 中 verifyUniqueSolution 一致，并在测试中覆盖至少一个 9×9 完整唯一解题"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "随机合法终盘生成（完整填数网格）",
+      "description": "基于任务 2 的 rng，实现生成一个填满且满足数独规则的 Grid9（可作为后续挖空的「终盘」）。典型路径：随机回溯/约束传播填充，失败时可重试直至成功；保证在合理迭代次数内高概率成功，并对死循环做上限保护（抛错或返回失败由模块统一约定）。输出为 81 格均为 1–9 的矩阵。不在此任务做挖空与难度分档。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：固定 seed 下生成的终盘合法（可借助 lib/core 的 isValidPlacement 或逐行/列/宫校验辅助）；多次调用分布上不应恒为同一盘面（除非 seed 相同）",
+        "不引入与任务 5、6 重复的挖空逻辑；代码放在 lib/generator 内合适子文件"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "四档难度配置：技巧层级、分数区间与最少提示",
+      "description": "在 lib/generator 定义各 DifficultyTier（easy/normal/hard/hell）的配置数据：每档允许出现的最高阶 TechniqueId 集合或层级上限（与 lib/solver 的 TECHNIQUE_WEIGHT、技法注册顺序对齐）；难度分数的目标区间（与 scoreDifficulty 输出配合，可给 min/max 或目标带容差）；以及最少/最多给定数（givens）约束。配置应集中在一处（常量或只读对象），便于调参与单元测试。说明与 solver-engine 中 scoreDifficulty 启发式一致时如何校准区间（注释即可）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：断言每档配置的区间互不重叠或文档化重叠策略；各档引用的 TechniqueId 均在 lib/solver 的技法常量表中存在",
+        "不实现 generatePuzzle 主循环（留给任务 7），本任务仅交付可导入的配置与类型"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "挖空与最少提示：保持唯一解的删数流程",
+      "description": "在任务 4 的终盘上实现挖空：按 rng 打乱删格顺序，逐格尝试将数字改为空格（0），每步用 verifyUniqueSolution 确认仍唯一解；直至达到任务 5 中该 tier 的最少提示（给定数）下界，或无法再删为止。若需「最少提示」的精确定义（局部极小），在注释中固定产品语义（例如「无法再删任一提示而保持唯一解」）。输出符合 Grid9 的提示面；记录删数过程中的中间状态不得泄漏为公开 API 副作用。对超时或过多重试提供可配置上限。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：对固定终盘与固定 rng 序列，挖空结果唯一解且给定数不少于配置下界；多解路径被排除",
+        "仅使用 lib/core 的 Grid9 与任务 3 的 verifyUniqueSolution，不在此任务计算 difficultyScore"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "generatePuzzle：分档求解验证、打分与元数据装配",
+      "description": "实现 generatePuzzle：用任务 2 的 seed/rng 生成终盘（任务 4）并挖空（任务 6）；对结果调用 verifyUniqueSolution。将 givens 转为 GameState（使用 core 的公开工厂/辅助），用 solver 的 computeCandidates、findTechniques 迭代或模拟完整解题路径，收集全程使用的 TechniqueId 去重得到 requiredTechniques，并用 scoreDifficulty 得到 difficultyScore。按任务 5 的 tier 配置校验：所需技巧层级与分数落在区间内；若不满足则使用同一 rng 流重试（换终盘或换挖空策略），直至成功或达到最大尝试次数（失败时抛错或返回明确结果，需文档化）。PuzzleSpec.seed 与传入的随机策略一致。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：对各 tier 至少一次成功生成（可适当放宽重试上限仅用于测试）；断言返回的 difficultyScore、requiredTechniques 与 givens 一致于独立调用 solver 的结果",
+        "公开函数签名与 module-plan 中 generatePuzzle、PuzzleSpec 完全一致；不修改 solver 的 scoreDifficulty 公式，仅消费其输出"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "模块集成测试、导出与回归约束",
+      "description": "补齐 lib/generator 的对外导出与 Vitest 覆盖：导入路径 suduku/lib/generator（或 package 约定路径）稳定；添加端到端式单元测试：固定 seed 下 PuzzleSpec 全文快照或可重复断言；验证 verifyUniqueSolution 与 generatePuzzle 产出题目的唯一解一致性；轻量性能测试（可选）确保单次生成在可接受时间内。更新或新增测试文件命名与 suduku 现有 lib 测试风格一致。本任务完成后，module-plan 中 puzzle-generator 接口可被其它模块（如 server-api）依赖。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "在 suduku 目录下执行 npm test（或项目对 lib 测试的等价命令），全部通过",
+        "如有 e2e 或项目级测试要求，在 steps 中说明本模块以单元测试为主且不破坏现有 suduku 测试套件"
+      ],
+      "passes": false
+    }
+  ]
+}
