@@ -27,6 +27,8 @@ export type { DifficultyTier } from "../core";
 
 export { verifyUniqueSolution } from "./verify-unique-solution";
 
+export { generateCompleteGrid } from "./complete-grid";
+
 export {
   PUZZLE_SEED_HEX_DIGITS,
   createMulberry32,

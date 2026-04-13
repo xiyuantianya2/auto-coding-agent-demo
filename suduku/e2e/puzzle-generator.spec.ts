@@ -3,6 +3,7 @@ import type { Grid9 } from "@/lib/core";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import {
   createRngFromSeed,
+  generateCompleteGrid,
   generatePuzzle,
   isValidPuzzleSeedString,
   verifyUniqueSolution,
@@ -25,5 +26,17 @@ test.describe("Suduku puzzle generator (contract smoke)", () => {
   test("verifyUniqueSolution: full valid grid is uniquely solvable; empty board is not", () => {
     expect(verifyUniqueSolution(SOLVED_GRID_SAMPLE)).toBe(true);
     expect(verifyUniqueSolution(EMPTY_GRID)).toBe(false);
+  });
+
+  test("generateCompleteGrid returns a 9×9 grid of digits 1–9 that passes placement checks", () => {
+    const grid = generateCompleteGrid(createRngFromSeed("0123456789abcdef0123456789abcdef"));
+    expect(grid).toHaveLength(9);
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const v = grid[r]![c]!;
+        expect(v).toBeGreaterThanOrEqual(1);
+        expect(v).toBeLessThanOrEqual(9);
+      }
+    }
   });
 });

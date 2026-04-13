@@ -46,7 +46,7 @@
         "Vitest：固定 seed 下生成的终盘合法（可借助 lib/core 的 isValidPlacement 或逐行/列/宫校验辅助）；多次调用分布上不应恒为同一盘面（除非 seed 相同）",
         "不引入与任务 5、6 重复的挖空逻辑；代码放在 lib/generator 内合适子文件"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,
