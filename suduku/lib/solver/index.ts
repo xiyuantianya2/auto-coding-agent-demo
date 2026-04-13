@@ -7,6 +7,7 @@
  */
 
 import type { GameState } from "../core";
+import { findTechniques as findTechniquesImpl } from "./find-techniques";
 import type { SolveStep } from "./types";
 
 export type {
@@ -31,11 +32,10 @@ export {
 } from "./compute-candidates";
 
 /**
- * 枚举当前一步可应用的技巧实例（任务 3–7 实现）。占位实现返回空数组。
+ * 枚举当前盘面可观察的技巧步骤（任务 3 起实现：裸单 / 隐单；后续任务扩展更多技法）。
  */
 export function findTechniques(state: GameState): SolveStep[] {
-  void state;
-  return [];
+  return findTechniquesImpl(state);
 }
 
 /**

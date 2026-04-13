@@ -35,7 +35,7 @@
         "Vitest 用例覆盖至少各一例裸单与隐单经典小样例，断言 technique 字段与 highlights 非空",
         "不修改 lib/core 源码；仅通过公开 API 读取盘面"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
