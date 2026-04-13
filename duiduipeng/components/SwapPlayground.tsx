@@ -35,18 +35,57 @@ export function SwapPlayground() {
   const cols = state.board[0]?.length ?? 0;
 
   const statusText =
-    state.lastResult === null
-      ? "点选一格，再点相邻一格尝试交换（仅上下左右）。"
-      : state.lastResult.kind === "accepted"
-        ? state.turnMatchScore > 0
-          ? `交换有效：稳定化完成，本步得分 +${state.turnMatchScore}（三消与对碰合并合计）。`
-          : "交换有效：盘面无三消或可对碰的二连（不应出现于合法交换）。"
-        : state.lastResult.kind === "rejected"
-          ? `交换无效：${state.lastResult.reason ?? "未触发消除或合并"}，盘面已回滚。`
-          : `未尝试交换：${state.lastResult.reason ?? "非相邻或对角线忽略"}。`;
+    state.meetsWinTarget
+      ? "已达目标分数：本关可判定胜利（任务 10 将接入完整结算）。"
+      : state.isFailed
+        ? "步数用尽且未达目标：本关失败（任务 10 将接入重试）。"
+        : state.lastResult === null
+          ? "点选一格，再点相邻一格尝试交换（仅上下左右）。非法交换不消耗步数。"
+          : state.lastResult.kind === "accepted"
+            ? state.turnMatchScore > 0
+              ? `交换有效：连锁 ${state.chainWaves} 波，本步 +${state.turnMatchScore} 分（含连锁加成）。`
+              : "交换有效：盘面无三消或可对碰的二连（不应出现于合法交换）。"
+            : state.lastResult.kind === "rejected"
+              ? `交换无效：${state.lastResult.reason ?? "未触发消除或合并"}，盘面已回滚，不消耗步数。`
+              : state.lastResult.reason === "game_ended"
+                ? "对局已结束，无法继续交换。"
+                : `未尝试交换：${state.lastResult.reason ?? "非相邻或对角线忽略"}。`;
+
+  const target = state.levelConfig.targetScore;
+  const winReady = state.meetsWinTarget;
+  const failState = state.isFailed;
 
   return (
     <div className="flex w-full min-w-0 flex-col items-center gap-4 text-left">
+      <div className="flex w-full max-w-md flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-2 text-xs text-zinc-200">
+        <span>
+          关卡 <span className="font-semibold text-emerald-400">{state.levelConfig.levelIndex + 1}</span>
+        </span>
+        <span>
+          分数{" "}
+          <span className="font-semibold text-amber-300">{state.totalScore}</span>
+          <span className="text-zinc-500"> / {target}</span>
+        </span>
+        <span>
+          剩余步数{" "}
+          <span
+            className={`font-semibold ${failState ? "text-rose-400" : "text-zinc-100"}`}
+          >
+            {state.movesRemaining}
+          </span>
+        </span>
+        <span
+          className={
+            winReady
+              ? "font-semibold text-emerald-400"
+              : failState
+                ? "font-semibold text-rose-400"
+                : "text-zinc-500"
+          }
+        >
+          {winReady ? "可胜利" : failState ? "失败" : "进行中"}
+        </span>
+      </div>
       <p className="text-xs leading-relaxed text-zinc-400">{statusText}</p>
       <div
         className="inline-grid gap-1 p-2"

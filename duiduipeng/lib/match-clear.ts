@@ -1,6 +1,6 @@
 import { EMPTY_CELL, type Board, isEmptyCell } from "./board-types";
 
-/** 基础分：每消除一格固定分（任务 7 可再调公式） */
+/** 三消基础分：每消除一格固定分；当局总分另含对碰分与连锁加成（见 stabilization） */
 export const BASE_SCORE_PER_CELL = 10;
 
 function posKey(row: number, col: number): string {

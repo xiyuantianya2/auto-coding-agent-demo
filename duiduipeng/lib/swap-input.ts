@@ -1,5 +1,6 @@
-import type { Board } from "./board-types";
+import type { Board, LevelConfig } from "./board-types";
 import type { AdjacentSwapAttemptResult, CellPos, SwapPickState } from "./swap-types";
+import { getLevelConfigForIndex } from "./level-progression";
 import { attemptAdjacentSwap } from "./swap-legality";
 import { stabilizeAfterSwap } from "./stabilization";
 
@@ -15,26 +16,49 @@ export interface SwapInteractionState {
   readonly board: Board;
   readonly pick: SwapPickState;
   readonly lastResult: AdjacentSwapAttemptResult | null;
-  /** 最近一次有效交换后，本步稳定化（三消 + 对碰合并）累计得分 */
+  /** 最近一次有效交换后，本步稳定化（三消 + 对碰合并 + 连锁加成）累计得分 */
   readonly turnMatchScore: number;
+  /** 最近一次有效交换触发的连锁波次数（无有效交换时为 0） */
+  readonly chainWaves: number;
   /** 补位随机种子；传入 {@link stabilizeAfterSwap} 以保证可复现 */
   readonly refillSeed: number;
+  /** 当前关卡参数（目标分、步数上限等） */
+  readonly levelConfig: LevelConfig;
+  /** 当局累计总分 */
+  readonly totalScore: number;
+  /** 剩余步数 */
+  readonly movesRemaining: number;
+  /** 当前分数已达到或超过目标分，可判定胜利 */
+  readonly meetsWinTarget: boolean;
+  /** 步数用尽且未达目标分 */
+  readonly isFailed: boolean;
 }
 
 export interface CreateSwapInteractionStateOptions {
   readonly refillSeed?: number;
+  readonly levelConfig?: LevelConfig;
 }
 
 export function createSwapInteractionState(
   board: Board,
   options?: CreateSwapInteractionStateOptions,
 ): SwapInteractionState {
+  const levelConfig = options?.levelConfig ?? getLevelConfigForIndex(0);
+  const totalScore = 0;
+  const meetsWinTarget = totalScore >= levelConfig.targetScore;
+  const isFailed = levelConfig.moves === 0 && !meetsWinTarget;
   return {
     board,
     pick: { phase: "idle" },
     lastResult: null,
     turnMatchScore: 0,
+    chainWaves: 0,
     refillSeed: options?.refillSeed ?? 0x2026_0414,
+    levelConfig,
+    totalScore,
+    movesRemaining: levelConfig.moves,
+    meetsWinTarget,
+    isFailed,
   };
 }
 
@@ -51,16 +75,33 @@ export function reduceSwapInteraction(
       pick: { phase: "idle" },
       lastResult: null,
       turnMatchScore: 0,
+      chainWaves: 0,
     };
   }
 
   const cell = event.cell;
+
+  if (state.meetsWinTarget || state.isFailed) {
+    return {
+      ...state,
+      lastResult: {
+        kind: "ignored",
+        board: state.board,
+        reason: "game_ended",
+      },
+      pick: { phase: "idle" },
+      turnMatchScore: 0,
+      chainWaves: 0,
+    };
+  }
+
   if (state.pick.phase === "idle") {
     return {
       ...state,
       pick: { phase: "first", first: cell },
       lastResult: null,
       turnMatchScore: 0,
+      chainWaves: 0,
     };
   }
 
@@ -71,6 +112,7 @@ export function reduceSwapInteraction(
       pick: { phase: "idle" },
       lastResult: null,
       turnMatchScore: 0,
+      chainWaves: 0,
     };
   }
 
@@ -82,6 +124,7 @@ export function reduceSwapInteraction(
       lastResult: result,
       pick: { phase: "first", first },
       turnMatchScore: 0,
+      chainWaves: 0,
     };
   }
 
@@ -92,16 +135,27 @@ export function reduceSwapInteraction(
       lastResult: result,
       pick: { phase: "idle" },
       turnMatchScore: 0,
+      chainWaves: 0,
     };
   }
 
   const stabilized = stabilizeAfterSwap(result.board, { refillSeed: state.refillSeed });
-  const nextSeed = (state.refillSeed + 0x9e37_79b9) >>> 0;
+  const newTotal = state.totalScore + stabilized.score;
+  const movesAfter = state.movesRemaining - 1;
+  const meetsWinTarget = newTotal >= state.levelConfig.targetScore;
+  const isFailed = movesAfter === 0 && !meetsWinTarget;
+
   return {
     board: stabilized.board,
     lastResult: result,
     pick: { phase: "idle" },
     turnMatchScore: stabilized.score,
-    refillSeed: nextSeed,
+    chainWaves: stabilized.chainWaves,
+    refillSeed: stabilized.refillSeedAfter,
+    levelConfig: state.levelConfig,
+    totalScore: newTotal,
+    movesRemaining: movesAfter,
+    meetsWinTarget,
+    isFailed,
   };
 }

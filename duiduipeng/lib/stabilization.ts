@@ -27,6 +27,12 @@ import { mulberry32 } from "./seeded-random";
 
 export const MERGE_PAIR_SCORE = 2 * BASE_SCORE_PER_CELL;
 
+/**
+ * 连锁加成：第 1 波倍率 1；第 n 波（n≥2）在该波基础分上乘以 `1 + CHAIN_BONUS_PER_EXTRA_WAVE * (n - 1)`。
+ * 例如 0.2 表示第 2 波 ×1.2、第 3 波 ×1.4。
+ */
+export const CHAIN_BONUS_PER_EXTRA_WAVE = 0.2;
+
 function posKey(row: number, col: number): string {
   return `${row},${col}`;
 }
@@ -310,36 +316,62 @@ export interface StabilizeAfterSwapOptions {
   /** 补位随机种子；与 `mulberry32(seed)` 配合可复现 */
   readonly refillSeed: number;
   readonly symbols?: readonly CellSymbol[];
+  /**
+   * 连锁波次加成系数，默认 {@link CHAIN_BONUS_PER_EXTRA_WAVE}。
+   * 第 n 波得分 = 该波基础分 × (1 + ratio × (n - 1))。
+   */
+  readonly chainBonusPerExtraWave?: number;
 }
 
+const MAX_STABILIZE_ITERATIONS = 512;
+
 /**
- * 交换接受后的单轮稳定化：三消 + 对碰 → 重力 + 补位直至无空位。
- * 连锁再匹配由任务 7 扩展；此处补位后**不**再次扫描三消。
+ * 交换接受后的完整稳定化（任务 7）：反复「检测匹配 → 三消/对碰消除 → 重力补位」直至无匹配，
+ * 累计本步总分（含连锁加成），并推进补位随机种子以便下一手可复现。
  */
 export function stabilizeAfterSwap(board: Board, options: StabilizeAfterSwapOptions): {
   readonly board: Board;
+  /** 本步所有连锁波次得分合计（含连锁加成） */
   readonly score: number;
+  readonly chainWaves: number;
   readonly tripleClearedCells: number;
   readonly pairMergeCount: number;
+  /** 本步全部重力补位结束后，供下一手使用的补位种子 */
+  readonly refillSeedAfter: number;
 } {
-  const cleared = applyTripleClearAndPairMerge(board);
-  if (!boardHasEmpty(cleared.board)) {
-    return {
-      board: cleared.board,
-      score: cleared.score,
-      tripleClearedCells: cleared.tripleClearedCells,
-      pairMergeCount: cleared.pairMergeCount,
-    };
+  const symbols = options.symbols;
+  const ratio = options.chainBonusPerExtraWave ?? CHAIN_BONUS_PER_EXTRA_WAVE;
+  let b = board;
+  let workingSeed = options.refillSeed >>> 0;
+  let totalScore = 0;
+  let totalTriples = 0;
+  let totalPairs = 0;
+  let waves = 0;
+
+  for (let iter = 0; iter < MAX_STABILIZE_ITERATIONS; iter += 1) {
+    const cleared = applyTripleClearAndPairMerge(b);
+    const hasWork = cleared.tripleClearedCells > 0 || cleared.pairMergeCount > 0;
+    if (!hasWork) {
+      b = cleared.board;
+      break;
+    }
+    waves += 1;
+    totalTriples += cleared.tripleClearedCells;
+    totalPairs += cleared.pairMergeCount;
+    const mult = 1 + ratio * (waves - 1);
+    totalScore += Math.round(cleared.score * mult);
+    b = cleared.board;
+    const rnd = mulberry32(workingSeed);
+    b = applyGravityAndRefill(b, { random: rnd, symbols });
+    workingSeed = (workingSeed + 0x9e37_79b9) >>> 0;
   }
-  const random = mulberry32(options.refillSeed);
-  const filled = applyGravityAndRefill(cleared.board, {
-    random,
-    symbols: options.symbols,
-  });
+
   return {
-    board: filled,
-    score: cleared.score,
-    tripleClearedCells: cleared.tripleClearedCells,
-    pairMergeCount: cleared.pairMergeCount,
+    board: b,
+    score: totalScore,
+    chainWaves: waves,
+    tripleClearedCells: totalTriples,
+    pairMergeCount: totalPairs,
+    refillSeedAfter: workingSeed,
   };
 }

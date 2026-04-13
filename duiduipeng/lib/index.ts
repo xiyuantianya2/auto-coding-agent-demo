@@ -42,6 +42,7 @@ export {
 } from "./match-clear";
 export { mulberry32 } from "./seeded-random";
 export {
+  CHAIN_BONUS_PER_EXTRA_WAVE,
   MERGE_PAIR_SCORE,
   applyGravityAndRefill,
   applyTripleClearAndPairMerge,

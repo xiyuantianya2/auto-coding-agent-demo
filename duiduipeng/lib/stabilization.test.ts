@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { CellSymbol, EMPTY_CELL, type Board } from "./board-types";
+import { CellSymbol, DEFAULT_CELL_SYMBOLS, EMPTY_CELL, type Board } from "./board-types";
 import { BASE_SCORE_PER_CELL } from "./match-clear";
 import { mulberry32 } from "./seeded-random";
 import {
@@ -68,10 +68,23 @@ describe("stabilizeAfterSwap", () => {
       [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Ruby],
       [CellSymbol.Emerald, CellSymbol.Sapphire, CellSymbol.Amber],
     ]);
-    const a = stabilizeAfterSwap(b, { refillSeed: 7, symbols: [CellSymbol.Amethyst] });
-    const c = stabilizeAfterSwap(b, { refillSeed: 7, symbols: [CellSymbol.Amethyst] });
+    const a = stabilizeAfterSwap(b, { refillSeed: 7, symbols: DEFAULT_CELL_SYMBOLS });
+    const c = stabilizeAfterSwap(b, { refillSeed: 7, symbols: DEFAULT_CELL_SYMBOLS });
     expect(a.board).toEqual(c.board);
     expect(boardHasEmpty(a.board)).toBe(false);
-    expect(a.score).toBe(3 * BASE_SCORE_PER_CELL);
+    expect(a.score).toBeGreaterThanOrEqual(3 * BASE_SCORE_PER_CELL);
+    expect(a.chainWaves).toBeGreaterThanOrEqual(1);
+    expect(typeof a.refillSeedAfter).toBe("number");
+  });
+
+  it("does not loop when there are no triples or pair merges", () => {
+    const b = boardFromLines([
+      [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Ruby],
+      [CellSymbol.Emerald, CellSymbol.Ruby, CellSymbol.Emerald],
+    ]);
+    const r = stabilizeAfterSwap(b, { refillSeed: 1 });
+    expect(r.chainWaves).toBe(0);
+    expect(r.score).toBe(0);
+    expect(r.refillSeedAfter).toBe(1 >>> 0);
   });
 });
