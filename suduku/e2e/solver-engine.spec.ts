@@ -3,6 +3,7 @@ import { createGameStateFromGivens } from "@/lib/core";
 import type { Grid9 } from "@/lib/core";
 import { ALMOST_SOLVED_ONE_EMPTY, SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import {
+  ELIMINATION_TECHNIQUE_PIPELINE,
   TECHNIQUE_IDS,
   computeCandidates,
   findTechniques,
@@ -26,6 +27,10 @@ test.describe("Suduku solver engine (contract smoke)", () => {
   test("exports technique ids, candidates and difficulty stub", () => {
     expect(TECHNIQUE_IDS.NAKED_SINGLE).toBe("naked-single");
     expect(TECHNIQUE_IDS.X_WING).toBe("x-wing");
+    expect(TECHNIQUE_IDS.SKYSCRAPER).toBe("skyscraper");
+    expect(TECHNIQUE_IDS.XY_WING).toBe("xy-wing");
+    expect(ELIMINATION_TECHNIQUE_PIPELINE.some((e) => e.id === TECHNIQUE_IDS.SKYSCRAPER)).toBe(true);
+    expect(ELIMINATION_TECHNIQUE_PIPELINE.some((e) => e.id === TECHNIQUE_IDS.XY_WING)).toBe(true);
 
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     const grid = computeCandidates(state);

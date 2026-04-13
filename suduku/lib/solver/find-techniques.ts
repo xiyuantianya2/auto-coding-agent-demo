@@ -9,9 +9,7 @@ import {
 } from "../core";
 import type { GameState } from "../core";
 import { computeCandidates } from "./compute-candidates";
-import { swordfishFromCandidates, xWingFromCandidates } from "./technique-fish";
-import { claimingFromCandidates, pointingFromCandidates } from "./technique-intersections";
-import { hiddenPairsFromCandidates, nakedPairsFromCandidates } from "./technique-pairs";
+import { ELIMINATION_TECHNIQUE_PIPELINE } from "./technique-registry";
 import { TECHNIQUE_IDS } from "./techniques";
 import type { CandidateElimination, CandidatesGrid, SolveStep } from "./types";
 
@@ -150,7 +148,7 @@ function eliminationKey(eliminations: CandidateElimination[]): string {
 }
 
 /**
- * 合并带 eliminations 的步骤：按「裸数对 → 隐数对 → pointing → claiming → x-wing → swordfish」顺序，
+ * 合并带 eliminations 的步骤：按 {@link ELIMINATION_TECHNIQUE_PIPELINE} 顺序，
  * **同一组消除**（{@link eliminationKey} 相同）只保留最先出现的一条，避免多单位重复或与低优先级技法冲突。
  * 裸单 / 隐单无 eliminations，不参与去重。
  */
@@ -173,19 +171,14 @@ function mergeEliminationSteps(batches: SolveStep[][]): SolveStep[] {
  * 基于 {@link computeCandidates} 识别技巧；顺序稳定：
  * 1. 全部裸单（行优先）
  * 2. 全部隐单（行 → 列 → 宫，数字 1–9）
- * 3. 中阶与高阶带消除步骤：裸数对 → 隐数对 → pointing → claiming → x-wing → swordfish（组内顺序见各实现），并对消除集合去重
+ * 3. 中阶与高阶带消除步骤：见 {@link ELIMINATION_TECHNIQUE_PIPELINE}（组内顺序见各实现），并对消除集合去重
  */
 export function findTechniques(state: GameState): SolveStep[] {
   const cand = computeCandidates(state);
   const grid = gridFromGameState(state);
-  const mid = mergeEliminationSteps([
-    nakedPairsFromCandidates(grid, cand),
-    hiddenPairsFromCandidates(grid, cand),
-    pointingFromCandidates(grid, cand),
-    claimingFromCandidates(grid, cand),
-    xWingFromCandidates(grid, cand),
-    swordfishFromCandidates(grid, cand),
-  ]);
+  const mid = mergeEliminationSteps(
+    ELIMINATION_TECHNIQUE_PIPELINE.map((entry) => entry.detect(grid, cand)),
+  );
   return [
     ...nakedSinglesFromCandidates(grid, cand),
     ...hiddenSinglesFromCandidates(grid, cand),

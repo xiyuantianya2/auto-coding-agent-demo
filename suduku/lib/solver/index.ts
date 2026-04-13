@@ -26,6 +26,12 @@ export {
   TECHNIQUE_RESOLUTION_ORDER,
   type KnownTechniqueId,
 } from "./techniques";
+export {
+  ELIMINATION_TECHNIQUE_PIPELINE,
+  type EliminationTechniqueDetector,
+} from "./technique-registry";
+export { skyscraperFromCandidates } from "./technique-skyscraper";
+export { xyWingFromCandidates } from "./technique-xy-wing";
 export { createEmptyCandidatesGrid } from "./candidates";
 export {
   CandidatesComputationError,
@@ -36,7 +42,7 @@ export {
 } from "./compute-candidates";
 
 /**
- * 枚举当前盘面可观察的技巧步骤（含裸单 / 隐单、裸隐数对、pointing / claiming、x-wing、swordfish 等；后续任务可继续扩展）。
+ * 枚举当前盘面可观察的技巧步骤（含裸单 / 隐单、裸隐数对、pointing / claiming、鱼形、Skyscraper、XY-Wing 等；见 {@link ELIMINATION_TECHNIQUE_PIPELINE}）。
  */
 export function findTechniques(state: GameState): SolveStep[] {
   return findTechniquesImpl(state);

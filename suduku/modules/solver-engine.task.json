@@ -68,7 +68,7 @@
         "Vitest 为两种新技法各提供至少一例；并测试「扩展注册表」路径可被 findTechniques 调用到（可在任务 7 最终接线时一并验证，但本任务代码层应已导出识别函数或注册项）",
         "与任务 1–5 的 SolveStep 形状保持一致，无 unknown 滥用（ref 使用明确类型或联合类型）"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
