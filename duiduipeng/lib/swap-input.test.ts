@@ -78,6 +78,37 @@ describe("swap-input (task 7: moves & win/fail)", () => {
     expect(s.isFailed).toBe(true);
   });
 
+  it("start_level resets board, score, moves and level config", () => {
+    const before = boardFromLines([
+      [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Sapphire],
+      [CellSymbol.Emerald, CellSymbol.Ruby, CellSymbol.Amber],
+    ]);
+    const nextBoard = boardFromLines([
+      [CellSymbol.Amethyst, CellSymbol.Amethyst, CellSymbol.Amethyst],
+      [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Sapphire],
+    ]);
+    let s = createSwapInteractionState(before, {
+      refillSeed: 1,
+      levelConfig: { levelIndex: 0, targetScore: 100, moves: 3 },
+    });
+
+    s = reduceSwapInteraction(s, {
+      type: "start_level",
+      board: nextBoard,
+      refillSeed: 42,
+      levelConfig: { levelIndex: 2, targetScore: 5000, moves: 40 },
+    });
+    expect(s.board).toBe(nextBoard);
+    expect(s.totalScore).toBe(0);
+    expect(s.movesRemaining).toBe(40);
+    expect(s.levelConfig.levelIndex).toBe(2);
+    expect(s.levelConfig.targetScore).toBe(5000);
+    expect(s.refillSeed).toBe(42);
+    expect(s.meetsWinTarget).toBe(false);
+    expect(s.isFailed).toBe(false);
+    expect(s.pick.phase).toBe("idle");
+  });
+
   it("ignores further swaps after win or loss", () => {
     const before = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Sapphire],

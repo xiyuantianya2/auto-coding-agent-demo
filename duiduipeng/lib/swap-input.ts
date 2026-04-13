@@ -10,7 +10,13 @@ import { stabilizeAfterSwap } from "./stabilization";
  */
 export type SwapInteractionEvent =
   | { readonly type: "cell_click"; readonly cell: CellPos }
-  | { readonly type: "clear_selection" };
+  | { readonly type: "clear_selection" }
+  | {
+      readonly type: "start_level";
+      readonly board: Board;
+      readonly refillSeed: number;
+      readonly levelConfig: LevelConfig;
+    };
 
 export interface SwapInteractionState {
   readonly board: Board;
@@ -69,6 +75,13 @@ export function reduceSwapInteraction(
   state: SwapInteractionState,
   event: SwapInteractionEvent,
 ): SwapInteractionState {
+  if (event.type === "start_level") {
+    return createSwapInteractionState(event.board, {
+      refillSeed: event.refillSeed,
+      levelConfig: event.levelConfig,
+    });
+  }
+
   if (event.type === "clear_selection") {
     return {
       ...state,

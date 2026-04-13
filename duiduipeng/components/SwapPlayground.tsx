@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createInitialBoard } from "@/lib/create-initial-board";
 import { CellSymbol, isEmptyCell } from "@/lib/board-types";
+import { getLevelConfigForIndex } from "@/lib/level-progression";
 import { mulberry32 } from "@/lib/seeded-random";
 import { cn } from "@/lib/utils";
 import {
@@ -87,6 +88,7 @@ export function SwapPlayground() {
   );
 
   const attemptPairRef = useRef<readonly [CellPos, CellPos] | null>(null);
+  const levelRunCounterRef = useRef(0);
   const [flashPair, setFlashPair] = useState<readonly [CellPos, CellPos] | null>(
     null,
   );
@@ -102,6 +104,46 @@ export function SwapPlayground() {
   const [hintsUsed, setHintsUsed] = useState(0);
 
   const ended = state.meetsWinTarget || state.isFailed;
+
+  const bootstrapLevel = useCallback(
+    (levelIndex: number) => {
+      levelRunCounterRef.current += 1;
+      const cfg = getLevelConfigForIndex(levelIndex);
+      const seed =
+        0x2026_0414 +
+        levelIndex * 7919 +
+        levelRunCounterRef.current * 9973;
+      const board = createInitialBoard({
+        rows: 6,
+        cols: 6,
+        random: mulberry32(seed),
+      });
+      dispatch({
+        type: "start_level",
+        board,
+        refillSeed: seed,
+        levelConfig: cfg,
+      });
+      setIsPaused(false);
+      setElapsedSec(0);
+      setHintsUsed(0);
+      setHintCooldownUntil(0);
+      setHintPair(null);
+      setToastMessage(null);
+      attemptPairRef.current = null;
+    },
+    [dispatch],
+  );
+
+  const confirmNewGameToLevel1 = useCallback(() => {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("确定要放弃当前进度并回到第 1 关吗？")
+    ) {
+      return;
+    }
+    bootstrapLevel(0);
+  }, [bootstrapLevel]);
 
   useEffect(() => {
     if (ended || isPaused) return;
@@ -250,9 +292,9 @@ export function SwapPlayground() {
     isPaused && !ended
       ? "已暂停：无法交换，对局用时已冻结；点击「继续」恢复。"
       : state.meetsWinTarget
-        ? "已达目标分数：本关可判定胜利（任务 10 将接入完整结算）。"
+        ? "已达目标分数：在弹窗中确认进入下一关或开始新游戏。"
         : state.isFailed
-          ? "步数用尽且未达目标：本关失败（任务 10 将接入重试）。"
+          ? "步数用尽且未达目标：可在弹窗中重试本关或回到第 1 关。"
           : state.lastResult === null
             ? "点选一格，再点相邻一格尝试交换（仅上下左右）。非法交换不消耗步数。"
             : state.lastResult.kind === "accepted"
@@ -270,6 +312,81 @@ export function SwapPlayground() {
 
   return (
     <div className="relative flex w-full min-w-0 flex-col items-stretch gap-6 text-left">
+      {ended ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/70 px-4 py-8 backdrop-blur-[2px]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ddp-endgame-title"
+        >
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700/90 bg-zinc-900/95 p-6 shadow-2xl shadow-black/50">
+            <h3
+              id="ddp-endgame-title"
+              className="text-xl font-semibold text-zinc-50"
+            >
+              {state.meetsWinTarget ? "过关！" : "本关未达标"}
+            </h3>
+            <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+              {state.meetsWinTarget ? (
+                <>
+                  得分{" "}
+                  <span className="font-mono tabular-nums text-amber-200">
+                    {state.totalScore}
+                  </span>{" "}
+                  已达到目标{" "}
+                  <span className="font-mono tabular-nums text-zinc-100">
+                    {state.levelConfig.targetScore}
+                  </span>
+                  。进入下一关将刷新棋盘与步数，分数从 0 重新累计。
+                </>
+              ) : (
+                <>
+                  剩余步数为 0，当前得分{" "}
+                  <span className="font-mono tabular-nums text-amber-200">
+                    {state.totalScore}
+                  </span>{" "}
+                  未达到目标{" "}
+                  <span className="font-mono tabular-nums text-zinc-100">
+                    {state.levelConfig.targetScore}
+                  </span>
+                  。可重试本关以保留关卡目标与步数上限。
+                </>
+              )}
+            </p>
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:justify-end">
+              {state.meetsWinTarget ? (
+                <button
+                  type="button"
+                  className={cn(controlBtnClass, "w-full sm:w-auto")}
+                  onClick={() =>
+                    bootstrapLevel(state.levelConfig.levelIndex + 1)
+                  }
+                >
+                  下一关
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(controlBtnClass, "w-full sm:w-auto")}
+                  onClick={() =>
+                    bootstrapLevel(state.levelConfig.levelIndex)
+                  }
+                >
+                  重试本关
+                </button>
+              )}
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-full border border-zinc-600 bg-zinc-950/80 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800 sm:w-auto"
+                onClick={confirmNewGameToLevel1}
+              >
+                新游戏（第 1 关）
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {toastMessage ? (
         <div
           className="pointer-events-none fixed bottom-6 left-1/2 z-50 max-w-[min(90vw,22rem)] -translate-x-1/2 rounded-xl border border-zinc-600 bg-zinc-900/95 px-4 py-2.5 text-center text-sm text-zinc-100 shadow-lg shadow-black/40"
@@ -466,12 +583,11 @@ export function SwapPlayground() {
           </button>
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
-            onClick={() => {
-              window.location.reload();
-            }}
+            className="inline-flex items-center justify-center rounded-full border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={ended}
+            onClick={confirmNewGameToLevel1}
           >
-            重置随机盘面
+            新游戏（第 1 关）
           </button>
         </div>
         {!ended ? (

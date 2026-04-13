@@ -120,7 +120,7 @@
         "重新开始游戏时关卡与分数重置符合关卡 progression 定义。",
         "无未捕获异常，控制台无 error。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 11,
