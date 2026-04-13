@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { createGameStateFromGivens } from "@/lib/core";
+import { cloneGameState, createGameStateFromGivens } from "@/lib/core";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import { isWinningState } from "@/lib/core/rules";
 
@@ -42,5 +42,14 @@ test.describe("Suduku core rules (Node-side)", () => {
   test("isWinningState on solved fixture grid", () => {
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     expect(isWinningState(state)).toBe(true);
+  });
+
+  test("cloneGameState isolates notes and value from the original", () => {
+    const original = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
+    const copy = cloneGameState(original);
+    copy.cells[0][0].notes = new Set([1, 2, 3]);
+    copy.cells[1][1].value = 1;
+    expect(original.cells[0][0].notes?.size ?? 0).toBe(0);
+    expect(original.cells[1][1].value).toBeUndefined();
   });
 });

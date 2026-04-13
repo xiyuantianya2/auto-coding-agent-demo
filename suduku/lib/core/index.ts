@@ -1,7 +1,7 @@
 /**
  * Core Sudoku data model: grid types, cell state, {@link GameState}, pure factories,
- * placement checks, and legal-move / win / conflict helpers (`rules`).
- * (`cloneGameState`, serialize/deserialize) follow in later tasks.
+ * placement checks, legal-move / win / conflict helpers (`rules`), and state cloning.
+ * (serialize/deserialize) follow in later tasks.
  */
 
 export {
@@ -28,6 +28,8 @@ export {
   createEmptyGrid9,
   createGameStateFromGivens,
 } from "./factory";
+
+export { cloneGameState } from "./clone";
 
 export {
   boxIndexFromCell,
