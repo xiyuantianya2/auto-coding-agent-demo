@@ -188,7 +188,7 @@
         "手测：前几关需多步才能完成；说明与实际游戏规则一致；未发现明显逻辑或 UI 回归。",
         "若需同步更新 duiduipeng/README.md 或 architecture.md 中关卡参数或得分说明，保持与实现一致。"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

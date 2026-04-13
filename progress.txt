@@ -1,5 +1,23 @@
 # Progress Log
 
+## 2026-04-14 - Task: 全量测试、手测与缺陷修复（duiduipeng id=16）
+
+### What was done:
+- 在 `duiduipeng/` 全量执行并通过：`npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`。
+- 新增 `e2e/game-controls.spec.ts`：断言 HUD 与 `EARLY_GAME_LEVEL_CONFIG` 第 1 关一致（目标 24000、步数 22）；暂停后棋子按钮 `disabled`，继续后恢复；连点「提示」出现「提示冷却」toast（依赖初始盘面存在可行交换；`swap-legality.test.ts` 已补充 seed 2026 断言）。
+- `SwapPlayground`：为「暂停/继续」「提示」按钮增加 `data-testid`（`ddp-pause-toggle`、`ddp-hint-button`）。
+- `architecture.md`：补充前期关卡目标分/步数表与第 7 关起的线性公式；`README.md` 指向该表。
+- `duiduipeng/task.json`：id=16 `passes: true`。
+
+### Testing:
+- 上述四条 npm 命令均在 `duiduipeng/` 下通过；E2E 共 3 条（说明 2 + 控制流 1）。
+- 手测结论：第 1 关目标 24000 远高于典型单步得分，需多步；游戏说明与 `match-clear`/`stabilization` 常量一致；暂停/提示路径与 E2E 一致。
+
+### Notes:
+- 通关/下一关/失败重试仍以手测为主；若后续需自动化多关流程，可考虑测试专用 seed 或暴露调试入口（非本任务范围）。
+
+---
+
 ## 2026-04-14 - Task: E2E 覆盖说明入口与关键文案（duiduipeng id=15）
 
 ### What was done:

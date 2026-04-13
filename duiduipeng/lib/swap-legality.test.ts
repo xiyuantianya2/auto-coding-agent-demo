@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, EMPTY_CELL, type Board } from "./board-types";
+import { createInitialBoard } from "./create-initial-board";
 import {
   attemptAdjacentSwap,
   areOrthogonalAdjacent,
   findFirstValidSwap,
 } from "./swap-legality";
 import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
+import { mulberry32 } from "./seeded-random";
 
 function boardFromLines(lines: (CellSymbol | typeof EMPTY_CELL)[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
@@ -113,6 +115,15 @@ describe("findFirstValidSwap", () => {
   it("returns null when no adjacent pair can be swapped legally", () => {
     const before = boardFromLines([[CellSymbol.Ruby]]);
     expect(findFirstValidSwap(before)).toBeNull();
+  });
+
+  it("finds a swap on the default SwapPlayground initial board (seed 2026)", () => {
+    const board = createInitialBoard({
+      rows: 6,
+      cols: 6,
+      random: mulberry32(2026),
+    });
+    expect(findFirstValidSwap(board)).not.toBeNull();
   });
 });
 

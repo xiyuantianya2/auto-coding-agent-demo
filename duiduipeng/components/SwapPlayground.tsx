@@ -572,6 +572,7 @@ export function SwapPlayground() {
         <div className="flex flex-wrap items-center justify-center gap-3">
           <button
             type="button"
+            data-testid="ddp-pause-toggle"
             className={controlBtnClass}
             disabled={ended}
             aria-pressed={isPaused}
@@ -581,6 +582,7 @@ export function SwapPlayground() {
           </button>
           <button
             type="button"
+            data-testid="ddp-hint-button"
             className={controlBtnClass}
             disabled={ended}
             onClick={onHint}

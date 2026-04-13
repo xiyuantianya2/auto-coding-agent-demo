@@ -12,7 +12,7 @@
 | 语言 | **TypeScript** | 严格模式 |
 | UI | **React 19** + **Tailwind CSS 4** | 工具类与 `link-game` 的 `globals.css` 变量对齐 |
 | 工具 | `clsx` + `tailwind-merge` | 条件 class 合并 |
-| 测试 | **Vitest**（`lib/**/*.test.ts`） | 逻辑层单元测试；**未**引入 Playwright 与本项目 E2E |
+| 测试 | **Vitest**（`lib/**/*.test.ts`）+ **Playwright**（`e2e/`） | 单元测试 + 浏览器 E2E |
 
 开发服务器默认端口 **3001**（`package.json` 中 `next dev -p 3001`），避免与本仓库 `link-game` 默认 **3000** 冲突。
 
@@ -39,8 +39,10 @@ duiduipeng/
 │   ├── utils.ts
 │   ├── index.ts
 │   └── *.test.ts           # Vitest 用例
+├── e2e/                    # Playwright E2E 测试
 ├── task.json               # 功能任务与验收步骤
 ├── architecture.md         # 本文件
+├── playwright.config.ts    # Playwright 配置（端口 3001）
 ├── vitest.config.ts
 ├── next.config.ts
 ├── package.json
@@ -57,6 +59,22 @@ duiduipeng/
 4. **关卡与胜负** — `level-progression.ts`；UI 层 `SwapPlayground.tsx`
 5. **暂停与提示** — `SwapPlayground.tsx`
 
+## 关卡与计分（与实现一致）
+
+- **计分常量**：`BASE_SCORE_PER_CELL`、`MERGE_PAIR_SCORE`、`CHAIN_BONUS_PER_EXTRA_WAVE` 定义于 `lib/match-clear.ts` 与 `lib/stabilization.ts`；游戏内「游戏说明」对话框从同一常量渲染，避免文案与代码漂移。
+- **前期关卡表**（`EARLY_GAME_LEVEL_CONFIG`，`lib/level-progression.ts`）：索引 0～5 单独配置目标分与步数；第 6 关起由第 5 关锚点按 `DEFAULT_LEVEL_PROGRESSION` 线性延伸，保证目标分严格递增、步数不减。
+
+| 关卡（显示） | levelIndex | 目标分 | 步数上限 |
+|-------------|------------|--------|----------|
+| 第 1 关 | 0 | 24 000 | 22 |
+| 第 2 关 | 1 | 28 000 | 24 |
+| 第 3 关 | 2 | 32 000 | 26 |
+| 第 4 关 | 3 | 36 000 | 28 |
+| 第 5 关 | 4 | 40 000 | 28 |
+| 第 6 关 | 5 | 44 000 | 30 |
+
+第 7 关起：`targetScore = 44 000 + (levelIndex − 5) × 450`，`moves = 30 + (levelIndex − 5) × 2`（与 `getLevelConfigForIndex` 一致）。
+
 ## 与连连看（link-game）的对齐与差异
 
 | 维度 | 连连看 `link-game/` | 对对碰 `duiduipeng/` |
@@ -65,11 +83,17 @@ duiduipeng/
 | **玩法** | 路径连接消对 | **三消 + 对碰合并 + 步数/目标分** |
 | **工程** | 同 major 的 Next/React/ESLint/Tailwind | 同上 |
 | **视觉** | zinc 底、emerald 强调 | 同源风格（见 `app/layout.tsx`、`globals.css`） |
-| **浏览器 E2E** | 仓库内另有 Playwright 流程（见 `link-game`） | **本项目未配置 E2E**；验收见 `README.md` 手动路径 |
+| **浏览器 E2E** | Playwright（`e2e/`，端口 3000） | Playwright（`e2e/`，端口 **3001**），浏览器二进制与 `link-game` 共享 |
 
 运行方式均为：在各自子目录执行 `npm run dev`，浏览器本地自玩。
 
+## 验收与脚本
+
+- 开发：`npm run dev`（端口 3001）
+- 质量：`npm run lint`、`npm run build`
+- 单元测试：`npm test`（Vitest）
+- E2E 测试：`npm run test:e2e`（Playwright，headed 浏览器，自动启动 dev server）
+
 ## 后续可选扩展（非当前范围）
 
-- Playwright E2E（与 `link-game` 同型）
 - 从仓库根或 `link-game` 入口页链到 `http://localhost:3001` 的导航说明
