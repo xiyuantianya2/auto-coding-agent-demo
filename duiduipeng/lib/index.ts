@@ -12,6 +12,7 @@ export {
 export {
   type LevelProgressionConfig,
   DEFAULT_LEVEL_PROGRESSION,
+  EARLY_GAME_LEVEL_CONFIG,
   getLevelConfigForIndex,
 } from "./level-progression";
 export {

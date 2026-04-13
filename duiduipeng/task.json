@@ -133,6 +133,62 @@
         "若增加 E2E，需在文档中写明命令；否则写明推荐的手动验收路径。"
       ],
       "passes": true
+    },
+    {
+      "id": 12,
+      "title": "关卡目标分与步数再平衡",
+      "description": "针对前期关卡「一次有效交换即过关」的问题，结合当前计分实现（如 match-clear 每格基础分、对碰分、stabilization 连锁倍率）估算典型单步得分上限，调整 LevelProgressionConfig（必要时引入前若干关分段公式或单独表驱动），使前几关需要多步有效操作才有合理胜算，同时保持关卡间目标分严格递增与中后期曲线可玩。",
+      "steps": [
+        "阅读 lib/level-progression.ts、lib/match-clear.ts、lib/stabilization.ts 中与得分相关的常量与公式，记录调整前的典型单步得分区间（可辅以固定 seed 的试玩或小型统计）。",
+        "修改默认递进参数或 getLevelConfigForIndex 的生成逻辑，使至少前若干关（建议覆盖用户感知明显的「前期」）无法在单次连锁结算内达到目标分（除非极端运气，若有则继续调高目标或收紧步数）。",
+        "在代码中用简短注释说明新公式/参数的设计意图与「防一击过关」的约束。",
+        "手动试玩第 1～3 关，确认需要多步才过关且仍感觉公平、不过于磨人。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 13,
+      "title": "关卡递进测试与既有断言更新",
+      "description": "因默认关卡参数变更，同步更新 lib/board-model.test.ts、level-progression 等相关单元测试中的硬编码期望值；补充可维护的断言（例如新 DEFAULT 下前几关 targetScore 与 moves 的关系、目标分仍随 levelIndex 严格递增）。若项目中有基于旧目标分的集成用例，一并修正。",
+      "steps": [
+        "在 duiduipeng/ 下执行 npm test（Vitest），修复因新关卡配置失败的所有单元测试。",
+        "为 level progression 增加或强化测试，避免未来调参时静默破坏「递增」等不变量。",
+        "确保 TypeScript 与测试描述仍与实现一致。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 14,
+      "title": "游戏说明与得分规则展示",
+      "description": "在首页或游戏主区域增加用户可见的「游戏说明」：如何选格与交换、合法/非法交换与步数消耗、胜负条件；并说明分数构成——与代码一致（如 BASE_SCORE_PER_CELL、对碰 MERGE_PAIR_SCORE、CHAIN_BONUS_PER_EXTRA_WAVE 含义与连锁波次说明）。交互可采用折叠面板、侧栏或对话框，样式与现有 emerald/zinc 风格一致。",
+      "steps": [
+        "玩家无需阅读源码即可理解基本玩法与计分方式；文案中的公式与 lib 中常量/注释一致，避免误导。",
+        "窄屏与桌面布局下说明区域可读、不破坏现有棋盘与 HUD。",
+        "若使用客户端交互组件，无控制台 error，键盘焦点与可访问性基本合理（例如对话框可关闭）。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 15,
+      "title": "E2E 覆盖说明入口与关键文案",
+      "description": "在 duiduipeng/e2e/ 增加或扩展 Playwright 用例：验证游戏说明入口可见、核心玩法与计分关键词出现在页面上；必要时为说明按钮或容器添加稳定的 data-testid 以便选择器稳定。",
+      "steps": [
+        "npm run test:e2e（或项目既有 E2E 脚本）在 duiduipeng/ 下全部通过。",
+        "用例不依赖具体随机棋盘结果，仅验证静态 UI/文案与可达性。",
+        "webServer 配置与端口 3001 行为与现有 playwright.config.ts 一致。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 16,
+      "title": "全量测试、手测与缺陷修复",
+      "description": "在完成关卡平衡与说明 UI 后，按仓库规范执行 lint、build、单元测试、Playwright E2E；通玩多关并尝试暂停、提示、重开、进关等路径，记录并修复本需求范围内能复现的缺陷（含边界情况与文案笔误）。",
+      "steps": [
+        "npm run lint、npm run build、npm test、npm run test:e2e 均在 duiduipeng/ 下通过。",
+        "手测：前几关需多步才能完成；说明与实际游戏规则一致；未发现明显逻辑或 UI 回归。",
+        "若需同步更新 duiduipeng/README.md 或 architecture.md 中关卡参数或得分说明，保持与实现一致。"
+      ],
+      "passes": false
     }
   ]
 }

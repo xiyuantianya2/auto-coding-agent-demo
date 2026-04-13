@@ -84,10 +84,7 @@ describe("getLevelConfigForIndex", () => {
   it("maps levelIndex into LevelConfig fields", () => {
     const cfg = getLevelConfigForIndex(3, DEFAULT_LEVEL_PROGRESSION);
     expect(cfg.levelIndex).toBe(3);
-    expect(cfg.targetScore).toBe(
-      DEFAULT_LEVEL_PROGRESSION.baseTargetScore +
-        3 * DEFAULT_LEVEL_PROGRESSION.targetScorePerLevel,
-    );
-    expect(cfg.moves).toBeGreaterThan(0);
+    expect(cfg.targetScore).toBe(36_000);
+    expect(cfg.moves).toBe(28);
   });
 });
