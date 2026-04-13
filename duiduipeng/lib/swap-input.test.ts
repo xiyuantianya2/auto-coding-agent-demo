@@ -1,10 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, type Board } from "./board-types";
 import { BASE_SCORE_PER_CELL } from "./match-clear";
-import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
+import {
+  createSwapInteractionState,
+  reduceSwapInteraction,
+  type SwapInteractionState,
+} from "./swap-input";
 
 function boardFromLines(lines: CellSymbol[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
+}
+
+/** 单元测试内跑完分步连锁展示，得到与完整播放结束一致的终局态 */
+function flushSwapPlayback(s: SwapInteractionState): SwapInteractionState {
+  let cur = s;
+  while (cur.playback) {
+    cur = reduceSwapInteraction(cur, { type: "playback_advance" });
+  }
+  return cur;
 }
 
 describe("swap-input (moves, score, win/fail)", () => {
@@ -36,6 +49,7 @@ describe("swap-input (moves, score, win/fail)", () => {
     });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
+    s = flushSwapPlayback(s);
     expect(s.lastResult?.kind).toBe("accepted");
     expect(s.movesRemaining).toBe(9);
     expect(s.totalScore).toBeGreaterThanOrEqual(3 * BASE_SCORE_PER_CELL);
@@ -55,6 +69,7 @@ describe("swap-input (moves, score, win/fail)", () => {
     });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
+    s = flushSwapPlayback(s);
     expect(s.lastResult?.kind).toBe("accepted");
     expect(s.totalScore).toBeGreaterThanOrEqual(3 * BASE_SCORE_PER_CELL);
     expect(s.meetsWinTarget).toBe(true);
@@ -73,6 +88,7 @@ describe("swap-input (moves, score, win/fail)", () => {
     });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
+    s = flushSwapPlayback(s);
     expect(s.lastResult?.kind).toBe("accepted");
     expect(s.movesRemaining).toBe(0);
     expect(s.meetsWinTarget).toBe(false);
@@ -108,6 +124,27 @@ describe("swap-input (moves, score, win/fail)", () => {
     expect(s.meetsWinTarget).toBe(false);
     expect(s.isFailed).toBe(false);
     expect(s.pick.phase).toBe("idle");
+  });
+
+  it("ignores cell clicks while stabilization playback is active", () => {
+    const before = boardFromLines([
+      [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Amethyst],
+      [CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Ruby],
+      [CellSymbol.Emerald, CellSymbol.Sapphire, CellSymbol.Amber],
+    ]);
+    let s = createSwapInteractionState(before, {
+      refillSeed: 99,
+      levelConfig: { levelIndex: 0, targetScore: 99999, moves: 10 },
+    });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
+    expect(s.playback).not.toBeNull();
+    const mid = s;
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 0 } });
+    expect(s).toBe(mid);
+    s = flushSwapPlayback(s);
+    expect(s.playback).toBeNull();
+    expect(s.turnMatchScore).toBeGreaterThan(0);
   });
 
   it("ignores further swaps after win or loss", () => {

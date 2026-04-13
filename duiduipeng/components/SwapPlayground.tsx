@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import {
   createSwapInteractionState,
   reduceSwapInteraction,
+  STABILIZATION_PLAYBACK_MS_PER_WAVE,
   type SwapInteractionEvent,
   type SwapInteractionState,
 } from "@/lib/swap-input";
@@ -118,6 +119,7 @@ export function SwapPlayground() {
   const [hintCooldownUntil, setHintCooldownUntil] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
 
+  const playbackActive = state.playback !== null;
   const ended = state.meetsWinTarget || state.isFailed;
 
   const bootstrapLevel = useCallback(
@@ -177,6 +179,7 @@ export function SwapPlayground() {
   const onCellClick = useCallback(
     (cell: CellPos) => {
       if (isPaused) return;
+      if (playbackActive) return;
       if (state.meetsWinTarget || state.isFailed) return;
 
       if (state.pick.phase === "idle") {
@@ -190,6 +193,7 @@ export function SwapPlayground() {
     [
       dispatch,
       isPaused,
+      playbackActive,
       state.meetsWinTarget,
       state.isFailed,
       state.pick,
@@ -214,6 +218,10 @@ export function SwapPlayground() {
     }
     if (state.isFailed) {
       setToastMessage("步数已用尽，对局已结束");
+      return;
+    }
+    if (playbackActive) {
+      setToastMessage("连锁播放中，请稍候再试提示");
       return;
     }
     if (isPaused) {
@@ -242,6 +250,7 @@ export function SwapPlayground() {
     hintCooldownUntil,
     hintsUsed,
     isPaused,
+    playbackActive,
     state.board,
     state.isFailed,
     state.meetsWinTarget,
@@ -252,6 +261,17 @@ export function SwapPlayground() {
     const id = window.setTimeout(() => setToastMessage(null), 3000);
     return () => window.clearTimeout(id);
   }, [toastMessage]);
+
+  /** 分步推进连锁稳定化；暂停或终局时冻结，恢复后继续 */
+  useEffect(() => {
+    if (!playbackActive || isPaused || ended) return;
+    const ms = STABILIZATION_PLAYBACK_MS_PER_WAVE;
+    if (ms <= 0) return;
+    const id = window.setInterval(() => {
+      dispatch({ type: "playback_advance" });
+    }, ms);
+    return () => window.clearInterval(id);
+  }, [playbackActive, isPaused, ended, dispatch]);
 
   useEffect(() => {
     const lr = state.lastResult;
@@ -304,16 +324,22 @@ export function SwapPlayground() {
   const cols = state.board[0]?.length ?? 0;
 
   const statusText =
-    isPaused && !ended
+    playbackActive && isPaused && !ended
+      ? "已暂停：连锁结算已冻结，用时冻结；点击「继续」后将从当前盘面继续播放。"
+      : playbackActive && !isPaused && !ended
+        ? "连锁结算播放中：暂不可选格或交换；可点击「暂停」冻结播放。"
+        : isPaused && !ended
       ? "已暂停：无法交换，对局用时已冻结；点击「继续」恢复。"
       : state.meetsWinTarget
         ? "已达目标分数：在弹窗中确认进入下一关或开始新游戏。"
         : state.isFailed
           ? "步数用尽且未达目标：可在弹窗中重试本关或回到第 1 关。"
-          : state.lastResult === null
+            : state.lastResult === null
             ? "点选一格，再点相邻一格尝试交换（仅上下左右）。非法交换不消耗步数。"
             : state.lastResult.kind === "accepted"
-              ? state.turnMatchScore > 0
+              ? playbackActive
+                ? "交换已接受：连锁结果播放中，完成后更新得分与盘面终局。"
+                : state.turnMatchScore > 0
                 ? `交换有效：连锁 ${state.chainWaves} 波，本步 +${state.turnMatchScore} 分（含连锁加成）。`
                 : "交换有效：本步未累计三消得分（不应出现于合法交换）。"
               : state.lastResult.kind === "rejected"
@@ -504,6 +530,7 @@ export function SwapPlayground() {
           "relative w-full max-w-full overflow-x-auto overflow-y-auto overscroll-x-contain rounded-2xl border border-zinc-800/90 bg-zinc-950/40 transition-transform duration-150 [-webkit-overflow-scrolling:touch]",
           boardPulse && "scale-[0.99]",
         )}
+        data-ddp-playback={playbackActive ? "true" : "false"}
       >
         {isPaused && !ended ? (
           <div
@@ -511,7 +538,7 @@ export function SwapPlayground() {
             aria-hidden
           >
             <span className="rounded-full border border-amber-500/55 bg-zinc-900/95 px-4 py-2 text-sm font-semibold text-amber-100 shadow-lg shadow-black/40">
-              游戏已暂停
+              {playbackActive ? "连锁播放已暂停" : "游戏已暂停"}
             </span>
           </div>
         ) : null}
@@ -548,7 +575,7 @@ export function SwapPlayground() {
                 <button
                   key={`${r}-${c}`}
                   type="button"
-                  disabled={ended || isPaused}
+                  disabled={ended || isPaused || playbackActive}
                   className={cn(
                     "flex aspect-square min-h-[var(--cell)] min-w-[var(--cell)] items-center justify-center rounded-lg text-[length:var(--emoji)] transition-[transform,box-shadow] duration-150",
                     empty &&
@@ -556,6 +583,7 @@ export function SwapPlayground() {
                     !empty &&
                       !ended &&
                       !isPaused &&
+                      !playbackActive &&
                       "text-white hover:brightness-110 active:scale-[0.97]",
                     !empty && symbolClass[sym as CellSymbol],
                     picked &&

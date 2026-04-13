@@ -33,8 +33,10 @@ export {
 export {
   createSwapInteractionState,
   reduceSwapInteraction,
+  STABILIZATION_PLAYBACK_MS_PER_WAVE,
   type SwapInteractionEvent,
   type SwapInteractionState,
+  type StabilizationPlaybackState,
 } from "./swap-input";
 export {
   applyMatchClear,

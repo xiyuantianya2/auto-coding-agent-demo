@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, isEmptyCell, type Board } from "./board-types";
 import { BASE_SCORE_PER_CELL } from "./match-clear";
-import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
+import {
+  createSwapInteractionState,
+  reduceSwapInteraction,
+  type SwapInteractionState,
+} from "./swap-input";
 
 function boardFromLines(lines: CellSymbol[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
+}
+
+function flushSwapPlayback(s: SwapInteractionState): SwapInteractionState {
+  let cur = s;
+  while (cur.playback) {
+    cur = reduceSwapInteraction(cur, { type: "playback_advance" });
+  }
+  return cur;
 }
 
 describe("swap + stabilization", () => {
@@ -17,6 +29,7 @@ describe("swap + stabilization", () => {
     let s = createSwapInteractionState(before, { refillSeed: 99 });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
+    s = flushSwapPlayback(s);
     expect(s.lastResult?.kind).toBe("accepted");
     expect(s.turnMatchScore).toBe(3 * BASE_SCORE_PER_CELL);
     for (const row of s.board) {
