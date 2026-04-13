@@ -1,5 +1,23 @@
 # Progress Log
 
+## 2026-04-13 - Task: 棋盘生成与洗牌（id=3）
+
+### What was done:
+- 新增 `link-game/lib/game/connectivity.ts`：`canConnect`（≤2 次拐弯、边界外为空、padding 寻路）、`hasAtLeastOneConnectablePair`（开局至少一对可消）。
+- 新增 `link-game/lib/game/board-generation.ts`：`shuffleInPlace`、`generateBoardFromLevel`；关卡校验；无可消对时在固定次数内重洗，超限抛错（策略见文件内注释）。
+- 新增 `link-game/lib/game/board-selftest.ts` 与 `scripts/run-board-selftest.ts`；`package.json` 增加 `board-selftest` 脚本与 devDependency `tsx`。
+- 根目录 `task.json` id=3 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run board-selftest`（每关多轮随机生成）通过。
+- `npm run lint`、`npm run build` 通过。
+- 本会话基线：`http://localhost:3000` HTTP 200（已有 dev）。
+
+### Notes:
+- `canConnect` 与后续任务 4（枚举可连对等）可复用本模块；生成阶段仅保证「至少一步可消」，非全局可解完。
+
+---
+
 ## 2026-04-13 - Task: 类型与关卡配置（id=2）
 
 ### What was done:
