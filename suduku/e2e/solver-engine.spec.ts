@@ -18,6 +18,7 @@ test.describe("Suduku solver engine (contract smoke)", () => {
     expect(grid.length).toBe(9);
     expect(grid[0].length).toBe(9);
     expect(grid[0][0]).toBeInstanceOf(Set);
+    expect(grid[0][0].size).toBe(0);
 
     expect(findTechniques(state)).toEqual([]);
     expect(scoreDifficulty(state, [])).toBe(0);

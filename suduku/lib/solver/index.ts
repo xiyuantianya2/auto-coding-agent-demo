@@ -6,9 +6,8 @@
  * 公开形状与 `module-plan.json` 中 solver-engine 的 `interface` 一致。
  */
 
-import type { GameState } from "@/lib/core";
-import { createEmptyCandidatesGrid } from "./candidates";
-import type { CandidatesGrid, SolveStep } from "./types";
+import type { GameState } from "../core";
+import type { SolveStep } from "./types";
 
 export type {
   CandidateElimination,
@@ -23,14 +22,13 @@ export type {
 
 export { TECHNIQUE_IDS, type KnownTechniqueId } from "./techniques";
 export { createEmptyCandidatesGrid } from "./candidates";
-
-/**
- * 计算当前盘面下每格候选（任务 2 实现）。占位实现返回空候选网格，不读取 `state`。
- */
-export function computeCandidates(state: GameState): CandidatesGrid {
-  void state;
-  return createEmptyCandidatesGrid();
-}
+export {
+  CandidatesComputationError,
+  type CandidatesComputationErrorDetails,
+  type CandidatesComputationErrorKind,
+  candidatesGridToSnapshot,
+  computeCandidates,
+} from "./compute-candidates";
 
 /**
  * 枚举当前一步可应用的技巧实例（任务 3–7 实现）。占位实现返回空数组。

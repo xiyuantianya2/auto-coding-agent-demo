@@ -7,7 +7,7 @@ export type TechniqueId = string;
 /**
  * 候选网格：与 `GameState.cells` **相同的 9×9 行优先索引**（`r`,`c` ∈ 0…8）。
  * `candidates[r][c]` 为该格当前仍可用的候选数字集合（通常为 1–9 的子集）。
- * 已解格（`given` / `value`）在完整实现中通常对应空集或单元素集；本模块任务 1 仅定义形状。
+ * 已解格（`given` / `value`）对应**空集**（无待选数字）；空格为当前规则下仍可放置的数字集合。
  */
 export type CandidatesGrid = Set<number>[][];
 

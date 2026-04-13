@@ -24,7 +24,7 @@
         "对若干 fixture 盘面（含已知数与空格）单元测试：候选与手工推演一致；与 lib/core 的 gridFromGameState / 规则无矛盾",
         "函数签名与 module-plan 中 computeCandidates 一致；不引入题目生成或回溯求解"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,

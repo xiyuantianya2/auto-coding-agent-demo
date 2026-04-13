@@ -1,4 +1,4 @@
-import { BOARD_SIZE } from "@/lib/core";
+import { BOARD_SIZE } from "../core";
 import type { CandidatesGrid } from "./types";
 
 /** 构造与 {@link BOARD_SIZE} 一致的空候选网格（每格空 `Set`）。 */
