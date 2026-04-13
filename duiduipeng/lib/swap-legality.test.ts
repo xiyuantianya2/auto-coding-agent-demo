@@ -44,7 +44,7 @@ describe("attemptAdjacentSwap", () => {
     expect(row0).toEqual([CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Ruby]);
   });
 
-  it("rejects a swap that only forms an adjacent pair (no line of three)", () => {
+  it("rejects a swap that does not create a line of three", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Emerald],
       [CellSymbol.Ruby, CellSymbol.Sapphire, CellSymbol.Emerald],
@@ -101,7 +101,7 @@ describe("attemptAdjacentSwap", () => {
 });
 
 describe("findFirstValidSwap", () => {
-  it("returns a pair when a horizontal triple can be completed", () => {
+  it("returns two adjacent cells when a horizontal triple can be completed", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Ruby],
       [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Emerald],
@@ -112,7 +112,7 @@ describe("findFirstValidSwap", () => {
     expect(attemptAdjacentSwap(before, pair![0], pair![1]).kind).toBe("accepted");
   });
 
-  it("returns null when no adjacent pair can be swapped legally", () => {
+  it("returns null when no legal triple-forming swap exists", () => {
     const before = boardFromLines([[CellSymbol.Ruby]]);
     expect(findFirstValidSwap(before)).toBeNull();
   });

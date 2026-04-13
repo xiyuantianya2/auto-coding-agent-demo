@@ -7,6 +7,7 @@ import type { LevelConfig } from "./board-types";
  * ## 得分与「防一击过关」约束（与 match-clear / stabilization 一致）
  *
  * - 三消：`match-clear` 中每格基础分（10）× 本波消除格数；连锁倍率见 `stabilization` 中 `CHAIN_BONUS_PER_EXTRA_WAVE`。
+ *   （仅三消与连锁计分，无「两格相邻合并」类单独得分项。）
  * - 连锁：第 n 波得分乘以 `1 + CHAIN_BONUS_PER_EXTRA_WAVE * (n-1)`（默认每多一波 +0.2）。
  * - 在 6×6 盘上枚举试算（多随机种子、全盘合法交换）：单次稳定化得分**中位数约 4～5k**，**q90 约 20k+**，
  *   极端长链可达六位数（极罕）。因此前期目标分设在 **≥2.4 万**：使典型一手远低于目标、需多步有效交换；

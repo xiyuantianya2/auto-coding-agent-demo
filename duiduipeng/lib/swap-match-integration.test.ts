@@ -7,7 +7,7 @@ function boardFromLines(lines: CellSymbol[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
 }
 
-describe("swap + stabilization (tasks 5–6)", () => {
+describe("swap + stabilization", () => {
   it("accumulates turn score when a triple is cleared and refills the grid", () => {
     const before = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Amethyst],
@@ -26,7 +26,7 @@ describe("swap + stabilization (tasks 5–6)", () => {
     }
   });
 
-  it("rejects swap that only forms adjacent pair without triple", () => {
+  it("rejects swap that does not create any line of three", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Sapphire],
       [CellSymbol.Ruby, CellSymbol.Amber, CellSymbol.Emerald],

@@ -29,7 +29,7 @@ describe("applyGravityAndRefill", () => {
 });
 
 describe("applyTripleClear", () => {
-  it("clears triples only (no pair merge)", () => {
+  it("clears triple-line matches only", () => {
     const b = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Emerald],
       [CellSymbol.Sapphire, CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Amber],

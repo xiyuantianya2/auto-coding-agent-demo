@@ -241,7 +241,7 @@
         "在 duiduipeng/ 下 npm test 全部通过。",
         "测试描述（it 标题）与注释不再声称「对碰合并」为合法机制。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 22,

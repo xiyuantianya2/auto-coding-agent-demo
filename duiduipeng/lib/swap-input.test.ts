@@ -7,7 +7,7 @@ function boardFromLines(lines: CellSymbol[][]): Board {
   return lines.map((row) => Object.freeze([...row])) as Board;
 }
 
-describe("swap-input (task 7: moves & win/fail)", () => {
+describe("swap-input (moves, score, win/fail)", () => {
   it("does not consume a move on rejected swap", () => {
     const before = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Sapphire],
