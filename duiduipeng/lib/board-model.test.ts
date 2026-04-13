@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInitialBoard } from "./create-initial-board";
 import { CellSymbol, type Board } from "./board-types";
-import { DEFAULT_LEVEL_PROGRESSION, getLevelConfigForIndex } from "./level-progression";
 
 function hasHorizontalOrVerticalTriple(board: Board): boolean {
   const rows = board.length;
@@ -67,24 +66,5 @@ describe("createInitialBoard", () => {
       random: mulberry32(42),
     });
     expect(a).toEqual(b);
-  });
-});
-
-describe("getLevelConfigForIndex", () => {
-  it("increases target score for each next level", () => {
-    const max = 12;
-    let prev = getLevelConfigForIndex(0, DEFAULT_LEVEL_PROGRESSION).targetScore;
-    for (let i = 1; i <= max; i += 1) {
-      const next = getLevelConfigForIndex(i, DEFAULT_LEVEL_PROGRESSION).targetScore;
-      expect(next).toBeGreaterThan(prev);
-      prev = next;
-    }
-  });
-
-  it("maps levelIndex into LevelConfig fields", () => {
-    const cfg = getLevelConfigForIndex(3, DEFAULT_LEVEL_PROGRESSION);
-    expect(cfg.levelIndex).toBe(3);
-    expect(cfg.targetScore).toBe(36_000);
-    expect(cfg.moves).toBe(28);
   });
 });

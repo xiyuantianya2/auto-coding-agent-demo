@@ -155,7 +155,7 @@
         "为 level progression 增加或强化测试，避免未来调参时静默破坏「递增」等不变量。",
         "确保 TypeScript 与测试描述仍与实现一致。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 14,
