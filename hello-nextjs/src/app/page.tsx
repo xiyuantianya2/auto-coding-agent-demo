@@ -19,6 +19,15 @@ export default async function Home() {
           <p className="mb-8 text-lg text-zinc-600 dark:text-zinc-400">
             输入您的故事，AI 将自动为您生成精美的分镜图片和视频
           </p>
+          <p className="mb-8 text-sm text-zinc-500">
+            <Link
+              href="/agent"
+              className="underline decoration-zinc-600 underline-offset-4 hover:text-zinc-700 dark:hover:text-zinc-300"
+            >
+              打开全自动编程 Agent 控制台
+            </Link>
+            （任务清单、进度与可复制提示词）
+          </p>
 
           {user ? (
             <div className="flex flex-col items-center gap-4">

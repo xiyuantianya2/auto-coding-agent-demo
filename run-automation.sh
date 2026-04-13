@@ -4,7 +4,8 @@
 # run-automation.sh - Automated Task Runner
 # =============================================================================
 # This script runs Claude Code multiple times in a loop to automatically
-# complete tasks defined in task.json
+# complete tasks defined in task.json (coding workflow per CLAUDE.md only —
+# not the first-time INITIALIZER.md session).
 #
 # Usage: ./run-automation.sh <number_of_runs>
 # Example: ./run-automation.sh 5
@@ -125,14 +126,15 @@ for ((run=1; run<=TOTAL_RUNS; run++)); do
     # Create a temporary file with the prompt
     PROMPT_FILE=$(mktemp)
     cat > "$PROMPT_FILE" << 'PROMPT_EOF'
-Please follow the workflow in CLAUDE.md:
+This is a coding session (not INITIALIZER.md). Follow CLAUDE.md Step 1 first in order: pwd, read progress.txt, read task.json, git log --oneline -20, run init.sh, baseline browser smoke — only then select one task with passes: false.
+Then:
 1. Read task.json and select the next task with passes: false
 2. Implement the task following all steps
 3. Test thoroughly (run npm run lint and npm run build in hello-nextjs/)
 4. Update progress.txt with your work
 5. Commit all changes including task.json update in a single commit
 
-Start by reading task.json to find your task.
+Do not skip Step 1 or start implementing before baseline smoke passes (unless fixing baseline is the session goal).
 Please complete only one task in this session, and stop once you are done or if you encounter an unresolvable issue.
 PROMPT_EOF
 

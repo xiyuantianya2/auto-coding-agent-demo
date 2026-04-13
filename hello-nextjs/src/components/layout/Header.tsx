@@ -20,10 +20,14 @@ export function Header({ user }: HeaderProps) {
   const navLinks = user
     ? [
         { href: "/", label: "首页" },
+        { href: "/agent", label: "Agent 控制台" },
         { href: "/projects", label: "我的项目" },
         { href: "/create", label: "创建项目" },
       ]
-    : [{ href: "/", label: "首页" }];
+    : [
+        { href: "/", label: "首页" },
+        { href: "/agent", label: "Agent 控制台" },
+      ];
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:border-zinc-800 dark:bg-zinc-950/95">

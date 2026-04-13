@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>全自动开发 · Cursor Agent</title>
+    <style>
+      :root {
+        font-family: "Segoe UI", system-ui, sans-serif;
+        --bg: #09090b;
+        --panel: #18181b;
+        --text: #fafafa;
+        --muted: #a1a1aa;
+        --accent: #10b981;
+        --bad: #f87171;
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+      h1 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0 0 0.5rem;
+      }
+      p.sub {
+        color: var(--muted);
+        margin: 0 0 1.25rem;
+        font-size: 0.95rem;
+      }
+      .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 1rem;
+      }
+      button {
+        background: var(--panel);
+        color: var(--text);
+        border: 1px solid #27272a;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        font-size: 0.95rem;
+      }
+      button:hover:not(:disabled) {
+        border-color: var(--accent);
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      button.primary {
+        background: #14532d;
+        border-color: var(--accent);
+      }
+      button.danger {
+        border-color: #7f1d1d;
+        color: #fecaca;
+      }
+      .panel {
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 1rem 1.1rem;
+        margin-bottom: 1rem;
+        border: 1px solid #27272a;
+      }
+      pre.log {
+        margin: 0;
+        max-height: 360px;
+        overflow: auto;
+        font-size: 0.82rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+        color: #d4d4d8;
+      }
+      .badge {
+        display: inline-block;
+        padding: 0.15rem 0.5rem;
+        border-radius: 6px;
+        font-size: 0.8rem;
+        font-weight: 600;
+      }
+      .badge.idle {
+        background: #3f3f46;
+      }
+      .badge.running {
+        background: #14532d;
+        color: #bbf7d0;
+      }
+      .badge.paused {
+        background: #713f12;
+        color: #fde68a;
+      }
+      .badge.done {
+        background: #1e3a5f;
+        color: #bfdbfe;
+      }
+      code {
+        font-size: 0.85em;
+        background: #27272a;
+        padding: 0.1em 0.35em;
+        border-radius: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>一键全自动开发（Cursor CLI）</h1>
+      <p class="sub">
+        按仓库根目录 <code>task.json</code> 中 <code>passes: false</code> 的任务顺序，依次调用本机
+        <code>agent</code> CLI。需已安装并登录 Cursor Agent（<code>agent login</code>），建议 Node
+        20/22 LTS。
+      </p>
+
+      <div class="row">
+        <button type="button" class="primary" id="btnStart">开始全自动</button>
+        <button type="button" id="btnPause">暂停</button>
+        <button type="button" class="danger" id="btnReset">重置状态</button>
+      </div>
+
+      <div class="panel">
+        <div><span class="badge idle" id="badgeStatus">加载中</span></div>
+        <p style="margin: 0.75rem 0 0; font-size: 0.95rem">
+          待办任务数：<strong id="textPending">—</strong><br />
+          下一项：<strong id="textNext">—</strong>
+        </p>
+      </div>
+
+      <div class="panel" id="panelError" style="display: none; border-color: #7f1d1d">
+        <span style="color: #fecaca; font-size: 0.85rem">错误</span>
+        <pre class="log" id="lastError" style="margin-top: 0.35rem; color: #fecaca"></pre>
+      </div>
+
+      <div class="panel">
+        <span style="color: var(--muted); font-size: 0.85rem">运行日志</span>
+        <pre class="log" id="log"></pre>
+      </div>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      async function refresh() {
+        try {
+          const r = await fetch("/api/status");
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "status");
+
+          const st = d.status;
+          const badge = $("badgeStatus");
+          badge.className =
+            "badge " +
+            (st === "running" ? "running" : st === "paused" ? "paused" : st === "completed" ? "done" : "idle");
+          badge.textContent =
+            st === "running"
+              ? "运行中"
+              : st === "paused"
+                ? "已暂停"
+                : st === "completed"
+                  ? "已全部完成"
+                  : "空闲";
+
+          $("textPending").textContent = d.pendingCount ?? "—";
+          $("textNext").textContent = d.nextTask ? `#${d.nextTask.id} ${d.nextTask.title}` : "（无）";
+
+          if (d.lastError) {
+            $("panelError").style.display = "block";
+            $("lastError").textContent = d.lastError;
+          } else {
+            $("panelError").style.display = "none";
+          }
+          $("log").textContent = (d.recentLog || []).join("");
+
+          $("btnStart").disabled = st === "running" || d.pendingCount === 0;
+          $("btnPause").disabled = st !== "running";
+        } catch (e) {
+          $("log").textContent = "无法连接服务：" + (e && e.message ? e.message : String(e));
+        }
+      }
+
+      async function postControl(action) {
+        const r = await fetch("/api/control", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action }),
+        });
+        const d = await r.json();
+        if (!d.ok) alert(d.error || "操作失败");
+        await refresh();
+      }
+
+      $("btnStart").onclick = () => postControl("start");
+      $("btnPause").onclick = () => postControl("pause");
+      $("btnReset").onclick = () => {
+        if (confirm("确定重置面板状态？不会撤销已写代码。")) postControl("reset");
+      };
+
+      refresh();
+      setInterval(refresh, 1500);
+    </script>
+  </body>
+</html>

@@ -22,3 +22,6 @@ build/
 # Environment
 .env.local
 .env.*.local
+
+# Cursor 全自动面板状态
+.auto-coding-agent/

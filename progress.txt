@@ -1,5 +1,47 @@
 # Progress Log
 
+## 2026-04-13 - 修复：全自动面板「退出码 0 但 passes 未更新」
+
+### What was done:
+- 完成 task 2：`link-game/lib/game/types.ts`、`link-game/lib/game/levels.ts`，根目录 `task.json` id=2 已 `passes: true`。
+- `tools/auto-coding-agent/server.mjs`：Agent 返回 0 后对 `task.json` **多次重读**（默认约 8 次 × 250ms），减轻刚写入未落盘导致的误判；提示词中写明 **仓库根 task.json 绝对路径**；可选 `AUTOCODING_TRUST_ZERO_EXIT=1` 在仅漏改标记时跳过校验。
+
+---
+
+## 2026-04-13 - 功能：Cursor CLI 一键全自动开发面板
+
+### What was done:
+- 新增 `tools/auto-coding-agent/`：参考 `curriculum-cursor-check`，用 Node HTTP 服务按 `task.json` 中未完成项依次调用 `runCursorAgent`（`agent -p -f --trust`）。
+- 状态目录：`.auto-coding-agent/`（已加入根 `.gitignore`）。
+- `link-game`：首页入口链到 `/dev/agent`；该页可跨域请求面板 `GET/POST`（面板返回 CORS）。
+- 根 `README.md` 增加「一键全自动」说明；`link-game/.env.local.example` 提供 `NEXT_PUBLIC_AUTO_AGENT_BASE`。
+
+### Notes:
+- 需本机先 `cd tools/auto-coding-agent && npm start`（默认端口 3910），再打开 Next 页面点击按钮。
+- 单次 Agent 默认超时 45 分钟，可用 `AUTOCODING_AGENT_TIMEOUT_MS` 调整。
+
+---
+
+## 2026-04-13 - Initializer：link-game 连连看脚手架
+
+### What was done:
+- 使用 `create-next-app` 在 **`link-game/`** 创建 Next.js + TypeScript + Tailwind 应用（与 `hello-nextjs/` 并列，保留后者作参考）。
+- 安装 **clsx**、**tailwind-merge**，新增 **`link-game/lib/utils.ts`**（`cn()`）。
+- 更新 **`link-game/app/page.tsx`** 为连连看占位首页；**`app/layout.tsx`** metadata 与 `lang="zh-CN"`。
+- 重写根目录 **`architecture.md`**（连连看规则与目录约定）；重写 **`task.json`** 为 10 条增量任务，**任务 1 `passes: true`**。
+- 更新根目录 **`init.sh`**：默认进入 `link-game` 执行 `npm install` 与 `npm run dev`。
+- 原 Spring FES Video 长文架构不再保留于根目录 `architecture.md`，需对照时可从 **git 历史** 查看旧版 `architecture.md`。
+
+### Testing:
+- ✅ `cd link-game && npm run lint && npm run build` 已通过。
+- 说明：已去掉 `next/font` 的 Geist 在线字体，改为系统字体栈，避免无网络环境下 `next build` 失败。
+
+### Notes:
+- 后续 **每个开发会话** 请读 **`CLAUDE.md`**：先 `./init.sh`（或手动在 `link-game` 下 `npm run dev`），再选 **`task.json`** 中下一条 `passes: false` 的任务（从任务 2 开始）。
+- 开发服务器默认 **http://localhost:3000**；若与本地其他项目冲突，可在 `link-game` 内用 `next dev -p 3001`。
+
+---
+
 ## 2026-02-10 - Bug Fix: 视频/图片生成卡在"生成中"状态
 
 ### 问题描述:
