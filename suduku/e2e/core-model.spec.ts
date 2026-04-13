@@ -24,4 +24,13 @@ test.describe("Suduku core model (page smoke)", () => {
       "playable",
     );
   });
+
+  test("isValidPlacement smoke via embedded dataset", async ({ page }) => {
+    await page.goto("/");
+    const el = page.getByTestId("core-placement-e2e");
+    await expect(el).toHaveAttribute("data-placement-row", "false");
+    await expect(el).toHaveAttribute("data-placement-col", "false");
+    await expect(el).toHaveAttribute("data-placement-box", "false");
+    await expect(el).toHaveAttribute("data-placement-ok", "true");
+  });
 });

@@ -1,6 +1,6 @@
 /**
  * Core Sudoku data model: grid types, cell state, {@link GameState}, and pure factories.
- * Rule helpers (`isValidPlacement`, clone/serialize) are added in later tasks.
+ * Rule helpers (`cloneGameState`, serialize/deserialize) are added in later tasks.
  */
 
 export {
@@ -27,3 +27,12 @@ export {
   createEmptyGrid9,
   createGameStateFromGivens,
 } from "./factory";
+
+export {
+  boxIndexFromCell,
+  boxPeerPositions,
+  boxTopLeftFromCell,
+  colPeerPositions,
+  isValidPlacement,
+  rowPeerPositions,
+} from "./placement";

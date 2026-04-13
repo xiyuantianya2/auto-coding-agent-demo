@@ -1,9 +1,10 @@
 import { SudokuBoardStatic } from "@/components/SudokuBoard";
-import { SAMPLE_GIVENS_MINIMAL } from "@/lib/core/fixture";
-import { BOARD_SIZE, createGameStateFromGivens } from "@/lib/core";
+import { SAMPLE_GIVENS_MINIMAL, SAMPLE_PLACEMENT_CASES } from "@/lib/core/fixture";
+import { BOARD_SIZE, createGameStateFromGivens, isValidPlacement } from "@/lib/core";
 
 export default function Home() {
   const state = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+  const g = SAMPLE_GIVENS_MINIMAL;
 
   return (
     <div className="flex min-h-full flex-col items-center bg-zinc-950 px-6 py-12 text-zinc-100 sm:py-16">
@@ -23,6 +24,24 @@ export default function Home() {
         </div>
 
         <SudokuBoardStatic state={state} />
+
+        <div
+          className="sr-only"
+          aria-hidden
+          data-testid="core-placement-e2e"
+          data-placement-row={String(
+            isValidPlacement(g, SAMPLE_PLACEMENT_CASES.rowConflict.r, SAMPLE_PLACEMENT_CASES.rowConflict.c, SAMPLE_PLACEMENT_CASES.rowConflict.n),
+          )}
+          data-placement-col={String(
+            isValidPlacement(g, SAMPLE_PLACEMENT_CASES.colConflict.r, SAMPLE_PLACEMENT_CASES.colConflict.c, SAMPLE_PLACEMENT_CASES.colConflict.n),
+          )}
+          data-placement-box={String(
+            isValidPlacement(g, SAMPLE_PLACEMENT_CASES.boxConflict.r, SAMPLE_PLACEMENT_CASES.boxConflict.c, SAMPLE_PLACEMENT_CASES.boxConflict.n),
+          )}
+          data-placement-ok={String(
+            isValidPlacement(g, SAMPLE_PLACEMENT_CASES.ok.r, SAMPLE_PLACEMENT_CASES.ok.c, SAMPLE_PLACEMENT_CASES.ok.n),
+          )}
+        />
       </main>
     </div>
   );
