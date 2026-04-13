@@ -19,8 +19,8 @@
       "dependencies": [
         "core-model"
       ],
-      "interface": "type TechniqueId = string; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: unknown[] }; function computeCandidates(state: GameState): CandidatesGrid; function findTechniques(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): number;",
-      "status": "pending"
+      "interface": "type TechniqueId = string; type CandidatesGrid = Set<number>[][]; type CandidateElimination = { r: number; c: number; digits: number[] }; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: CandidateElimination[] }; const TECHNIQUE_IDS: Record<string, TechniqueId>; function computeCandidates(state: GameState): CandidatesGrid; function findTechniques(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): number;",
+      "status": "running"
     },
     {
       "id": "puzzle-generator",

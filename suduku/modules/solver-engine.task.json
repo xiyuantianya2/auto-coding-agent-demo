@@ -90,7 +90,7 @@
         "执行 npm test，全部通过；新增测试仅依赖 lib/core 公开 API，不引用未来 generator/hint 包",
         "module-plan.json 中本模块 interface 与导出项一致，便于 puzzle-generator 与 hint-system 对接"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
