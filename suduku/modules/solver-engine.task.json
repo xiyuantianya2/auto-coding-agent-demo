@@ -1,0 +1,96 @@
+{
+  "project": "数独",
+  "module": "solver-engine",
+  "moduleTitle": "求解与技巧引擎",
+  "description": "维护候选数、实现低/中/高阶技巧识别（含唯一候选、显性唯一、数对、区块排除、X-Wing、剑鱼及其他高阶技法），并输出可解释的推理步骤供难度打分与提示使用。不负责出题，仅对给定盘面做分析与分级。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "求解模块类型、TechniqueId 与 SolveStep 契约及目录骨架",
+      "description": "在 suduku/lib/solver 建立本模块基础：定义 TechniqueId、CandidatesGrid（与单元格候选集合的索引约定）、SolveStep（含 technique、highlights、eliminations 的可选结构）；约定 highlights 中 kind 为 cell|unit|candidate 时 ref 的具体形状（例如 cell 为 { r: number; c: number }，unit 标明 row|col|box 与索引，candidate 绑定格子与数字），保证与后续提示/UI 消费一致。提供 technique 常量表（裸单、隐单、数对、区块排除、X-Wing、剑鱼等占位 id），导出模块入口文件骨架；仅依赖 lib/core 的公开类型与工具（如从 GameState 取 Grid9 的方式），不实现具体算法。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build，确保新增类型与空实现不破坏工程",
+        "TechniqueId 为 string 的命名常量集合，避免魔法字符串散落；SolveStep 与 module-plan 中声明的对外接口形状一致（含 highlights 数组结构）",
+        "在 lib/solver 入口或 types 文件中用简短注释说明 ref 约定，便于 hint-system 与难度打分模块对齐"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "computeCandidates：从 GameState 维护全盘面候选网格",
+      "description": "实现 computeCandidates(state: GameState): CandidatesGrid：对已解单元格（given 或 value）从候选中排除；对空格基于 lib/core 的 isValidPlacement 或等价规则，计算每格 1–9 的剩余候选集合。处理明显冲突或空候选时的行为（抛错或返回可诊断结构，需在模块内统一并文档化）。可选提供从候选网格导出用于测试的辅助函数。禁止在本任务中实现技巧搜索，仅保证候选与核心规则一致。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "对若干 fixture 盘面（含已知数与空格）单元测试：候选与手工推演一致；与 lib/core 的 gridFromGameState / 规则无矛盾",
+        "函数签名与 module-plan 中 computeCandidates 一致；不引入题目生成或回溯求解"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "低阶技巧：唯一候选（裸单）与显性唯一（隐单）",
+      "description": "基于 CandidatesGrid 实现识别：裸单（某格仅剩一个候选）；隐单（某数字在某行/列/宫内仅出现在一格）。每类技法映射到稳定 TechniqueId，并产出 SolveStep：highlights 标出相关格与单位，必要时 eliminations 描述可消除的候选（若本步直接得解可省略或结构化填入）。保证步骤对人类可解释、顺序稳定（如同一盘面多次调用输出顺序可测）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest 用例覆盖至少各一例裸单与隐单经典小样例，断言 technique 字段与 highlights 非空",
+        "不修改 lib/core 源码；仅通过公开 API 读取盘面"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "中阶技巧：数对（裸/隐）与区块排除（Pointing / Claiming）",
+      "description": "扩展识别：同一单位内裸数对与隐数对，并输出可消除候选的推理步骤；实现区块与行列交叉的 pointing（宫→行/列排除）与 claiming（行/列→宫排除）类区块排除。每步 SolveStep 需标明涉及的 unit/box 与受影响的候选；eliminations 结构与前序任务一致。若一步可同时被多类技法解释，按模块内固定优先级记录（优先级细节可在下一任务统一，但本任务需有明确、可测顺序）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "单元测试覆盖裸数对、隐数对、pointing、claiming 各至少一例，验证消除后候选变化符合预期",
+        "技法 id 与 module-plan / curriculum 后续可对齐的命名方式一致（英文 snake 或 kebab 统一即可）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "高阶鱼形：X-Wing 与剑鱼（Swordfish）",
+      "description": "在行/列双向视角实现标准鱼形模式：X-Wing（2×2）；剑鱼（3×3 行列约束）。对发现的模式生成 SolveStep，highlights 标出构成鱼形的行/列与候选数字，eliminations 列出可从未参与格删除的候选。可与任务 4 共享通用的「行列候选位置列表」辅助函数以减少重复。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "单元测试各包含至少一个可最小复现的 X-Wing 与 Swordfish 盘面片段（可取自公开题解或自编），断言消除集合正确",
+        "不在此任务实现通用回溯求解；仅模式识别与解释输出"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "其它高阶技法（至少两种可命名技巧）",
+      "description": "在 X-Wing/剑鱼之外，再实现至少两种可独立命名的高阶技法（例如 XY-Wing、Skyscraper、2-String Kite、简单同色链等中的两种），每种映射唯一 TechniqueId 并产出 SolveStep。要求实现结构便于后续追加新技法（例如按技法注册表或策略列表迭代），避免巨型单文件不可维护。若某技法需链式推理，可先实现限定规模子集但必须在测试中注明覆盖范围。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest 为两种新技法各提供至少一例；并测试「扩展注册表」路径可被 findTechniques 调用到（可在任务 7 最终接线时一并验证，但本任务代码层应已导出识别函数或注册项）",
+        "与任务 1–5 的 SolveStep 形状保持一致，无 unknown 滥用（ref 使用明确类型或联合类型）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "findTechniques 编排与 scoreDifficulty",
+      "description": "实现 findTechniques(state: GameState): SolveStep[]：内部基于 computeCandidates 与各技法探测器，按约定优先级收集当前盘面「一步可应用」的全部技法实例（或按产品需求只返回第一层可观察步骤，需在注释中固定行为）。实现 scoreDifficulty(state, steps): number：依据技法权重、步数、涉及候选规模等启发式映射为标量难度分，公式透明、可单元测试（例如全裸单盘面分数低于含剑鱼盘面）。确保对 cloneGameState 得到的副本分析结果一致（只读分析）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "单元测试：固定盘面下 findTechniques 返回顺序与条数符合优先级文档；scoreDifficulty 对人工构造的「仅低阶」与「含高阶」样本满足单调或区间预期（在测试中写明预期）",
+        "公开函数签名与 module-plan 中声明一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "lib/solver 集成测试、对外导出与回归",
+      "description": "在 suduku/lib/solver 提供统一导出面（如 index.ts），导出 TechniqueId、SolveStep、computeCandidates、findTechniques、scoreDifficulty 及本模块公开类型；用简短模块注释说明与 lib/core 的依赖关系及不负责出题的边界。编写集成级测试：从 createGameStateFromGivens 等工厂构造多步可解小样例，串联候选计算、技巧发现与打分；固定回归用例防止重构破坏。执行 suduku 下全部单元测试（npm test）并确保通过。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "执行 npm test，全部通过；新增测试仅依赖 lib/core 公开 API，不引用未来 generator/hint 包",
+        "module-plan.json 中本模块 interface 与导出项一致，便于 puzzle-generator 与 hint-system 对接"
+      ],
+      "passes": false
+    }
+  ]
+}
