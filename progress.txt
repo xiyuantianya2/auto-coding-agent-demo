@@ -1,5 +1,86 @@
 # Progress Log
 
+## 2026-04-13 - Task: 脚手架与入口占位
+
+### What was done:
+- 核对 `link-game`：`clsx` / `tailwind-merge`、`lib/utils.ts` 的 `cn()`、`app/layout.tsx` 元数据、`init.sh` 与根目录 `architecture.md` 已符合任务 1。
+- `app/page.tsx`：首页文案改为「开发中」说明 + `task.json` 引用，保留 `/dev/agent` 入口。
+
+### Testing:
+- `cd link-game && npm run lint` 通过。
+- `cd link-game && npm run build` 通过。
+- 本机已有 Next dev 时可用浏览器打开对应端口确认首页（若端口冲突以终端提示为准）。
+
+### Notes:
+- 任务 1 已标记完成；下一条为任务 2「类型与关卡配置」，需新增 `lib/game/types.ts` 与 `lib/game/levels.ts`。
+
+---
+
+## 2026-04-13 - 重置：连连看 link-game 从零开始全自动化（第二次）
+
+### What was done:
+- 根目录 `task.json`：全部 10 条任务 `passes` 已重置为 `false`，从任务 1 起推进。
+- `.auto-coding-agent/state.json`：面板状态置为 `idle`，`lastTaskId` 清空。
+- `link-game/` 当前为最小脚手架（首页占位、`lib/utils.ts`、`/dev/agent`）；无 `lib/game` 实现，便于 agent 按任务清单从头实现。
+
+### Notes:
+- 启动 `tools/auto-coding-agent` 后，在面板勾选「自动推进」可连续跑任务；默认逐任务完成后需再点「开始下一任务」。
+- 建议在仓库根执行 `./init.sh`（或进入 `link-game` 后 `npm install` / `npm run dev`）确认基线。
+
+---
+
+## 2026-04-13 - 重置：连连看 link-game 从零开始全自动化
+
+### What was done:
+- 根目录 `task.json`：全部 10 条任务 `passes` 已重置为 `false`，队列从任务 1 起。
+- `link-game/lib/game/types.ts`、`levels.ts` 已删除（原任务 2 产物，便于 agent 重新实现）。
+- 首页 `link-game/app/page.tsx` 文案改为「干净起点」说明。
+- `.auto-coding-agent/state.json`：面板状态置为 `idle`，避免沿用旧运行/任务 id。
+
+### Notes:
+- 脚手架保留：`link-game` 仍可 `npm install` / `npm run dev`；`lib/utils.ts`、`/dev/agent` 自动化页保留。
+- 建议在 `link-game` 下执行 `npm run lint` 与 `npm run build` 确认基线；可选删除本地 `link-game/.next` 后重建。
+
+---
+
+## 2026-04-13 - 面板：三栏复制全文 + 每栏仅展示末尾 500 行
+
+### What was done:
+- `public/index.html` 与 `link-game/app/dev/agent/page.tsx`：提示词、CLI 输出、运行日志各增加「复制全文」；展示用 `takeLastLines` 限制为末尾 500 行，剪贴板为完整文本。`link-game/lib/last-lines.ts` 共用常量 `PANEL_DISPLAY_MAX_LINES`。
+
+---
+
+## 2026-04-13 - 修复：CLI 实时输出在任务切换时闪回「尚无输出」
+
+### What was done:
+- `runOneTask` 不再在每个新任务开头清空 `agentCliSnapshot`，改为 `beginAgentCliSession` 追加任务分隔并保留本会话内历史输出（受最大字符限制）；「重置状态」仍会清空。
+
+---
+
+## 2026-04-13 - 面板：Cursor CLI 实时输出（与提示词并排）
+
+### What was done:
+- `server.mjs`：在 `runOneTask` 内通过 hooks 累积 agent 子进程 stdout/stderr 至 `agentCliSnapshot`，经 `/api/status` 返回 `agentCliText` 等；stderr 中经 `isWebpackNoise` 判定的大块噪声改为单行占位；超长输出按 `AUTOCODING_AGENT_CLI_MAX_CHARS` 截断；重置时清空。
+- `public/index.html`：提示词与「Cursor CLI 实时输出」两列布局；运行中自动滚到底。
+- `link-game/app/dev/agent/page.tsx`：同上双栏与滚动。
+
+---
+
+## 2026-04-13 - Cursor CLI 默认模型改为显式 auto
+
+### What was done:
+- `tools/auto-coding-agent/lib/agent-runner.mjs`：未设置 `AUTOCODING_AGENT_MODEL` 时默认传 `--model auto`（与 IDE Auto 路由一致）；`omit` / `legacy` / `none` 为不传 `--model` 的逃生阀。README 已说明。
+
+---
+
+## 2026-04-13 - 全自动面板：显示当前提交给 Cursor CLI 的提示词
+
+### What was done:
+- `tools/auto-coding-agent/server.mjs`：`runOneTask` 调用前将 `buildAgentMessage` 全文写入内存快照，经 `GET /api/status` 返回 `agentPrompt`、`agentPromptTaskId`、`agentPromptUpdatedAt`；「重置状态」时清空。
+- `public/index.html` 与 `link-game/app/dev/agent/page.tsx`：在状态与运行日志之间增加「提交给 Cursor CLI 的提示词」面板。
+
+---
+
 ## 2026-04-13 - 修复：全自动面板「退出码 0 但 passes 未更新」
 
 ### What was done:

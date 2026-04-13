@@ -11,11 +11,11 @@ export default function Home() {
           连连看
         </h1>
         <p className="mt-4 text-base leading-relaxed text-zinc-400">
-          网页版开发中。脚手架已就绪；接下来按{" "}
+          开发中：计时、提示与多关卡将陆续接入。本地自动化可在仓库根目录查看{" "}
           <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm text-zinc-200">
             task.json
-          </code>{" "}
-          从「类型与关卡配置」任务继续实现。
+          </code>
+          。
         </p>
         <p className="mt-8">
           <Link

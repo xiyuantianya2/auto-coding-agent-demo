@@ -93,17 +93,26 @@ function argvForHost(hostCommand, standaloneArgs) {
 }
 
 /**
- * @param {string} modelRaw
+ * 组装 agent CLI 参数。默认显式传 `--model auto`，与 IDE 中「Auto」路由一致；
+ * 若省略 `--model`，当前 CLI 往往会落到 `composer-2-fast` 等固定模型。
+ *
+ * 若某环境对 `--model auto` 报错，可设环境变量 `AUTOCODING_AGENT_MODEL=omit`（不传 --model，恢复旧行为）。
+ *
+ * @param {string} modelRaw 来自 override 或 AUTOCODING_AGENT_MODEL；空则视为 auto
  * @param {string} workspaceRoot
  * @param {string} agentMessage
  */
 function buildStandaloneArgs(modelRaw, workspaceRoot, agentMessage) {
   const args = ["-p", "-f", "--trust"];
-  const m = String(modelRaw || "")
-    .trim()
-    .toLowerCase();
-  if (m && m !== "auto" && m !== "default") {
-    args.push("--model", String(modelRaw).trim());
+  let resolved = String(modelRaw ?? "").trim();
+  if (!resolved) {
+    resolved = "auto";
+  }
+  const m = resolved.toLowerCase();
+  if (m === "omit" || m === "legacy" || m === "none") {
+    /* 不传 --model，由 CLI 自选（常为 composer-2-fast） */
+  } else {
+    args.push("--model", resolved);
   }
   args.push("--workspace", workspaceRoot, agentMessage);
   return args;
@@ -114,15 +123,14 @@ function buildStandaloneArgs(modelRaw, workspaceRoot, agentMessage) {
  * @param {string} agentMessage
  * @param {string} [modelOverride]
  * @param {number} timeoutMs
- * @param {{ onStdout?: (s: string) => void; onStderr?: (s: string) => void; onSpawn?: (pid: number | undefined) => void }} [hooks]
+ * @param {{ onStdout?: (s: string) => void; onStderr?: (s: string) => void; onSpawn?: (pid: number | undefined, stdin: import("node:stream").Writable | null) => void }} [hooks]
  * @returns {Promise<{ code: number; stdout: string; stderr: string }>}
  */
 export async function runCursorAgent(workspaceRoot, agentMessage, modelOverride, timeoutMs, hooks) {
   const root = path.resolve(workspaceRoot);
-  const model = (modelOverride !== undefined && modelOverride !== null
+  const model = modelOverride !== undefined && modelOverride !== null
     ? String(modelOverride)
-    : process.env.AUTOCODING_AGENT_MODEL || ""
-  ).trim();
+    : process.env.AUTOCODING_AGENT_MODEL ?? "";
 
   const standaloneArgs = buildStandaloneArgs(model, root, agentMessage);
 
@@ -170,7 +178,7 @@ export async function runCursorAgent(workspaceRoot, agentMessage, modelOverride,
  * @param {string[]} args
  * @param {string} cwd
  * @param {number} timeoutMs
- * @param {{ onStdout?: (s: string) => void; onStderr?: (s: string) => void; onSpawn?: (pid: number | undefined) => void }} [hooks]
+ * @param {{ onStdout?: (s: string) => void; onStderr?: (s: string) => void; onSpawn?: (pid: number | undefined, stdin: import("node:stream").Writable | null) => void }} [hooks]
  */
 function runChild(command, args, cwd, timeoutMs, hooks) {
   return new Promise((resolve) => {
@@ -186,7 +194,7 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
       child = spawn(exe, args, {
         cwd,
         env: childEnv,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
         shell: false,
       });
@@ -195,7 +203,7 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
       child = spawn(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", line], {
         cwd,
         env: childEnv,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
         shell: false,
       });
@@ -203,13 +211,13 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
       child = spawn(exe, args, {
         cwd,
         env: childEnv,
-        stdio: ["ignore", "pipe", "pipe"],
+        stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true,
         shell: false,
       });
     }
 
-    hooks?.onSpawn?.(child.pid);
+    hooks?.onSpawn?.(child.pid, child.stdin ?? null);
 
     let stdout = "";
     let stderr = "";
@@ -240,11 +248,23 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
     }
 
     const MAX_STDERR_BYTES = 64 * 1024;
+    const MAX_STDOUT_BYTES = 4 * 1024 * 1024;
+    let settled = false;
+    const settle = (result) => {
+      if (settled) return;
+      settled = true;
+      if (timer) clearTimeout(timer);
+      resolve(result);
+    };
+
     child.stdout?.setEncoding("utf8");
     child.stderr?.setEncoding("utf8");
     child.stdout?.on("data", (chunk) => {
       const s = String(chunk);
-      stdout += s;
+      const room = MAX_STDOUT_BYTES - stdout.length;
+      if (room > 0) {
+        stdout += s.length > room ? s.slice(0, room) : s;
+      }
       hooks?.onStdout?.(s);
     });
     child.stderr?.on("data", (chunk) => {
@@ -255,20 +275,20 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
       }
       hooks?.onStderr?.(s);
     });
-    child.on("error", () => {
-      if (timer) clearTimeout(timer);
-      resolve({ code: 1, stdout, stderr });
+    child.on("error", (err) => {
+      const msg = err?.message || String(err);
+      stderr += (stderr ? "\n" : "") + `[spawn error] ${msg}`;
+      settle({ code: 1, stdout, stderr });
     });
     child.on("close", (code) => {
-      if (timer) clearTimeout(timer);
       if (timedOut) {
-        resolve({
+        settle({
           code: 124,
           stdout,
           stderr: stderr + `\n[超时] Agent 超过 ${Math.round(timeoutMs / 1000)}s 未完成，已终止。`,
         });
       } else {
-        resolve({ code: code ?? 1, stdout, stderr });
+        settle({ code: code ?? 1, stdout, stderr });
       }
     });
   });

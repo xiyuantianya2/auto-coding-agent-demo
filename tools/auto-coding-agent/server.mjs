@@ -37,13 +37,90 @@ let state = {
   lastTaskId: null,
 };
 
+/** 本次进程启动时是否把磁盘上的 running 改成了 paused（用于日志说明，非用户点击暂停） */
+let startupRecoveredRunningToPaused = false;
+
 let workerRunning = false;
 let resetRequested = false;
 /** @type {number | undefined} */
 let lastAgentPid;
+/** @type {import("node:stream").Writable | null} */
+let agentStdinStream = null;
+/** 最近一次收到 agent stdout/stderr 输出的时间戳（ms），用于判断 agent 是否在等待用户输入 */
+let lastAgentOutputAt = 0;
+const WAITING_FOR_INPUT_THRESHOLD_MS = 10_000;
+
+/**
+ * autoAdvance: 任务完成后是否自动继续下一个任务。
+ * false = 每个任务完成后暂停，等用户在 Web 端确认后再继续（默认，更安全）。
+ * true  = 任务 passes:true 后自动取下一条继续（传统全自动模式）。
+ */
+let autoAdvance = false;
 
 const logLines = [];
 const MAX_LOG_LINES = 900;
+
+/** 当前或最近一次提交给 Cursor Agent CLI 的完整提示词（与 agent 进程参数一致） */
+let agentPromptSnapshot = {
+  /** @type {string} */
+  text: "",
+  /** @type {number | null} */
+  taskId: null,
+  /** @type {string | null} */
+  updatedAt: null,
+};
+
+/** 当前任务期间 agent 子进程 stdout/stderr 的累积（供面板实时展示） */
+let agentCliSnapshot = {
+  /** @type {string} */
+  text: "",
+  /** @type {number | null} */
+  taskId: null,
+  /** @type {string | null} */
+  updatedAt: null,
+};
+
+const MAX_AGENT_CLI_CHARS = Math.max(
+  50_000,
+  Math.min(4 * 1024 * 1024, Number(process.env.AUTOCODING_AGENT_CLI_MAX_CHARS) || 900_000),
+);
+
+/**
+ * @param {string} chunk
+ * @param {"stdout" | "stderr"} source
+ */
+function appendAgentCliChunk(chunk, source) {
+  let s = String(chunk);
+  if (source === "stderr" && isWebpackNoise(s)) {
+    s = "\n[stderr: 已省略一段打包/二进制噪声]\n";
+  }
+  agentCliSnapshot.text += s;
+  if (agentCliSnapshot.text.length > MAX_AGENT_CLI_CHARS) {
+    const keep = MAX_AGENT_CLI_CHARS - 120;
+    agentCliSnapshot.text =
+      "…[输出过长，仅保留末尾 " + String(keep) + " 字符]\n\n" + agentCliSnapshot.text.slice(-keep);
+  }
+  agentCliSnapshot.updatedAt = new Date().toISOString();
+}
+
+/**
+ * 新任务开始：在**同一会话**内保留此前任务的 CLI 输出，仅追加任务头部分隔。
+ * 避免「上一任务刚结束、下一任务尚未输出」时把缓冲区清空，面板闪回「尚无 agent 输出」。
+ * @param {{ id: number; title: string }} task
+ */
+function beginAgentCliSession(task) {
+  const header =
+    (agentCliSnapshot.text ? "\n\n" : "") +
+    `──────────────── task id=${task.id} · ${task.title} ────────────────\n`;
+  agentCliSnapshot.text = (agentCliSnapshot.text || "") + header;
+  agentCliSnapshot.taskId = task.id;
+  agentCliSnapshot.updatedAt = new Date().toISOString();
+  if (agentCliSnapshot.text.length > MAX_AGENT_CLI_CHARS) {
+    const keep = MAX_AGENT_CLI_CHARS - 120;
+    agentCliSnapshot.text =
+      "…[输出过长，已丢弃更早内容]\n\n" + agentCliSnapshot.text.slice(-keep);
+  }
+}
 
 function log(line) {
   const t = new Date().toISOString();
@@ -99,11 +176,18 @@ async function ensureDirs() {
 }
 
 async function loadState() {
+  startupRecoveredRunningToPaused = false;
   try {
     const raw = await fsp.readFile(STATE_PATH, "utf8");
     const j = JSON.parse(raw);
     if (j.status === "running" || j.status === "paused" || j.status === "idle" || j.status === "completed") {
-      state.status = j.status === "running" ? "paused" : j.status;
+      if (j.status === "running") {
+        /* 新进程启动时没有上一轮的 agent 子进程，不能把「运行中」原样恢复，否则与真实状态不符 */
+        state.status = "paused";
+        startupRecoveredRunningToPaused = true;
+      } else {
+        state.status = j.status;
+      }
     }
     if (typeof j.lastError === "string" || j.lastError === null) {
       state.lastError = j.lastError;
@@ -156,18 +240,31 @@ function buildAgentMessage(task) {
  */
 async function runOneTask(task) {
   const agentMessage = buildAgentMessage(task);
+  agentPromptSnapshot = {
+    text: agentMessage,
+    taskId: task.id,
+    updatedAt: new Date().toISOString(),
+  };
+  beginAgentCliSession(task);
   lastAgentPid = undefined;
+  agentStdinStream = null;
+  lastAgentOutputAt = Date.now();
   const hooks = {
-    onSpawn: (pid) => {
+    onSpawn: (pid, stdin) => {
       lastAgentPid = pid;
+      agentStdinStream = stdin;
     },
     onStdout: (chunk) => {
       if (state.status !== "running") return;
+      lastAgentOutputAt = Date.now();
+      appendAgentCliChunk(chunk, "stdout");
       const tail = String(chunk).slice(-2000);
       if (tail.trim()) log(`[agent stdout] …${tail.slice(-400)}`);
     },
     onStderr: (chunk) => {
       if (state.status !== "running") return;
+      lastAgentOutputAt = Date.now();
+      appendAgentCliChunk(chunk, "stderr");
       if (isWebpackNoise(chunk)) return;
       const tail = String(chunk).slice(-2000);
       if (tail.trim()) log(`[agent stderr] …${tail.slice(-400)}`);
@@ -182,22 +279,13 @@ async function runOneTask(task) {
 
   const marked = await waitUntilTaskMarkedDone(REPO_ROOT, task.id);
   if (!marked) {
-    const trust =
-      process.env.AUTOCODING_TRUST_ZERO_EXIT === "1" ||
-      process.env.AUTOCODING_TRUST_ZERO_EXIT === "true";
-    if (trust) {
-      log(
-        `[警告] task id=${task.id} 在 task.json 中仍为 passes:false，已设 AUTOCODING_TRUST_ZERO_EXIT=1，按成功继续；请人工核对仓库根目录 task.json。`,
-      );
-      return { ok: true, code: 0 };
-    }
     return {
       ok: false,
       code: 2,
       stderr:
-        "Agent 退出码为 0，但根目录 task.json 中该任务 passes 仍为 false。" +
-        "请确认 Agent 保存的是「仓库根」的 task.json（不是子目录拷贝），或在本机手动将对应 id 的 passes 改为 true。" +
-        "若确认 Agent 已完成实现仅漏改标记，可设环境变量 AUTOCODING_TRUST_ZERO_EXIT=1 跳过此检查；亦可稍等 2 秒后点「重置状态」再「开始」重试（已内置多次重读）。",
+        `Agent 退出码为 0，但根目录 task.json 中 id=${task.id} 的 passes 仍为 false。\n` +
+        "可能原因：agent 完成了会话开场但未开始实现；或实现了但漏改标记。\n" +
+        "请检查 CLI 输出，如果 agent 已完成实现仅漏改标记，可手动在 task.json 中将 passes 改为 true，然后点「继续下一任务」。",
     };
   }
 
@@ -276,6 +364,19 @@ async function workerLoop() {
       }
 
       log(`任务 id=${head.id} 已完成（task.json 已标记 passes）。`);
+
+      if (!autoAdvance) {
+        state.status = "idle";
+        const remaining = loadIncompleteTasks(REPO_ROOT);
+        if (remaining.length > 0) {
+          log(`逐任务模式：任务 id=${head.id} 完成后已暂停。剩余 ${remaining.length} 个任务，下一个：id=${remaining[0].id}（${remaining[0].title}）。请在面板确认后点击「继续下一任务」。`);
+        } else {
+          state.status = "completed";
+          log("所有任务已完成。");
+        }
+        await saveState();
+        break;
+      }
     }
 
     if (state.status === "running") {
@@ -285,6 +386,8 @@ async function workerLoop() {
   } finally {
     workerRunning = false;
     lastAgentPid = undefined;
+    agentStdinStream = null;
+    lastAgentOutputAt = 0;
   }
 }
 
@@ -335,6 +438,8 @@ async function handleControl(body) {
     }
     state.status = "paused";
     killAgentTreeBestEffort();
+    agentStdinStream = null;
+    lastAgentOutputAt = 0;
     await saveState();
     log("用户请求暂停。");
     return { ok: true };
@@ -344,12 +449,22 @@ async function handleControl(body) {
     const running = state.status === "running";
     resetRequested = running;
     killAgentTreeBestEffort();
+    agentStdinStream = null;
+    lastAgentOutputAt = 0;
     state.lastError = null;
     state.lastTaskId = null;
     state.status = "idle";
+    agentPromptSnapshot = { text: "", taskId: null, updatedAt: null };
+    agentCliSnapshot = { text: "", taskId: null, updatedAt: null };
     await saveState();
     log("状态已重置为空闲。");
     return { ok: true };
+  }
+
+  if (action === "set-auto-advance") {
+    autoAdvance = !!body?.value;
+    log(`自动推进模式已${autoAdvance ? "开启" : "关闭"}。`);
+    return { ok: true, autoAdvance };
   }
 
   return { ok: false, error: "未知 action" };
@@ -426,7 +541,11 @@ async function handleRequest(req, res) {
   if (req.method === "GET" && (url.pathname === "/" || url.pathname === "/index.html")) {
     try {
       const html = await fsp.readFile(path.join(PUBLIC_DIR, "index.html"), "utf8");
-      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.writeHead(200, {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+      });
       res.end(html);
     } catch (e) {
       res.writeHead(500).end(String(e));
@@ -456,6 +575,23 @@ async function handleRequest(req, res) {
         lastTaskId: state.lastTaskId,
         recentLog: logLines,
         agentTimeoutMs: AGENT_TIMEOUT_MS,
+        agentPrompt: agentPromptSnapshot.text || null,
+        agentPromptTaskId: agentPromptSnapshot.taskId,
+        agentPromptUpdatedAt: agentPromptSnapshot.updatedAt,
+        agentCliText: agentCliSnapshot.text || null,
+        agentCliTaskId: agentCliSnapshot.taskId,
+        agentCliUpdatedAt: agentCliSnapshot.updatedAt,
+        agentCliMaxChars: MAX_AGENT_CLI_CHARS,
+        autoAdvance,
+        agentWaitingForInput:
+          state.status === "running" &&
+          lastAgentOutputAt > 0 &&
+          Date.now() - lastAgentOutputAt > WAITING_FOR_INPUT_THRESHOLD_MS,
+        agentStdinAvailable: !!(agentStdinStream && !agentStdinStream.destroyed),
+        pausedHelp:
+          state.status === "paused"
+            ? "当前为「已暂停」：队列不会继续跑。若你没有点「暂停」，多半是重启过本面板服务（上次若处于「运行中」会先被记成暂停），或曾点过暂停。请点击「开始全自动」继续；无需重置。"
+            : null,
       },
       true,
     );
@@ -469,6 +605,30 @@ async function handleRequest(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/agent-input") {
+    const body = await readBody(req);
+    const text = body?.text;
+    if (!text || typeof text !== "string") {
+      return json(res, 400, { ok: false, error: "缺少 text 字段" }, true);
+    }
+    if (state.status !== "running") {
+      return json(res, 400, { ok: false, error: "当前没有运行中的任务" }, true);
+    }
+    if (!agentStdinStream || agentStdinStream.destroyed) {
+      return json(res, 400, { ok: false, error: "Agent 进程的 stdin 不可用（进程可能已退出）" }, true);
+    }
+    try {
+      agentStdinStream.write(text + "\n");
+      lastAgentOutputAt = Date.now();
+      const display = text.length > 200 ? text.slice(0, 200) + "…" : text;
+      log(`[用户输入] ${display}`);
+      appendAgentCliChunk(`\n📝 [用户输入] ${text}\n`, "stdout");
+      return json(res, 200, { ok: true }, true);
+    } catch (e) {
+      return json(res, 500, { ok: false, error: `写入 stdin 失败: ${e?.message || e}` }, true);
+    }
+  }
+
   json(res, 404, { ok: false, error: "Not found" }, true);
 }
 
@@ -478,7 +638,12 @@ async function main() {
   await saveState();
 
   log(`仓库根目录: ${REPO_ROOT}`);
-  log(`未完成 task 数: ${loadIncompleteTasks(REPO_ROOT).length}；面板状态: ${state.status}`);
+  if (startupRecoveredRunningToPaused) {
+    log(
+      `[启动说明] 磁盘上次的记录为「运行中」，但本服务刚重启、并无可接续的 agent 进程，已自动改为「已暂停」。这不是你点了暂停。请再点「开始全自动」继续队列。`,
+    );
+  }
+  log(`未完成 task 数: ${loadIncompleteTasks(REPO_ROOT).length}；当前面板状态: ${state.status}`);
 
   const nodeMajor = Number(String(process.versions.node || "0").split(".")[0]);
   if (Number.isFinite(nodeMajor) && nodeMajor >= 24) {

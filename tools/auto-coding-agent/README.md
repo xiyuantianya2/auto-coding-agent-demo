@@ -23,7 +23,7 @@ cd D:\dev\auto-coding\tools\auto-coding-agent
 npm start
 ```
 
-浏览器打开终端提示的地址（默认 `http://127.0.0.1:3910/`），点击 **开始全自动**。
+浏览器打开终端提示的地址（默认 `http://127.0.0.1:3910/`），点击 **开始全自动**。页面上「提示词 / CLI 输出 / 运行日志」三个区域各有 **复制全文**；单行数超过 **500** 时面板仅展示**末尾 500 行**，复制仍为完整内容。
 
 `link-game` 前端「开发面板」入口会指向该地址（可通过环境变量修改）。
 
@@ -35,10 +35,15 @@ npm start
 | `PORT` | HTTP 端口，默认 `3910`。 |
 | `HOST` | 监听地址，默认 `127.0.0.1`。 |
 | `AUTOCODING_AGENT_TIMEOUT_MS` | 单次 Agent 超时（毫秒），默认 45 分钟。 |
-| `AUTOCODING_AGENT_MODEL` | 传给 `agent --model`；留空则不传（用 CLI 默认）。 |
+| `AUTOCODING_AGENT_MODEL` | 传给 `agent --model`。**未设置或空字符串时默认使用 `auto`**（与 IDE「Auto」一致）。若某环境报错，可设为 `omit`（不传 `--model`，CLI 可能回退为 `composer-2-fast` 等）。其它值则原样作为模型名。 |
 | `AUTOCODING_PASS_POLL_ATTEMPTS` / `AUTOCODING_PASS_POLL_MS` | Agent 返回 0 后，轮询根目录 `task.json` 是否已把当前任务标为 `passes: true`（默认约 8 次 × 250ms）。 |
+| `AUTOCODING_AGENT_CLI_MAX_CHARS` | 单任务 CLI 输出在内存中保留的最大字符数（默认约 90 万），超出会截断尾部保留。 |
 | `AUTOCODING_TRUST_ZERO_EXIT` | 设为 `1` 时：若 Agent 退出码为 0 但 `passes` 仍未变，**仍视为本步成功**（仅当你确认实现已完成、仅漏改 JSON 时使用）。 |
 | `CURSOR_CLI` | 自定义 `agent` 可执行文件路径。 |
 | `AUTOCODING_USE_CURSOR_EXE_FALLBACK` | Windows 下 `agent` 失败后再试 `Cursor.exe`（会启动图形界面）。 |
 
 状态文件：`<repo>/.auto-coding-agent/state.json`（建议勿提交）。
+
+**为何重启后面板显示「已暂停」？** 若上次结束时 `state.json` 仍为「运行中」（例如直接关终端、进程崩溃），**下次启动本服务时会自动改为「已暂停」**：新进程里并没有上一轮的 agent 子进程可接续，并非你点了暂停。再点「开始全自动」即可。
+
+**为何「CLI 实时输出」闪一下又变成「尚无输出」？** 旧逻辑在每个新任务开始时**清空**缓冲区，下一任务的 agent 尚未打印时，面板会短暂空白。现已改为在**同一次面板服务进程内**跨任务**累积**输出（带任务分隔线），总长度仍受 `AUTOCODING_AGENT_CLI_MAX_CHARS` 限制；点「重置状态」会清空。

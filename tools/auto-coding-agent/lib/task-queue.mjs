@@ -27,3 +27,4 @@ export function isTaskDone(repoRoot, taskId) {
   const t = tasks.find((x) => Number(x.id) === Number(taskId));
   return !!(t && t.passes === true);
 }
+
