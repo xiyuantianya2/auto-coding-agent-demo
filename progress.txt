@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-04-13 - Task: 收尾与验收（id=10）
+
+### What was done:
+- 在 `link-game/` 执行 `npm run lint`、`npm run build`，均通过（无 ESLint 报错，Next.js 生产构建成功）。
+- 仓库根 `task.json` id=10 已标记 `passes: true`；本条目记录验收结论。
+
+### Testing:
+- 基线：仓库根 `./init.sh`（`npm install` + `next dev`）；对 `http://127.0.0.1:3000` 做 HTTP 冒烟返回 200。
+- 浏览器：抓取首页 HTML，确认游戏区与 HUD 相关文案存在（加载成功）；完整「三关通关、计时走动与胜利冻结、提示、重开、胜利/再玩一次」建议在本机 dev 下再手打一遍做最终手感确认（本任务以 lint/build 与冒烟为主）。
+
+### Notes:
+- 全项目 10 条 `task.json` 任务均已 `passes: true`；后续可接持久化解锁、音效或移动端微调等非本清单项。
+
+---
+
 ## 2026-04-13 - Task: 多关卡流程（id=9）
 
 ### What was done:

@@ -112,7 +112,7 @@
         "浏览器手动验证：3 关、计时、提示、重开、胜利流程",
         "更新 progress.txt 记录结论"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
