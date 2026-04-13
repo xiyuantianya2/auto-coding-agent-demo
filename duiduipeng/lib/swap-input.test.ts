@@ -20,6 +20,11 @@ function flushSwapPlayback(s: SwapInteractionState): SwapInteractionState {
   return cur;
 }
 
+/** 与 flushSwapPlayback 应得到相同终局（得分、种子、胜负） */
+function finalizeSwapPlayback(s: SwapInteractionState): SwapInteractionState {
+  return reduceSwapInteraction(s, { type: "playback_finalize" });
+}
+
 describe("swap-input (moves, score, win/fail)", () => {
   it("does not consume a move on rejected swap", () => {
     const before = boardFromLines([
@@ -145,6 +150,42 @@ describe("swap-input (moves, score, win/fail)", () => {
     s = flushSwapPlayback(s);
     expect(s.playback).toBeNull();
     expect(s.turnMatchScore).toBeGreaterThan(0);
+  });
+
+  it("playback_finalize matches stepwise playback_advance", () => {
+    const before = boardFromLines([
+      [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Amethyst],
+      [CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Ruby],
+      [CellSymbol.Emerald, CellSymbol.Sapphire, CellSymbol.Amber],
+    ]);
+    const level = { levelIndex: 0, targetScore: 99999, moves: 10 };
+    let a = createSwapInteractionState(before, {
+      refillSeed: 99,
+      levelConfig: level,
+    });
+    a = reduceSwapInteraction(a, { type: "cell_click", cell: { row: 0, col: 2 } });
+    a = reduceSwapInteraction(a, { type: "cell_click", cell: { row: 1, col: 2 } });
+    expect(a.playback).not.toBeNull();
+
+    let b = createSwapInteractionState(before, {
+      refillSeed: 99,
+      levelConfig: level,
+    });
+    b = reduceSwapInteraction(b, { type: "cell_click", cell: { row: 0, col: 2 } });
+    b = reduceSwapInteraction(b, { type: "cell_click", cell: { row: 1, col: 2 } });
+
+    const flushed = flushSwapPlayback(a);
+    const finalized = finalizeSwapPlayback(b);
+
+    expect(finalized.playback).toBeNull();
+    expect(flushed.totalScore).toBe(finalized.totalScore);
+    expect(flushed.board).toEqual(finalized.board);
+    expect(flushed.refillSeed).toBe(finalized.refillSeed);
+    expect(flushed.turnMatchScore).toBe(finalized.turnMatchScore);
+    expect(flushed.chainWaves).toBe(finalized.chainWaves);
+    expect(flushed.movesRemaining).toBe(finalized.movesRemaining);
+    expect(flushed.meetsWinTarget).toBe(finalized.meetsWinTarget);
+    expect(flushed.isFailed).toBe(finalized.isFailed);
   });
 
   it("ignores further swaps after win or loss", () => {

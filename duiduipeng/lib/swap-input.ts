@@ -17,6 +17,11 @@ export type SwapInteractionEvent =
   | { readonly type: "clear_selection" }
   /** 推进一档连锁稳定化展示；仅在 {@link SwapInteractionState.playback} 非空时有效 */
   | { readonly type: "playback_advance" }
+  /**
+   * 跳过剩余展示，直接应用完整稳定化终局（与连续 `playback_advance` 至结束一致）。
+   * 用于 `prefers-reduced-motion` 或「跳过动画」；不改变补位随机与累计分语义。
+   */
+  | { readonly type: "playback_finalize" }
   | {
       readonly type: "start_level";
       readonly board: Board;
@@ -163,6 +168,13 @@ export function reduceSwapInteraction(
       };
     }
     return finalizePlaybackState(state, sequence);
+  }
+
+  if (event.type === "playback_finalize") {
+    if (!state.playback) {
+      return state;
+    }
+    return finalizePlaybackState(state, state.playback.sequence);
   }
 
   if (event.type === "clear_selection") {

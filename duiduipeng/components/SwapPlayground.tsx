@@ -226,6 +226,13 @@ export function SwapPlayground() {
     return () => window.clearTimeout(id);
   }, [hintPair]);
 
+  const onSkipPlayback = useCallback(() => {
+    if (!state.playback || isPaused || ended) return;
+    dispatch({ type: "playback_finalize" });
+    setMatchFx("idle");
+    setGravityAnim(null);
+  }, [dispatch, ended, isPaused, state.playback]);
+
   const onCellClick = useCallback(
     (cell: CellPos) => {
       if (isPaused) return;
@@ -317,8 +324,39 @@ export function SwapPlayground() {
    * 重力/补位 FLIP（见 gravityAnim）→ playback_advance。
    * 错开时间由 MATCH_CLEAR_STAGGER_MS 配置，与逻辑层行主序一致。
    */
+  /**
+   * 系统「减弱动效」：不跑逐格/逐波 CSS 计时链，一次 reducer 结算至终局（与逐步 advance 一致）。
+   */
+  useEffect(() => {
+    if (!state.playback || isPaused || ended || !prefersReducedMotion) {
+      return;
+    }
+    let cancelled = false;
+    const t = window.setTimeout(() => {
+      if (!cancelled) {
+        dispatch({ type: "playback_finalize" });
+        setMatchFx("idle");
+        setGravityAnim(null);
+      }
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [
+    dispatch,
+    ended,
+    isPaused,
+    prefersReducedMotion,
+    state.playback,
+  ]);
+
   useEffect(() => {
     if (!playbackActive || isPaused || ended) {
+      setMatchFx("idle");
+      return;
+    }
+    if (prefersReducedMotion) {
       setMatchFx("idle");
       return;
     }
@@ -356,11 +394,6 @@ export function SwapPlayground() {
         setMatchFx("clear");
         idAdvance = window.setTimeout(() => {
           if (cancelled) return;
-          if (prefersReducedMotion) {
-            dispatch({ type: "playback_advance" });
-            setMatchFx("idle");
-            return;
-          }
           const offsets = computeGravityRefillOffsets(
             step.boardAfterClear,
             step.boardAfterGravityRefill,
@@ -661,13 +694,21 @@ export function SwapPlayground() {
               {levelDisplay}
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2">
+          <div
+            className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2"
+            data-ddp-score-panel
+          >
             <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
               得分
             </p>
             <p className="mt-0.5 font-mono text-lg font-semibold tabular-nums text-amber-200">
               {state.totalScore}
             </p>
+            {playbackActive && !ended ? (
+              <p className="mt-1 text-[10px] leading-snug text-zinc-500">
+                连锁结算中：本步得分与胜负将在动画结束后一次性更新（与规则一致）。
+              </p>
+            ) : null}
           </div>
           <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2">
             <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
@@ -677,7 +718,10 @@ export function SwapPlayground() {
               {target}
             </p>
           </div>
-          <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2">
+          <div
+            className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2"
+            data-ddp-moves-panel
+          >
             <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
               剩余步数
             </p>
@@ -689,6 +733,11 @@ export function SwapPlayground() {
             >
               {state.movesRemaining}
             </p>
+            {playbackActive && !ended ? (
+              <p className="mt-1 text-[10px] leading-snug text-zinc-500">
+                合法交换已计入本步：剩余步数已扣减，待结算结束后再判胜负。
+              </p>
+            ) : null}
           </div>
           <div className="rounded-xl border border-zinc-800/90 bg-zinc-950/50 px-3 py-2">
             <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
@@ -714,6 +763,7 @@ export function SwapPlayground() {
           boardPulse && "scale-[0.99]",
         )}
         data-ddp-playback={playbackActive ? "true" : "false"}
+        data-ddp-playback-pending-score={playbackActive && !ended ? "true" : "false"}
         data-ddp-match-fx={matchFx}
         data-ddp-gravity={
           gravityAnim ? (gravityAnim.phase === "play" ? "play" : "invert") : "idle"
@@ -866,6 +916,22 @@ export function SwapPlayground() {
             onClick={onHint}
           >
             提示
+          </button>
+          <button
+            type="button"
+            data-testid="ddp-skip-playback"
+            className={controlBtnClass}
+            disabled={
+              ended || isPaused || !playbackActive || prefersReducedMotion
+            }
+            title={
+              prefersReducedMotion
+                ? "已启用减弱动效，连锁将即时结算"
+                : "跳过连锁动画，直接显示本步终局（得分与盘面与播完一致）"
+            }
+            onClick={onSkipPlayback}
+          >
+            跳过动画
           </button>
           <button
             type="button"

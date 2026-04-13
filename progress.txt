@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: 播放期交互、得分时机与减弱动效（duiduipeng id=30）
+
+### What was done:
+- `lib/swap-input.ts`：新增 `playback_finalize`，一次结算完整连锁终局（与逐步 `playback_advance` 至终一致；补位种子与累计分不变）。
+- `components/SwapPlayground.tsx`：`prefers-reduced-motion: reduce` 时跳过逐波计时、自动 `playback_finalize`；播放中 HUD 增加得分/步数说明（连锁结算中分数未加总、合法步已扣步）；可选「跳过动画」按钮（减弱动效下禁用，与即时结算一致）；`data-ddp-playback-pending-score` 等便于验收。
+- `lib/swap-input.test.ts`：`playback_finalize` 与 `flushSwapPlayback` 终局断言。
+- `duiduipeng/task.json`：id=30 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`、`npm test -- --run`（见本条目执行结果）。
+
+### Notes:
+- 胜负弹层仍以 reducer 在连锁完全结算后更新 `meetsWinTarget` / `isFailed` 为准，播放中不会提前宣告。
+
+---
+
 ## 2026-04-14 - Task: 连锁多波次顺序展示（duiduipeng id=29）
 
 ### What was done:
