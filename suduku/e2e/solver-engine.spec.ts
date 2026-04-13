@@ -24,7 +24,7 @@ const EASY_PUZZLE_WITH_HIDDEN: Grid9 = [
 ] as Grid9;
 
 test.describe("Suduku solver engine (contract smoke)", () => {
-  test("exports technique ids, candidates and difficulty stub", () => {
+  test("exports technique ids, candidates and scoreDifficulty", () => {
     expect(TECHNIQUE_IDS.NAKED_SINGLE).toBe("naked-single");
     expect(TECHNIQUE_IDS.X_WING).toBe("x-wing");
     expect(TECHNIQUE_IDS.SKYSCRAPER).toBe("skyscraper");
@@ -41,6 +41,10 @@ test.describe("Suduku solver engine (contract smoke)", () => {
 
     expect(findTechniques(state)).toEqual([]);
     expect(scoreDifficulty(state, [])).toBe(0);
+
+    const almost = createGameStateFromGivens(ALMOST_SOLVED_ONE_EMPTY);
+    const stepsAlmost = findTechniques(almost);
+    expect(scoreDifficulty(almost, stepsAlmost)).toBeGreaterThan(0);
   });
 
   test("findTechniques: naked single on almost-solved grid", () => {

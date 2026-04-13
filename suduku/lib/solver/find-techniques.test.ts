@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { createGameStateFromGivens } from "../core";
+import { cloneGameState, createGameStateFromGivens } from "../core";
 import type { Grid9 } from "../core";
 import { ALMOST_SOLVED_ONE_EMPTY } from "../core/fixture";
 import { candidatesGridToSnapshot, computeCandidates } from "./compute-candidates";
 import { TECHNIQUE_IDS, TECHNIQUE_RESOLUTION_ORDER } from "./techniques";
 import { findTechniques } from "./find-techniques";
+import { scoreDifficulty } from "./score-difficulty";
 import type { CandidateElimination, CandidatesGrid } from "./types";
 
 /** 经典易题（常见于教程）：开局含隐单（某数字在某行/列/宫仅一处候选）。 */
@@ -166,5 +167,44 @@ describe("findTechniques (pairs & intersections)", () => {
     const iPair = TECHNIQUE_RESOLUTION_ORDER.indexOf(TECHNIQUE_IDS.NAKED_PAIR);
     const iPointing = TECHNIQUE_RESOLUTION_ORDER.indexOf(TECHNIQUE_IDS.POINTING);
     expect(iPair).toBeLessThan(iPointing);
+  });
+});
+
+/** 与 {@link TECHNIQUE_RESOLUTION_ORDER} 下标一致：输出步骤中技法顺序必须非降序（同阶可重复）。 */
+function techniqueOrderRank(technique: string): number {
+  const i = TECHNIQUE_RESOLUTION_ORDER.indexOf(technique);
+  if (i === -1) {
+    throw new Error(`unknown technique in order test: ${technique}`);
+  }
+  return i;
+}
+
+describe("findTechniques ordering (priority contract)", () => {
+  it("steps follow TECHNIQUE_RESOLUTION_ORDER groups: singles before pairs before fish (easy puzzle)", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const steps = findTechniques(state);
+    expect(steps.length).toBeGreaterThan(0);
+    let prev = -1;
+    for (const s of steps) {
+      const r = techniqueOrderRank(s.technique);
+      expect(r).toBeGreaterThanOrEqual(prev);
+      prev = r;
+    }
+  });
+
+  it("almost-solved: only naked-single steps; order trivially valid", () => {
+    const state = createGameStateFromGivens(ALMOST_SOLVED_ONE_EMPTY);
+    const steps = findTechniques(state);
+    const ids = steps.map((s) => s.technique);
+    expect(ids.every((id) => id === TECHNIQUE_IDS.NAKED_SINGLE)).toBe(true);
+  });
+
+  it("cloneGameState: findTechniques + scoreDifficulty match original", () => {
+    const state = createGameStateFromGivens(EASY_PUZZLE_WITH_HIDDEN);
+    const copy = cloneGameState(state);
+    const a = findTechniques(state);
+    const b = findTechniques(copy);
+    expect(b).toEqual(a);
+    expect(scoreDifficulty(copy, b)).toBe(scoreDifficulty(state, a));
   });
 });

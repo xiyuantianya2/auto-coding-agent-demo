@@ -79,7 +79,7 @@
         "单元测试：固定盘面下 findTechniques 返回顺序与条数符合优先级文档；scoreDifficulty 对人工构造的「仅低阶」与「含高阶」样本满足单调或区间预期（在测试中写明预期）",
         "公开函数签名与 module-plan 中声明一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

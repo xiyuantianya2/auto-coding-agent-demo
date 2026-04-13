@@ -8,6 +8,7 @@
 
 import type { GameState } from "../core";
 import { findTechniques as findTechniquesImpl } from "./find-techniques";
+import { scoreDifficulty as scoreDifficultyImpl } from "./score-difficulty";
 import type { SolveStep } from "./types";
 
 export type {
@@ -30,6 +31,7 @@ export {
   ELIMINATION_TECHNIQUE_PIPELINE,
   type EliminationTechniqueDetector,
 } from "./technique-registry";
+export { TECHNIQUE_WEIGHT } from "./score-difficulty";
 export { skyscraperFromCandidates } from "./technique-skyscraper";
 export { xyWingFromCandidates } from "./technique-xy-wing";
 export { createEmptyCandidatesGrid } from "./candidates";
@@ -49,10 +51,8 @@ export function findTechniques(state: GameState): SolveStep[] {
 }
 
 /**
- * 依据技巧步骤估计难度分数（任务 7 实现）。占位实现返回 `0`。
+ * 依据技巧步骤估计难度分数（启发式）；公式与权重表见 `./score-difficulty`。
  */
 export function scoreDifficulty(state: GameState, steps: SolveStep[]): number {
-  void state;
-  void steps;
-  return 0;
+  return scoreDifficultyImpl(state, steps);
 }

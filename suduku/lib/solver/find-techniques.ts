@@ -168,10 +168,16 @@ function mergeEliminationSteps(batches: SolveStep[][]): SolveStep[] {
 }
 
 /**
- * 基于 {@link computeCandidates} 识别技巧；顺序稳定：
+ * 基于 {@link computeCandidates} 识别技巧。
+ *
+ * **行为（固定）**：只返回**当前候选网格下、一步内可观察**的全部技法实例——不模拟填数、不迭代更新候选后再搜
+ * （即「第一层」可观察步骤，非完整解题链）。对 {@link cloneGameState} 副本调用应与原状态结果一致（只读分析）。
+ *
+ * **输出顺序**（稳定、与 {@link TECHNIQUE_RESOLUTION_ORDER} 分组一致）：
  * 1. 全部裸单（行优先）
  * 2. 全部隐单（行 → 列 → 宫，数字 1–9）
- * 3. 中阶与高阶带消除步骤：见 {@link ELIMINATION_TECHNIQUE_PIPELINE}（组内顺序见各实现），并对消除集合去重
+ * 3. 带消除步骤：按 {@link ELIMINATION_TECHNIQUE_PIPELINE} 顺序逐类收集；{@link mergeEliminationSteps}
+ *    对相同 {@link eliminationKey} 的消除只保留_pipeline 中**最先出现**的一条
  */
 export function findTechniques(state: GameState): SolveStep[] {
   const cand = computeCandidates(state);
