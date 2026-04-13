@@ -36,7 +36,7 @@ export {
 } from "./compute-candidates";
 
 /**
- * 枚举当前盘面可观察的技巧步骤（含裸单 / 隐单、裸隐数对、pointing / claiming 等；后续任务可继续扩展）。
+ * 枚举当前盘面可观察的技巧步骤（含裸单 / 隐单、裸隐数对、pointing / claiming、x-wing、swordfish 等；后续任务可继续扩展）。
  */
 export function findTechniques(state: GameState): SolveStep[] {
   return findTechniquesImpl(state);
