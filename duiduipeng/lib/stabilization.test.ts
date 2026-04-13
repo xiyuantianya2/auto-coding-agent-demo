@@ -4,10 +4,8 @@ import { BASE_SCORE_PER_CELL } from "./match-clear";
 import { mulberry32 } from "./seeded-random";
 import {
   applyGravityAndRefill,
-  applyTripleClearAndPairMerge,
+  applyTripleClear,
   boardHasEmpty,
-  findNonOverlappingPairMergeEdges,
-  MERGE_PAIR_SCORE,
   stabilizeAfterSwap,
 } from "./stabilization";
 
@@ -30,35 +28,20 @@ describe("applyGravityAndRefill", () => {
   });
 });
 
-describe("pair merge selection", () => {
-  it("prefers horizontal merges before vertical in a 2x2 block", () => {
-    const b = boardFromLines([
-      [CellSymbol.Ruby, CellSymbol.Ruby],
-      [CellSymbol.Ruby, CellSymbol.Ruby],
-    ]);
-    const triples = new Set<string>();
-    const edges = findNonOverlappingPairMergeEdges(b, triples);
-    expect(edges).toHaveLength(2);
-    expect(edges[0]?.kind).toBe("H");
-    expect(edges[1]?.kind).toBe("H");
-  });
-});
-
-describe("applyTripleClearAndPairMerge", () => {
-  it("clears triples and merges isolated pairs", () => {
+describe("applyTripleClear", () => {
+  it("clears triples only (no pair merge)", () => {
     const b = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Emerald],
       [CellSymbol.Sapphire, CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Amber],
     ]);
-    const r = applyTripleClearAndPairMerge(b);
+    const r = applyTripleClear(b);
     expect(r.tripleClearedCells).toBe(3);
-    expect(r.pairMergeCount).toBe(1);
-    expect(r.score).toBe(3 * BASE_SCORE_PER_CELL + MERGE_PAIR_SCORE);
+    expect(r.score).toBe(3 * BASE_SCORE_PER_CELL);
     expect(r.board[0]![0]).toBe(EMPTY_CELL);
     expect(r.board[0]![1]).toBe(EMPTY_CELL);
     expect(r.board[0]![2]).toBe(EMPTY_CELL);
-    expect(r.board[1]![0]).toBe(CellSymbol.Amber);
-    expect(r.board[1]![1]).toBe(EMPTY_CELL);
+    expect(r.board[1]![0]).toBe(CellSymbol.Sapphire);
+    expect(r.board[1]![1]).toBe(CellSymbol.Sapphire);
   });
 });
 
@@ -77,7 +60,7 @@ describe("stabilizeAfterSwap", () => {
     expect(typeof a.refillSeedAfter).toBe("number");
   });
 
-  it("does not loop when there are no triples or pair merges", () => {
+  it("does not loop when there are no triples", () => {
     const b = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Ruby],
       [CellSymbol.Emerald, CellSymbol.Ruby, CellSymbol.Emerald],

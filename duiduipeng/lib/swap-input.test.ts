@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, type Board } from "./board-types";
 import { BASE_SCORE_PER_CELL } from "./match-clear";
-import { MERGE_PAIR_SCORE } from "./stabilization";
 import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
 
 function boardFromLines(lines: CellSymbol[][]): Board {
@@ -46,17 +45,18 @@ describe("swap-input (task 7: moves & win/fail)", () => {
 
   it("marks meetsWinTarget when total score reaches target", () => {
     const before = boardFromLines([
-      [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Sapphire],
-      [CellSymbol.Ruby, CellSymbol.Amber, CellSymbol.Emerald],
+      [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Amethyst],
+      [CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Ruby],
+      [CellSymbol.Emerald, CellSymbol.Sapphire, CellSymbol.Amber],
     ]);
     let s = createSwapInteractionState(before, {
-      refillSeed: 101,
-      levelConfig: { levelIndex: 0, targetScore: MERGE_PAIR_SCORE, moves: 5 },
+      refillSeed: 99,
+      levelConfig: { levelIndex: 0, targetScore: 3 * BASE_SCORE_PER_CELL, moves: 5 },
     });
-    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 0 } });
-    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 0 } });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
     expect(s.lastResult?.kind).toBe("accepted");
-    expect(s.totalScore).toBeGreaterThanOrEqual(MERGE_PAIR_SCORE);
+    expect(s.totalScore).toBeGreaterThanOrEqual(3 * BASE_SCORE_PER_CELL);
     expect(s.meetsWinTarget).toBe(true);
     expect(s.isFailed).toBe(false);
   });

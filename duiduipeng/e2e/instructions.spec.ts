@@ -21,7 +21,6 @@ test.describe("游戏说明", () => {
     await expect(dialog).toContainText("目标分");
     await expect(dialog).toContainText("剩余步数");
     await expect(dialog).toContainText("BASE_SCORE_PER_CELL");
-    await expect(dialog).toContainText("MERGE_PAIR_SCORE");
     await expect(dialog).toContainText("CHAIN_BONUS_PER_EXTRA_WAVE");
 
     await page.getByTestId("game-instructions-close").click();

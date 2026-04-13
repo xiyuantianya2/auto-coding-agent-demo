@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CellSymbol, isEmptyCell, type Board } from "./board-types";
 import { BASE_SCORE_PER_CELL } from "./match-clear";
-import { MERGE_PAIR_SCORE } from "./stabilization";
 import { createSwapInteractionState, reduceSwapInteraction } from "./swap-input";
 
 function boardFromLines(lines: CellSymbol[][]): Board {
@@ -27,7 +26,7 @@ describe("swap + stabilization (tasks 5–6)", () => {
     }
   });
 
-  it("scores pair merges and leaves a full board after refill", () => {
+  it("accepts swap that only triggers pair-adjacency but stabilization scores triple clears only", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Sapphire],
       [CellSymbol.Ruby, CellSymbol.Amber, CellSymbol.Emerald],
@@ -36,7 +35,7 @@ describe("swap + stabilization (tasks 5–6)", () => {
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 0 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 0 } });
     expect(s.lastResult?.kind).toBe("accepted");
-    expect(s.turnMatchScore).toBe(MERGE_PAIR_SCORE);
+    expect(s.turnMatchScore).toBe(0);
     for (const row of s.board) {
       for (const cell of row) {
         expect(isEmptyCell(cell)).toBe(false);

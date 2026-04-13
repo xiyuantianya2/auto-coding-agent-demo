@@ -22,7 +22,7 @@ export interface SwapInteractionState {
   readonly board: Board;
   readonly pick: SwapPickState;
   readonly lastResult: AdjacentSwapAttemptResult | null;
-  /** 最近一次有效交换后，本步稳定化（三消 + 对碰合并 + 连锁加成）累计得分 */
+  /** 最近一次有效交换后，本步稳定化（三消消除 + 连锁加成）累计得分 */
   readonly turnMatchScore: number;
   /** 最近一次有效交换触发的连锁波次数（无有效交换时为 0） */
   readonly chainWaves: number;

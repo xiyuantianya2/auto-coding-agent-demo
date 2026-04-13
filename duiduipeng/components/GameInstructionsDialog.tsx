@@ -2,10 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { BASE_SCORE_PER_CELL } from "@/lib/match-clear";
-import {
-  CHAIN_BONUS_PER_EXTRA_WAVE,
-  MERGE_PAIR_SCORE,
-} from "@/lib/stabilization";
+import { CHAIN_BONUS_PER_EXTRA_WAVE } from "@/lib/stabilization";
 import { cn } from "@/lib/utils";
 
 const defaultTriggerClass =
@@ -22,7 +19,6 @@ export function GameInstructionsDialog(props: {
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const base = BASE_SCORE_PER_CELL;
-  const merge = MERGE_PAIR_SCORE;
   const chain = CHAIN_BONUS_PER_EXTRA_WAVE;
 
   useEffect(() => {
@@ -134,16 +130,8 @@ export function GameInstructionsDialog(props: {
                     分；一波内按该波消除的格子数累计三消基础分。
                   </li>
                   <li>
-                    <span className="font-mono text-zinc-200">
-                      MERGE_PAIR_SCORE = {merge}
-                    </span>
-                    （即 2 × BASE_SCORE_PER_CELL）：每完成一对「对碰合并」计{" "}
-                    {merge} 分。
-                  </li>
-                  <li>
                     每一<strong>连锁波次</strong>
-                    内，先把该波的三消基础分与对碰分相加，得到该波的
-                    <strong>基础分</strong>；再乘以下列倍率后
+                    内，该波<strong>基础分</strong>为三消基础分之和；再乘以下列倍率后
                     <strong>四舍五入为整数</strong>，并累加到本步总分。
                   </li>
                   <li>
@@ -160,9 +148,9 @@ export function GameInstructionsDialog(props: {
                     {(1 + chain * 2).toFixed(1)}。
                   </li>
                   <li>
-                    <strong>波次含义</strong>：一次有效交换后，反复执行「检测三消/对碰 →
-                    消除与合并 → 下落补位」，直到盘面上不再有三消或可对碰为止；其中每一次这样的消除/合并轮次计为
-                    <strong>一波</strong>。下落补位后若出现新的可消除局面，则进入下一波并套用更高倍率。
+                    <strong>波次含义</strong>：一次有效交换后，反复执行「检测三消 →
+                    消除 → 下落补位」，直到盘面上不再有三消为止；其中每一次三消消除轮次计为
+                    <strong>一波</strong>。下落补位后若出现新的三消，则进入下一波并套用更高倍率。
                   </li>
                 </ul>
               </section>

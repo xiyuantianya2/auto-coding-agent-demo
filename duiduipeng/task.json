@@ -1,6 +1,6 @@
 {
   "project": "对对碰",
-  "description": "单机网页三消类对对碰：相邻交换形成三消、两格对碰合并、下落补位；在固定步数内达到目标分数，无限关卡且目标分递增；UI 与连连看一致并含暂停与提示。",
+  "description": "单机网页三消类对对碰：相邻交换仅当能形成三消（含连锁）时有效；重力下落与补位；在固定步数内达到目标分数，无限关卡且目标分递增；UI 与连连看一致并含暂停与提示。已移除「未形成三消时两格同色对碰合并」玩法。",
   "tasks": [
     {
       "id": 1,
@@ -189,6 +189,89 @@
         "若需同步更新 duiduipeng/README.md 或 architecture.md 中关卡参数或得分说明，保持与实现一致。"
       ],
       "passes": true
+    },
+    {
+      "id": 17,
+      "title": "稳定化管线移除对碰合并仅保留三消",
+      "description": "在 lib/stabilization.ts（及 lib/index.ts 导出）中删除「两格对碰合并」检测、合并升阶、MERGE_PAIR_SCORE 及相关辅助函数；稳定化循环仅基于三消检测 → 消除 → 重力 → 补位，连锁仍按波次计分；确保无死循环且 TypeScript 类型与命名反映「仅三消」。",
+      "steps": [
+        "applyTripleClearAndPairMerge 等 API 改为仅三消结算（或拆分为纯三消函数并删除 pair 分支），全链路无对碰合并分支。",
+        "runStabilizationAfterSwap（或等价）的累计统计不再包含 pairMergeCount；连锁加成逻辑仍仅依赖三消波次。",
+        "在 duiduipeng/ 下 npm run build 通过；必要时同步 lib/match-clear.ts 注释中与「对碰分」交叉引用的表述。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 18,
+      "title": "交换合法性仅承认三消触发步",
+      "description": "在 lib/swap-legality.ts 中移除「交换后仅形成可对碰二连」的接受条件；交换后必须在被交换格或全盘匹配语义下能触发至少一处三消（与项目既有三消定义一致），否则 rejected 并回滚；必要时重命名拒绝原因枚举/字符串（如 no_match_or_merge → no_match），并更新 lib/swap-types.ts。",
+      "steps": [
+        "单元测试：原先「仅对碰、无三消」的交换从 accepted 变为 rejected（或等价行为）。",
+        "findFirstValidSwap / 确定性遍历顺序仍可用，且只返回能形成三消的相邻对。",
+        "npm test 中与 swap-legality 相关的用例全部更新并通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 19,
+      "title": "游戏 UI 与提示对齐纯三消规则",
+      "description": "更新 components/SwapPlayground.tsx 等处：非法交换提示、调试用文案、提示高亮逻辑均不再提及「对碰」；确保提示按钮找到的步与任务 18 一致（仅三消可行交换）。",
+      "steps": [
+        "玩家可见字符串中无「对碰合并」「未形成三消或对碰」等误导表述。",
+        "手动试玩：仅三消交换消耗步数；试图只做「旧规则下的对碰」应回滚且不耗步。",
+        "无新增控制台 error。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 20,
+      "title": "用户说明与 SEO 文案同步",
+      "description": "更新 app/page.tsx、app/layout.tsx metadata、components/GameInstructionsDialog.tsx：玩法描述与得分说明仅包含三消（BASE_SCORE_PER_CELL、连锁加成等），删除 MERGE_PAIR_SCORE 与对碰合并段落；波次说明改为「检测三消 → 消除 → 下落补位」直至无三消。",
+      "steps": [
+        "说明面板与首页摘要与实现一致，无已删除规则的残留。",
+        "窄屏与桌面下布局正常。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 21,
+      "title": "单元与集成测试全面去对碰化",
+      "description": "更新 lib/stabilization.test.ts、swap-match-integration.test.ts、swap-input.test.ts、level-progression 注释引用等：删除或改写依赖对碰得分/对碰步的用例；swap-input 等若曾用 MERGE_PAIR_SCORE 作为目标分阈值，改为基于纯三消可得分的断言或新常量。",
+      "steps": [
+        "在 duiduipeng/ 下 npm test 全部通过。",
+        "测试描述（it 标题）与注释不再声称「对碰合并」为合法机制。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 22,
+      "title": "E2E 断言更新",
+      "description": "更新 e2e/instructions.spec.ts（及其他断言「对碰」「MERGE_PAIR_SCORE」的用例）：改为验证纯三消相关关键词或与任务 20 一致的新文案；必要时调整 data-testid。",
+      "steps": [
+        "在 duiduipeng/ 下 npm run test:e2e 通过。",
+        "用例仍不依赖随机棋盘终局，仅静态文案/入口。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 23,
+      "title": "关卡目标与步数复核",
+      "description": "移除对碰得分后单步/单链典型最高分下降，复核 lib/level-progression.ts 默认参数：前几关是否仍满足「非一击过关」与难度曲线；若过易或过难，微调 targetScore/moves 并更新任务 12/13 相关测试期望。",
+      "steps": [
+        "固定 seed 或手测第 1～3 关，确认仍需多步且目标分递增。",
+        "若调整参数，npm test 中与 level 相关的断言同步更新。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 24,
+      "title": "整体验收与回归",
+      "description": "按仓库规范在 duiduipeng/ 执行 npm run lint、npm run build、npm test、npm run test:e2e；通玩多关验证暂停、提示、胜负与进关；若 README/architecture 仍描述对碰合并则改为与当前规则一致。",
+      "steps": [
+        "上述四条命令全部通过。",
+        "无明显 UI/逻辑回归；本需求（仅三消为有效步）端到端成立。"
+      ],
+      "passes": false
     }
   ]
 }
