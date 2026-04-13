@@ -177,7 +177,7 @@
         "用例不依赖具体随机棋盘结果，仅验证静态 UI/文案与可达性。",
         "webServer 配置与端口 3001 行为与现有 playwright.config.ts 一致。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 16,

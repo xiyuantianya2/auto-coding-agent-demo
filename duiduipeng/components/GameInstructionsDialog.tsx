@@ -13,7 +13,10 @@ const defaultTriggerClass =
 
 export function GameInstructionsDialog(props: {
   readonly triggerClassName?: string;
+  /** Defaults to `game-instructions-trigger` when there is only one instance on the page. */
+  readonly testId?: string;
 }) {
+  const triggerTestId = props.testId ?? "game-instructions-trigger";
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
@@ -49,7 +52,7 @@ export function GameInstructionsDialog(props: {
       <button
         ref={triggerRef}
         type="button"
-        data-testid="game-instructions-trigger"
+        data-testid={triggerTestId}
         className={cn(defaultTriggerClass, props.triggerClassName)}
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -66,6 +69,7 @@ export function GameInstructionsDialog(props: {
         >
           <div
             role="dialog"
+            data-testid="game-instructions-dialog"
             aria-modal="true"
             aria-labelledby="ddp-instructions-title"
             className="max-h-[min(85vh,40rem)] w-full max-w-lg overflow-y-auto overscroll-contain rounded-2xl border border-zinc-700/90 bg-zinc-900/98 p-5 text-left shadow-2xl shadow-black/50 sm:p-6"
@@ -168,6 +172,7 @@ export function GameInstructionsDialog(props: {
               <button
                 ref={closeRef}
                 type="button"
+                data-testid="game-instructions-close"
                 className="inline-flex items-center justify-center rounded-full border border-zinc-600 bg-zinc-950/80 px-5 py-2 text-sm font-medium text-zinc-100 hover:bg-zinc-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/80"
                 onClick={() => setOpen(false)}
               >

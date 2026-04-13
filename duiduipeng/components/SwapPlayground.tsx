@@ -423,7 +423,7 @@ export function SwapPlayground() {
             </p>
           </div>
           <div className="flex shrink-0 items-center sm:pt-0.5">
-            <GameInstructionsDialog />
+            <GameInstructionsDialog testId="game-instructions-trigger-inline" />
           </div>
         </div>
         <div

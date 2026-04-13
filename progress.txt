@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: E2E 覆盖说明入口与关键文案（duiduipeng id=15）
+
+### What was done:
+- 新增 `duiduipeng/e2e/instructions.spec.ts`：断言首页与游戏区内「游戏说明」入口可见；打开对话框后校验核心玩法与计分关键词（三消、对碰合并、目标分、步数、`BASE_SCORE_PER_CELL`、`MERGE_PAIR_SCORE`、`CHAIN_BONUS_PER_EXTRA_WAVE` 等）及 `aria-expanded` 与关闭按钮。
+- `GameInstructionsDialog`：可选 `testId`（默认 `game-instructions-trigger`），对话框与关闭按钮增加 `data-testid`；`SwapPlayground` 内使用 `game-instructions-trigger-inline`，避免页面上重复 testid。
+- `duiduipeng/task.json`：id=15 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`：通过。
+- `cd duiduipeng && npx playwright test`：2/2 通过（端口 3001，`playwright.config.ts` 未改）。
+
+### Notes:
+- 用例不依赖棋盘随机内容，仅测静态 UI/文案与说明可达性。
+
+---
+
 ## 2026-04-13 - Task: 收尾与整体验收（可解关卡）（id=17）
 
 ### What was done:
