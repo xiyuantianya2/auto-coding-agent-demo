@@ -1,18 +1,32 @@
 # Progress Log
 
-## 2026-04-13 - Task: 脚手架与入口占位
+## 2026-04-13 - Task: 脚手架与入口占位（id=1）
 
 ### What was done:
-- 核对 `link-game`：`clsx` / `tailwind-merge`、`lib/utils.ts` 的 `cn()`、`app/layout.tsx` 元数据、`init.sh` 与根目录 `architecture.md` 已符合任务 1。
-- `app/page.tsx`：首页文案改为「开发中」说明 + `task.json` 引用，保留 `/dev/agent` 入口。
+- `link-game`：已确认 `clsx`、`tailwind-merge` 与 `lib/utils.ts` 的 `cn()`；`app/layout.tsx` 元数据为连连看中英文描述。
+- `app/page.tsx`：简洁首页占位（项目标题、开发中说明、`task.json` 引用），保留 `/dev/agent` 入口；无默认 Next 营销块。
+- 根目录 `init.sh`：`link-game` 下 `npm install` 与 `npm run dev`（仓库根执行 `./init.sh`，Windows 可用 Git Bash）。
+- 根目录 `architecture.md` 与 `task.json` 与 Web Link Game / `link-game` 约定一致；根目录 `task.json` id=1 标记 `passes: true`。
 
 ### Testing:
-- `cd link-game && npm run lint` 通过。
-- `cd link-game && npm run build` 通过。
-- 本机已有 Next dev 时可用浏览器打开对应端口确认首页（若端口冲突以终端提示为准）。
+- 仓库根执行 `bash ./init.sh`：依赖安装成功，dev 可启动（若 3000 占用则 Next 自动选用其他端口）。
+- `cd link-game && npm run lint`、`npm run build` 通过。
 
 ### Notes:
-- 任务 1 已标记完成；下一条为任务 2「类型与关卡配置」，需新增 `lib/game/types.ts` 与 `lib/game/levels.ts`。
+- 下一条任务为 id=2「类型与关卡配置」（`lib/game/types.ts`、`lib/game/levels.ts`）。
+
+---
+
+## 2026-04-13 - 面板：连连看项目清理（一键重置）
+
+### What was done:
+- 根目录 `task.json`：全部任务 `passes` 已设为 `false`。
+- `link-game/lib/game/`：若存在则已删除。
+- `link-game/app/page.tsx`：已恢复为干净起点占位页。
+- 面板：运行中的 agent 已终止，提示词/CLI 缓冲已清空（由服务端与「重置状态」一致处理）。
+
+### Notes:
+- 从 `task.json` 任务 1 起可重新全自动推进。
 
 ---
 
