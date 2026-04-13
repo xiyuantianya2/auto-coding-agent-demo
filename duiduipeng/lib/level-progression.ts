@@ -9,9 +9,9 @@ import type { LevelConfig } from "./board-types";
  * - 三消：`match-clear` 中每格基础分（10）× 本波消除格数；连锁倍率见 `stabilization` 中 `CHAIN_BONUS_PER_EXTRA_WAVE`。
  *   （仅三消与连锁计分，无「两格相邻合并」类单独得分项。）
  * - 连锁：第 n 波得分乘以 `1 + CHAIN_BONUS_PER_EXTRA_WAVE * (n-1)`（默认每多一波 +0.2）。
- * - 在 6×6 盘上枚举试算（多随机种子、全盘合法交换）：单次稳定化得分**中位数约 4～5k**，**q90 约 20k+**，
- *   极端长链可达六位数（极罕）。因此前期目标分设在 **≥2.4 万**：使典型一手远低于目标、需多步有效交换；
- *   无法从数学上排除「天胡一链」过关，仅将常见一击过关排除。
+ * - 移除「对碰合并」额外分后，仅三消链的典型单步稳定化得分明显低于旧版（抽样：单步「最佳合法交换」多在数百量级，
+ *   多步累计才是主要得分来源）。前期表目标分因此与「万级」旧档脱钩，改为 **二千～四千档**：
+ *   仍远高于任意单步常见上限（非一击过关），并与固定步数下多步累计的可达区间对齐。
  */
 export interface LevelProgressionConfig {
   /** levelIndex = 0 时的目标分（用于无「前期表」时的纯线性模式；默认实现优先使用 {@link EARLY_GAME_LEVEL_CONFIG}） */
@@ -29,16 +29,16 @@ export interface LevelProgressionConfig {
  * 避免前期「一手清屏即过关」，同时保留足够容错过关。
  */
 export const EARLY_GAME_LEVEL_CONFIG: readonly LevelConfig[] = [
-  { levelIndex: 0, targetScore: 24_000, moves: 22 },
-  { levelIndex: 1, targetScore: 28_000, moves: 24 },
-  { levelIndex: 2, targetScore: 32_000, moves: 26 },
-  { levelIndex: 3, targetScore: 36_000, moves: 28 },
-  { levelIndex: 4, targetScore: 40_000, moves: 28 },
-  { levelIndex: 5, targetScore: 44_000, moves: 30 },
+  { levelIndex: 0, targetScore: 2_500, moves: 22 },
+  { levelIndex: 1, targetScore: 2_900, moves: 24 },
+  { levelIndex: 2, targetScore: 3_300, moves: 26 },
+  { levelIndex: 3, targetScore: 3_700, moves: 28 },
+  { levelIndex: 4, targetScore: 4_100, moves: 28 },
+  { levelIndex: 5, targetScore: 4_500, moves: 30 },
 ] as const;
 
 export const DEFAULT_LEVEL_PROGRESSION: LevelProgressionConfig = {
-  baseTargetScore: 44_000,
+  baseTargetScore: 4_500,
   targetScorePerLevel: 450,
   baseMoves: 30,
   movesPerLevel: 2,

@@ -20,7 +20,7 @@ describe("getLevelConfigForIndex", () => {
     for (let i = 0; i < EARLY_GAME_LEVEL_CONFIG.length - 1; i += 1) {
       const cur = EARLY_GAME_LEVEL_CONFIG[i]!;
       const next = EARLY_GAME_LEVEL_CONFIG[i + 1]!;
-      expect(next.targetScore - cur.targetScore).toBe(4_000);
+      expect(next.targetScore - cur.targetScore).toBe(400);
     }
   });
 

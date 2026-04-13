@@ -7,7 +7,7 @@ test.describe("游戏控制与 HUD", () => {
     await page.goto("/");
 
     const hud = page.getByLabel("游戏信息");
-    await expect(hud.getByText("24000")).toBeVisible();
+    await expect(hud.getByText("2500")).toBeVisible();
     await expect(hud.getByText("22")).toBeVisible();
     await expect(page.locator("text=第 1 关").first()).toBeVisible();
 
