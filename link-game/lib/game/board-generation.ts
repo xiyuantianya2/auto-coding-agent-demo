@@ -1,12 +1,12 @@
-import { hasAtLeastOneConnectablePair } from "./connectivity";
+import { isBoardFullySolvable } from "./full-solvability";
 import type { Board, LevelConfig, PatternId } from "./types";
 
 /**
  * 可解性重试策略（稳定、可预期）：
  * - 多重集合固定：每种图案恰好出现两次，与关卡格数一致。
  * - 在固定上限 `MAX_SHUFFLE_ATTEMPTS` 内反复 Fisher–Yates 洗牌并铺盘；
- *   每次铺好后用「至少存在一对可连通同图案」判定；若始终无解则抛错，避免静默返回死局。
- * - 不在此实现「保证全局可解完」的完整推演（复杂度更高）；后续若需可换策略。
+ *   每次铺好后用 `isBoardFullySolvable`（全盘 DFS 回溯）判定是否存在完整消除序列；
+ *   仅当为 true 时返回棋盘；若始终无法在随机洗牌下命中可解布局则抛错，避免静默返回死局。
  */
 const MAX_SHUFFLE_ATTEMPTS = 5000;
 
@@ -57,7 +57,7 @@ function buildCellsFromFlat(
 }
 
 /**
- * 由关卡配置生成棋盘：成对图案、随机洗牌铺盘；若随机布局下暂无可消对则重洗，直至上限。
+ * 由关卡配置生成棋盘：成对图案、随机洗牌铺盘；若随机布局下非全盘可解则重洗，直至上限。
  */
 export function generateBoardFromLevel(
   level: LevelConfig,
@@ -75,12 +75,12 @@ export function generateBoardFromLevel(
     shuffleInPlace(multiset, rng);
     const cells = buildCellsFromFlat(rows, cols, multiset);
     const board: Board = { rows, cols, cells };
-    if (hasAtLeastOneConnectablePair(board)) {
+    if (isBoardFullySolvable(board)) {
       return board;
     }
   }
 
   throw new Error(
-    `generateBoardFromLevel: no layout with a connectable pair after ${MAX_SHUFFLE_ATTEMPTS} shuffles (level id=${level.id}).`,
+    `generateBoardFromLevel: could not generate a fully solvable layout within ${MAX_SHUFFLE_ATTEMPTS} shuffles (level id=${level.id}).`,
   );
 }

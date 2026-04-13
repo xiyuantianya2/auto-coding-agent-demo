@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 生成器仅接受全局可解布局（id=13）
+
+### What was done:
+- `link-game/lib/game/board-generation.ts`：`generateBoardFromLevel` 洗牌铺盘后准入条件由 `hasAtLeastOneConnectablePair` 改为 `isBoardFullySolvable`（task 11）；保留 `MAX_SHUFFLE_ATTEMPTS` 重试上限；失败抛错文案改为「could not generate a fully solvable layout within … shuffles」。
+- `architecture.md`：核心规则中「洗牌/生成」由「可选可解性校验」改为与实际一致的全盘可解重试说明。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- `npm run test:unit`：4/4 通过。
+- `npx playwright test --headed`：6/6 通过（页面加载、计时、提示、重开、暂停、三关通关）。
+
+### Notes:
+- `board-selftest.ts` 仍含「无可连对」类断言；task 15 将叠加全盘可解自检并与本行为对齐。
+
+---
+
 ## 2026-04-13 - Task: 可解性算法的单元测试与反例（id=12）
 
 ### What was done:
