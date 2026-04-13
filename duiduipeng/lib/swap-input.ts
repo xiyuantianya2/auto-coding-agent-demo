@@ -37,25 +37,25 @@ export type SwapInteractionEvent =
 export const STABILIZATION_PLAYBACK_MS_PER_WAVE = 320;
 
 /** 本批待消格高亮（与 zinc/emerald 协调的 ring/缩放）持续时间 */
-export const MATCH_HIGHLIGHT_MS = 260;
+export const MATCH_HIGHLIGHT_MS = 420;
 
 /** 单格消除时 opacity/scale 过渡时长（CSS transition 对齐） */
-export const MATCH_CLEAR_MS = 300;
+export const MATCH_CLEAR_MS = 380;
 
 /**
  * 按行主序相邻待消格之间的启动错开（毫秒），使消除顺序更易辨认。
  * 总消除阶段约等于 `MATCH_CLEAR_MS + (n-1) * MATCH_CLEAR_STAGGER_MS`（n 为本批格数）。
  */
-export const MATCH_CLEAR_STAGGER_MS = 40;
+export const MATCH_CLEAR_STAGGER_MS = 55;
 
 /** 重力下落与顶部补位（FLIP / translate 回终局格）的大致时长，与 CSS transition 对齐 */
-export const GRAVITY_REFILL_MS = 320;
+export const GRAVITY_REFILL_MS = 420;
 
 /**
  * 连锁中相邻两波之间的静止间隔（毫秒）：上一波「下落补位」结束后再开始下一波「高亮→消除」，
  * 便于区分第几波消除（仅影响呈现时序，不改变 reducer/计分）。
  */
-export const CHAIN_INTER_WAVE_GAP_MS = 300;
+export const CHAIN_INTER_WAVE_GAP_MS = 380;
 
 /** 交换已接受、正按 {@link StabilizationStepSequence} 分步展示盘面时尚未写入本步得分与连锁统计 */
 export interface StabilizationPlaybackState {

@@ -125,6 +125,11 @@ function buildConstructiveStripeBoard(level: LevelConfig): Board {
   return { rows, cols, cells };
 }
 
+/** 无随机洗牌；供 UI 快速铺盘或在完整生成抛错时兜底。 */
+export function createDeterministicStripeBoard(level: LevelConfig): Board {
+  return buildConstructiveStripeBoard(level);
+}
+
 /**
  * 由关卡配置生成棋盘：优先随机可解布局；若随机阶段未命中则使用构造式铺盘（仍校验全盘可解）。
  */

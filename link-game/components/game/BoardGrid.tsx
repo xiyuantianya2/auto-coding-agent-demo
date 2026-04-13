@@ -39,8 +39,12 @@ const PATTERN_LABELS = [
 
 function patternEmoji(patternId: number): string {
   if (patternId <= 0) return "·";
-  const i = (patternId - 1) % PATTERN_LABELS.length;
-  return PATTERN_LABELS[i] ?? String(patternId);
+  const len = PATTERN_LABELS.length;
+  const zeroBased = patternId - 1;
+  const icon = PATTERN_LABELS[zeroBased % len] ?? String(patternId);
+  // 种类数超过表情表长度时，下标会对折重复；补上编号，避免「看起来一样却不能消」。
+  if (zeroBased >= len) return `${icon}\u2009${patternId}`;
+  return icon;
 }
 
 export type BoardGridProps = {

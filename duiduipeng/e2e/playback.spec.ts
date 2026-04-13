@@ -29,6 +29,9 @@ test.describe("连锁播放与 data 属性", () => {
   });
 
   test("减弱动效：跳过按钮禁用且交换后快速进入终局结算", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem("ddp-full-chain-animations", "0");
+    });
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/");
 

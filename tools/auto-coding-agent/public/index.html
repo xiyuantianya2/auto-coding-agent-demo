@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>全自动开发 · Cursor Agent</title>
+    <title>全自动开发 · 项目管理</title>
     <style>
       :root {
         font-family: "Segoe UI", system-ui, sans-serif;
@@ -15,598 +15,294 @@
         --bad: #f87171;
         color-scheme: dark;
       }
-      body {
-        margin: 0;
-        background: var(--bg);
-        color: var(--text);
-        line-height: 1.5;
+      body { margin: 0; background: var(--bg); color: var(--text); line-height: 1.5; }
+      main { max-width: 960px; margin: 0 auto; padding: 2rem 1.5rem; }
+      h1 { font-size: 1.5rem; font-weight: 700; margin: 0 0 0.25rem; }
+      .subtitle { color: var(--muted); margin: 0 0 1.5rem; font-size: 0.95rem; }
+
+      .toolbar { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+      .btn {
+        background: var(--panel); color: var(--text); border: 1px solid #27272a;
+        border-radius: 8px; padding: 0.5rem 1rem; cursor: pointer; font-size: 0.9rem;
+        display: inline-flex; align-items: center; gap: 0.4rem;
       }
-      main {
-        max-width: 1280px;
-        margin: 0 auto;
-        padding: 1.5rem;
+      .btn:hover:not(:disabled) { border-color: var(--accent); }
+      .btn.primary { background: #14532d; border-color: var(--accent); color: #bbf7d0; font-weight: 600; }
+
+      .projects-grid {
+        display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+        gap: 1.25rem;
       }
-      .layout-hint {
-        font-size: 0.8rem;
-        color: var(--muted);
-        margin: -0.5rem 0 0.75rem;
+      @media (max-width: 480px) { .projects-grid { grid-template-columns: 1fr; } }
+
+      .project-card {
+        background: var(--panel); border: 1px solid #27272a; border-radius: 14px;
+        padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;
+        transition: border-color 0.2s, box-shadow 0.2s; position: relative;
       }
-      .prompt-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 1rem;
-        margin-bottom: 1rem;
-        align-items: stretch;
+      .project-card:hover { border-color: #3f3f46; }
+      .card-header { display: flex; align-items: center; gap: 0.75rem; }
+      .card-icon {
+        font-size: 2rem; line-height: 1; flex-shrink: 0; width: 48px; height: 48px;
+        display: flex; align-items: center; justify-content: center;
+        background: #27272a; border-radius: 12px;
       }
-      /* 仅极窄屏再上下叠排，避免笔记本半屏宽时误变成单列 */
-      @media (max-width: 680px) {
-        .prompt-grid {
-          grid-template-columns: 1fr;
-        }
+      .card-title { font-size: 1.15rem; font-weight: 600; margin: 0; }
+      .card-framework { font-size: 0.78rem; color: var(--muted); margin: 0; }
+      .card-desc { font-size: 0.9rem; color: #d4d4d8; margin: 0; line-height: 1.5; }
+      .card-stats { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.25rem; }
+      .stat {
+        font-size: 0.78rem; padding: 0.15rem 0.5rem; border-radius: 6px; font-weight: 600;
       }
-      .panel-prompt,
-      .panel-cli {
-        margin-bottom: 0;
-        min-height: 12rem;
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
+      .stat.done { background: #14532d; color: #bbf7d0; }
+      .stat.pending { background: #422006; color: #fde68a; }
+      .stat.total { background: #1e3a5f; color: #93c5fd; }
+      .stat.unconfigured { background: #3f3f46; color: var(--muted); }
+      .stat.running { background: #14532d; color: #bbf7d0; animation: pulse 1.5s infinite; }
+      .stat.paused { background: #713f12; color: #fde68a; }
+      @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+      .card-footer {
+        display: flex; align-items: center; justify-content: space-between;
+        margin-top: auto; gap: 0.5rem;
       }
-      .panel-cli {
-        border-color: #14532d;
-        box-shadow: inset 0 0 0 1px rgba(20, 83, 45, 0.35);
+      .card-link {
+        font-size: 0.85rem; font-weight: 600; color: var(--accent);
+        text-decoration: none; display: inline-flex; align-items: center; gap: 0.3rem;
       }
-      .cli-title {
-        color: #86efac;
-        font-size: 0.85rem;
-        font-weight: 600;
+      .card-link:hover { text-decoration: underline; }
+      .card-link .arrow { transition: transform 0.2s; }
+      .card-link:hover .arrow { transform: translateX(3px); }
+
+      .progress-bar {
+        flex: 1; max-width: 140px; height: 6px;
+        background: #27272a; border-radius: 3px; overflow: hidden;
       }
-      h1 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin: 0 0 0.5rem;
+      .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.3s; }
+
+      .btn-delete {
+        font-size: 0.78rem; padding: 0.25rem 0.5rem; border-radius: 6px;
+        border: 1px solid #7f1d1d; background: transparent; color: #fca5a5;
+        cursor: pointer; flex-shrink: 0;
       }
-      p.sub {
-        color: var(--muted);
-        margin: 0 0 1.25rem;
-        font-size: 0.95rem;
+      .btn-delete:hover { background: #7f1d1d; color: #fecaca; }
+
+      /* ── Create form ── */
+      .overlay {
+        display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+        z-index: 100; align-items: center; justify-content: center;
       }
-      .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.5rem;
-        margin-bottom: 1rem;
+      .overlay.show { display: flex; }
+      .form-card {
+        background: var(--panel); border: 1px solid #27272a; border-radius: 14px;
+        padding: 1.75rem; width: 90%; max-width: 460px;
       }
-      button {
-        background: var(--panel);
-        color: var(--text);
-        border: 1px solid #27272a;
-        border-radius: 8px;
-        padding: 0.5rem 1rem;
-        cursor: pointer;
-        font-size: 0.95rem;
+      .form-card h2 { margin: 0 0 1rem; font-size: 1.15rem; font-weight: 600; }
+      .form-group { margin-bottom: 1rem; }
+      .form-group label {
+        display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.3rem;
       }
-      button:hover:not(:disabled) {
-        border-color: var(--accent);
+      .form-group label .required { color: var(--bad); }
+      .form-group input, .form-group textarea {
+        width: 100%; box-sizing: border-box;
+        background: #0c0c0e; color: var(--text); border: 1px solid #27272a;
+        border-radius: 8px; padding: 0.55rem 0.75rem; font-size: 0.9rem; font-family: inherit;
       }
-      button:disabled {
-        opacity: 0.45;
-        cursor: not-allowed;
+      .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--accent); }
+      .form-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+      .loading { text-align: center; padding: 3rem; color: var(--muted); font-size: 0.95rem; }
+      .error-msg { text-align: center; padding: 2rem; color: var(--bad); font-size: 0.9rem; }
+      .footer-info {
+        margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid #27272a;
+        font-size: 0.82rem; color: var(--muted); line-height: 1.6;
       }
-      button.primary {
-        background: #14532d;
-        border-color: var(--accent);
-      }
-      button.danger {
-        border-color: #7f1d1d;
-        color: #fecaca;
-      }
-      .panel {
-        background: var(--panel);
-        border-radius: 10px;
-        padding: 1rem 1.1rem;
-        margin-bottom: 1rem;
-        border: 1px solid #27272a;
-      }
-      pre.log {
-        margin: 0;
-        max-height: 360px;
-        overflow: auto;
-        font-size: 0.82rem;
-        white-space: pre-wrap;
-        word-break: break-word;
-        color: #d4d4d8;
-      }
-      pre.prompt,
-      pre.cli {
-        margin: 0.5rem 0 0;
-        flex: 1;
-        min-height: 0;
-        max-height: min(52vh, 420px);
-        overflow: auto;
-        font-size: 0.78rem;
-        line-height: 1.45;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
-      pre.prompt {
-        color: #a5d6ff;
-        background: #0c0c0e;
-        padding: 0.65rem 0.75rem;
-        border-radius: 8px;
-        border: 1px solid #27272a;
-      }
-      pre.cli {
-        color: #bbf7d0;
-        background: #0a160f;
-        padding: 0.65rem 0.75rem;
-        border-radius: 8px;
-        border: 1px solid #14532d;
-      }
-      .prompt-meta {
-        font-size: 0.8rem;
-        color: var(--muted);
-        margin: 0;
-      }
-      .badge {
-        display: inline-block;
-        padding: 0.15rem 0.5rem;
-        border-radius: 6px;
-        font-size: 0.8rem;
-        font-weight: 600;
-      }
-      .badge.idle {
-        background: #3f3f46;
-      }
-      .badge.running {
-        background: #14532d;
-        color: #bbf7d0;
-      }
-      .badge.paused {
-        background: #713f12;
-        color: #fde68a;
-      }
-      .badge.done {
-        background: #1e3a5f;
-        color: #bfdbfe;
-      }
-      code {
-        font-size: 0.85em;
-        background: #27272a;
-        padding: 0.1em 0.35em;
-        border-radius: 4px;
-      }
-      .panel-head {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 0.5rem;
-      }
-      .btn-copy {
-        font-size: 0.78rem;
-        padding: 0.3rem 0.55rem;
-        border-radius: 6px;
-        border: 1px solid #52525b;
-        background: #27272a;
-        color: #e4e4e7;
-        cursor: pointer;
-        flex-shrink: 0;
-      }
-      .btn-copy:hover:not(:disabled) {
-        border-color: var(--accent);
-      }
-      .btn-copy:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
-      }
-      .panel-cli .btn-copy {
-        border-color: #166534;
-        background: rgba(20, 83, 45, 0.35);
-        color: #bbf7d0;
-      }
-      .panel-input {
-        border-color: #854d0e;
-        box-shadow: inset 0 0 0 1px rgba(133, 77, 14, 0.35);
-      }
-      .panel-input.idle-input {
-        border-color: #27272a;
-        box-shadow: none;
-      }
-      .input-hint {
-        font-size: 0.82rem;
-        line-height: 1.4;
-        margin: 0 0 0.5rem;
-        padding: 0.5rem 0.7rem;
-        border-radius: 6px;
-      }
-      .input-hint.waiting {
-        color: #fde68a;
-        background: #422006;
-        border: 1px solid #854d0e;
-      }
-      .input-hint.normal {
-        color: var(--muted);
-        background: transparent;
-        border: none;
-      }
-      #agentInput {
-        flex: 1;
-        min-height: 3rem;
-        max-height: 8rem;
-        resize: vertical;
-        background: #0c0c0e;
-        color: var(--text);
-        border: 1px solid #3f3f46;
-        border-radius: 8px;
-        padding: 0.5rem 0.7rem;
-        font-size: 0.88rem;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-        line-height: 1.4;
-      }
-      #agentInput:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-      #agentInput::placeholder {
-        color: #52525b;
-      }
-      .input-row {
-        display: flex;
-        gap: 0.5rem;
-        align-items: flex-end;
-      }
-      .btn-send {
-        background: #14532d;
-        border: 1px solid var(--accent);
-        color: #bbf7d0;
-        border-radius: 8px;
-        padding: 0.55rem 1.1rem;
-        font-size: 0.9rem;
-        font-weight: 600;
-        cursor: pointer;
-        white-space: nowrap;
-        align-self: flex-end;
-      }
-      .btn-send:hover:not(:disabled) {
-        background: #166534;
-      }
-      .btn-send:disabled {
-        opacity: 0.4;
-        cursor: not-allowed;
+      .footer-info code {
+        font-size: 0.82em; background: #27272a; padding: 0.1em 0.35em;
+        border-radius: 4px; color: #d4d4d8;
       }
     </style>
   </head>
   <body>
     <main>
-      <h1>一键全自动开发（Cursor CLI）</h1>
-      <p class="sub">
-        按仓库根目录 <code>task.json</code> 中 <code>passes: false</code> 的任务顺序，依次调用本机
-        <code>agent</code> CLI。需已安装并登录 Cursor Agent（<code>agent login</code>），建议 Node
-        20/22 LTS。
-      </p>
-      <p class="layout-hint">
-        下方为<strong>两栏</strong>：左为提示词，右为 <strong>Cursor CLI 实时输出</strong>。若浏览器窗口很窄才会上下排列，请向下滚动或拉宽窗口。更新面板后请<strong>强制刷新</strong>（Ctrl+F5）避免旧页面缓存。
-      </p>
+      <h1>全自动开发 · 项目管理</h1>
+      <p class="subtitle">选择子项目，进入一键全自动开发面板。各项目独立运行，可同时开发。</p>
 
-      <div class="row">
-        <button type="button" class="primary" id="btnStart">开始下一任务</button>
-        <button type="button" id="btnPause">暂停</button>
-        <button type="button" class="danger" id="btnReset">重置状态</button>
-        <label style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--muted);cursor:pointer;user-select:none;margin-left:0.5rem">
-          <input type="checkbox" id="chkAutoAdvance" style="accent-color:var(--accent)">
-          自动推进（任务完成后自动开始下一个）
-        </label>
+      <div class="toolbar">
+        <button class="btn primary" onclick="showCreateForm()">+ 新增项目</button>
       </div>
 
-      <div class="panel">
-        <div><span class="badge idle" id="badgeStatus">加载中</span></div>
-        <p style="margin: 0.75rem 0 0; font-size: 0.95rem">
-          待办任务数：<strong id="textPending">—</strong><br />
-          下一项：<strong id="textNext">—</strong>
-        </p>
-        <p
-          id="pausedHelp"
-          style="
-            display: none;
-            margin: 0.75rem 0 0;
-            padding: 0.6rem 0.75rem;
-            font-size: 0.82rem;
-            line-height: 1.45;
-            color: #fde68a;
-            background: #422006;
-            border: 1px solid #854d0e;
-            border-radius: 8px;
-          "
-        ></p>
-      </div>
+      <div id="content"><div class="loading">加载项目列表…</div></div>
 
-      <div class="panel" id="panelError" style="display: none; border-color: #7f1d1d">
-        <span style="color: #fecaca; font-size: 0.85rem">错误</span>
-        <pre class="log" id="lastError" style="margin-top: 0.35rem; color: #fecaca"></pre>
-      </div>
-
-      <div class="prompt-grid">
-        <div class="panel panel-prompt" id="panelPrompt">
-          <div class="panel-head">
-            <span style="color: var(--muted); font-size: 0.85rem">提交给 Cursor CLI 的提示词</span>
-            <button type="button" class="btn-copy" id="btnCopyPrompt" disabled>复制全文</button>
-          </div>
-          <p class="prompt-meta" id="agentPromptMeta">—</p>
-          <pre class="prompt" id="agentPromptText">（尚无：开始任务后将显示与 agent 进程相同的完整提示文本）</pre>
-        </div>
-        <div class="panel panel-cli" id="panelCli" aria-label="Cursor CLI 实时输出">
-          <div class="panel-head">
-            <span class="cli-title">Cursor CLI 实时输出</span>
-            <button type="button" class="btn-copy" id="btnCopyCli" disabled>复制全文</button>
-          </div>
-          <p class="prompt-meta" id="agentCliMeta">—</p>
-          <pre class="cli" id="agentCliText">（等待本机 agent 子进程输出…）</pre>
-        </div>
-      </div>
-
-      <div class="panel panel-input idle-input" id="panelInput" style="display: none">
-        <div class="panel-head">
-          <span style="font-size: 0.85rem; font-weight: 600" id="inputTitle">💬 向 Agent 发送消息</span>
-        </div>
-        <p class="input-hint normal" id="inputHint">Agent 运行中，你可以在此处发送消息。</p>
-        <div class="input-row">
-          <textarea id="agentInput" rows="2" placeholder="输入你的回复（例如：请继续实现任务 3）…"></textarea>
-          <button type="button" class="btn-send" id="btnSend" disabled>发送</button>
-        </div>
-      </div>
-
-      <div class="panel">
-        <div class="panel-head">
-          <span style="color: var(--muted); font-size: 0.85rem">运行日志</span>
-          <button type="button" class="btn-copy" id="btnCopyLog" disabled>复制全文</button>
-        </div>
-        <p class="prompt-meta" id="runLogMeta"></p>
-        <pre class="log" id="log"></pre>
+      <div class="footer-info">
+        需已安装并登录 Cursor Agent CLI（<code>agent login</code>），建议 Node 20/22 LTS。
+        各项目按自身 <code>task.json</code> 的 <code>passes: false</code> 任务顺序，独立调用 <code>agent</code> 自动实现。
       </div>
     </main>
+
+    <!-- ── Create project overlay ── -->
+    <div class="overlay" id="overlay">
+      <div class="form-card">
+        <h2>新增项目</h2>
+        <div class="form-group">
+          <label>项目名称 <span class="required">*</span></label>
+          <input id="newName" placeholder="如：我的新项目" />
+        </div>
+        <div class="form-group">
+          <label>目录名 <span class="required">*</span>（将在仓库根目录下创建该文件夹）</label>
+          <input id="newDir" placeholder="如：my-new-project（字母、数字、横线）" />
+        </div>
+        <div class="form-group">
+          <label>描述</label>
+          <textarea id="newDesc" rows="2" placeholder="简述项目用途（可选）"></textarea>
+        </div>
+        <div class="form-group">
+          <label>框架</label>
+          <input id="newFramework" placeholder="如：Next.js + Tailwind（可选，仅用于展示）" />
+        </div>
+        <div class="form-actions">
+          <button class="btn" onclick="hideCreateForm()">取消</button>
+          <button class="btn primary" id="btnCreate" onclick="createProject()">创建</button>
+        </div>
+      </div>
+    </div>
+
     <script>
       const $ = (id) => document.getElementById(id);
-      const PANEL_LINES = 500;
 
-      /** @type {{ prompt: string; cli: string; log: string }} */
-      let copyPayload = { prompt: "", cli: "", log: "" };
-
-      function takeLastLines(text, maxLines) {
-        if (!text) return "";
-        const lines = String(text).split(/\r?\n/);
-        if (lines.length <= maxLines) return String(text);
-        return lines.slice(-maxLines).join("\n");
+      function showCreateForm() {
+        $("newName").value = "";
+        $("newDir").value = "";
+        $("newDesc").value = "";
+        $("newFramework").value = "";
+        $("overlay").classList.add("show");
+        $("newName").focus();
       }
+      function hideCreateForm() { $("overlay").classList.remove("show"); }
 
-      function lineCount(text) {
-        if (!text || !String(text).trim()) return 0;
-        return String(text).split(/\r?\n/).length;
-      }
-
-      async function copyPanel(key) {
-        const t = copyPayload[key];
-        if (!t) return;
-        try {
-          await navigator.clipboard.writeText(t);
-          const id = key === "prompt" ? "btnCopyPrompt" : key === "cli" ? "btnCopyCli" : "btnCopyLog";
-          const b = $(id);
-          if (b) {
-            b.textContent = "已复制";
-            setTimeout(() => {
-              b.textContent = "复制全文";
-            }, 2000);
-          }
-        } catch {
-          alert("复制失败，请检查浏览器权限。");
+      $("newName").addEventListener("input", function () {
+        const dirField = $("newDir");
+        if (!dirField._userEdited) {
+          dirField.value = this.value
+            .toLowerCase()
+            .replace(/[\u4e00-\u9fff]+/g, (m) => "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            || "";
         }
-      }
+      });
+      $("newDir").addEventListener("input", function () { this._userEdited = !!this.value; });
 
-      async function refresh() {
+      async function createProject() {
+        const name = $("newName").value.trim();
+        const dir = $("newDir").value.trim();
+        if (!name || !dir) { alert("请填写项目名称和目录名。"); return; }
+        $("btnCreate").disabled = true;
         try {
-          const r = await fetch("/api/status");
-          const d = await r.json();
-          if (!d.ok) throw new Error(d.error || "status");
-
-          const st = d.status;
-          const badge = $("badgeStatus");
-          badge.className =
-            "badge " +
-            (st === "running" ? "running" : st === "paused" ? "paused" : st === "completed" ? "done" : "idle");
-          badge.textContent =
-            st === "running"
-              ? "运行中"
-              : st === "paused"
-                ? "已暂停"
-                : st === "completed"
-                  ? "已全部完成"
-                  : "空闲";
-
-          $("textPending").textContent = d.pendingCount ?? "—";
-          $("textNext").textContent = d.nextTask ? `#${d.nextTask.id} ${d.nextTask.title}` : "（无）";
-
-          const ph = $("pausedHelp");
-          if (ph) {
-            if (d.pausedHelp && String(d.pausedHelp).trim()) {
-              ph.style.display = "block";
-              ph.textContent = d.pausedHelp;
-            } else {
-              ph.style.display = "none";
-              ph.textContent = "";
-            }
-          }
-
-          if (d.lastError) {
-            $("panelError").style.display = "block";
-            $("lastError").textContent = d.lastError;
-          } else {
-            $("panelError").style.display = "none";
-          }
-          const logJoined = (d.recentLog || []).join("");
-          copyPayload.prompt = d.agentPrompt && String(d.agentPrompt).trim() ? String(d.agentPrompt) : "";
-          copyPayload.cli = d.agentCliText && String(d.agentCliText).trim() ? String(d.agentCliText) : "";
-          copyPayload.log = logJoined;
-
-          const bp = $("btnCopyPrompt");
-          const bc = $("btnCopyCli");
-          const bl = $("btnCopyLog");
-          if (bp) {
-            bp.disabled = !copyPayload.prompt;
-            bp.onclick = () => copyPanel("prompt");
-          }
-          if (bc) {
-            bc.disabled = !copyPayload.cli;
-            bc.onclick = () => copyPanel("cli");
-          }
-          if (bl) {
-            bl.disabled = !copyPayload.log.trim();
-            bl.onclick = () => copyPanel("log");
-          }
-
-          $("log").textContent = copyPayload.log.trim()
-            ? takeLastLines(copyPayload.log, PANEL_LINES)
-            : "（无）";
-          const rlm = $("runLogMeta");
-          if (rlm) {
-            const n = lineCount(copyPayload.log);
-            if (n > PANEL_LINES) {
-              rlm.textContent = `共 ${n} 行，面板仅显示末尾 ${PANEL_LINES} 行；复制全文为完整内容。`;
-            } else if (n > 0) {
-              rlm.textContent = `共 ${n} 行`;
-            } else {
-              rlm.textContent = "";
-            }
-          }
-
-          $("btnStart").disabled = st === "running" || d.pendingCount === 0;
-          $("btnStart").textContent = st === "idle" && d.pendingCount > 0 ? "开始下一任务" : "开始全自动";
-          $("btnPause").disabled = st !== "running";
-          const chk = $("chkAutoAdvance");
-          if (chk && !chk._userChanged) chk.checked = !!d.autoAdvance;
-
-          const pm = $("agentPromptMeta");
-          const pt = $("agentPromptText");
-          if (copyPayload.prompt) {
-            const tid = d.agentPromptTaskId != null ? `task id=${d.agentPromptTaskId}` : "task —";
-            const at = d.agentPromptUpdatedAt || "";
-            const trunc = lineCount(copyPayload.prompt) > PANEL_LINES ? ` · 面板显示末尾 ${PANEL_LINES} 行` : "";
-            pm.textContent = `${tid}${at ? " · " + at : ""}${trunc}`;
-            pt.textContent = takeLastLines(copyPayload.prompt, PANEL_LINES);
-          } else {
-            pm.textContent = "—";
-            pt.textContent = "（尚无：开始任务后将显示与 agent 进程相同的完整提示文本）";
-          }
-
-          const cm = $("agentCliMeta");
-          const ct = $("agentCliText");
-          if (cm && ct) {
-            if (copyPayload.cli) {
-              const cid = d.agentCliTaskId != null ? `task id=${d.agentCliTaskId}` : "task —";
-              const cat = d.agentCliUpdatedAt || "";
-              const trunc = lineCount(copyPayload.cli) > PANEL_LINES ? ` · 面板显示末尾 ${PANEL_LINES} 行` : "";
-              cm.textContent = `${cid}${cat ? " · " + cat : ""}${d.agentCliMaxChars ? " · 最长约 " + d.agentCliMaxChars + " 字符" : ""}${trunc}`;
-              ct.textContent = takeLastLines(copyPayload.cli, PANEL_LINES);
-            } else {
-              cm.textContent = "—";
-              ct.textContent = "（尚无 agent 输出：开始任务后此处会流式累积 stdout/stderr）";
-            }
-            if (st === "running") {
-              requestAnimationFrame(() => {
-                ct.scrollTop = ct.scrollHeight;
-              });
-            }
-          }
-
-          const pi = $("panelInput");
-          const ih = $("inputHint");
-          const it = $("inputTitle");
-          const bs = $("btnSend");
-          if (pi) {
-            const showInput = st === "running" && d.agentStdinAvailable;
-            pi.style.display = showInput ? "block" : "none";
-            if (showInput) {
-              const waiting = !!d.agentWaitingForInput;
-              pi.className = "panel panel-input" + (waiting ? "" : " idle-input");
-              if (it) it.textContent = waiting ? "⚠️ Agent 正在等待你的输入" : "💬 向 Agent 发送消息";
-              if (ih) {
-                ih.className = "input-hint " + (waiting ? "waiting" : "normal");
-                ih.textContent = waiting
-                  ? "Agent 已停止输出超过 10 秒，很可能在等待你的回复。请在下方输入后点击「发送」继续流程。"
-                  : "Agent 运行中，你可以随时在此处发送消息。";
-              }
-              if (bs) bs.disabled = !$("agentInput").value.trim();
-            }
-          }
-        } catch (e) {
-          $("log").textContent = "无法连接服务：" + (e && e.message ? e.message : String(e));
-        }
-      }
-
-      async function postControl(action, extra) {
-        try {
-          const r = await fetch("/api/control", {
+          const r = await fetch("/api/projects/create", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ action, ...extra }),
+            body: JSON.stringify({
+              name, dir,
+              description: $("newDesc").value.trim(),
+              framework: $("newFramework").value.trim(),
+            }),
           });
           const d = await r.json();
-          if (!d.ok) alert(d.error || "操作失败");
-          await refresh();
+          if (!d.ok) { alert(d.error || "创建失败"); return; }
+          hideCreateForm();
+          await loadProjects();
         } catch (e) {
-          alert("请求失败：" + (e && e.message ? e.message : String(e)));
+          alert("请求失败：" + (e.message || e));
+        } finally {
+          $("btnCreate").disabled = false;
         }
       }
 
-      async function sendAgentInput() {
-        const ta = $("agentInput");
-        const text = ta.value.trim();
-        if (!text) return;
-        $("btnSend").disabled = true;
+      async function deleteProject(id, name) {
+        if (!confirm(`确定删除项目「${name}」？\n\n该项目的本地文件夹也将被永久删除！此操作不可撤销。`)) return;
         try {
-          const r = await fetch("/api/agent-input", {
+          const r = await fetch("/api/projects/delete", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
+            body: JSON.stringify({ id, deleteFiles: true }),
           });
           const d = await r.json();
-          if (!d.ok) {
-            alert(d.error || "发送失败");
+          if (!d.ok) { alert(d.error || "删除失败"); return; }
+          await loadProjects();
+        } catch (e) {
+          alert("请求失败：" + (e.message || e));
+        }
+      }
+
+      async function loadProjects() {
+        const container = $("content");
+        try {
+          const r = await fetch("/api/projects");
+          const d = await r.json();
+          if (!d.ok) throw new Error(d.error || "加载失败");
+
+          const projects = d.projects || [];
+          if (projects.length === 0) {
+            container.innerHTML = '<div class="loading" style="color:var(--muted)">暂无项目，点击上方「+ 新增项目」开始。</div>';
             return;
           }
-          ta.value = "";
+
+          let html = '<div class="projects-grid">';
+          for (const p of projects) {
+            const pct = p.tasks.total > 0 ? Math.round((p.tasks.done / p.tasks.total) * 100) : 0;
+
+            let statusBadge = "";
+            if (p.status === "running") statusBadge = '<span class="stat running">运行中</span>';
+            else if (p.status === "paused") statusBadge = '<span class="stat paused">已暂停</span>';
+
+            const statsHtml = p.tasks.configured
+              ? `<div class="card-stats">
+                   ${statusBadge}
+                   <span class="stat total">共 ${p.tasks.total} 个任务</span>
+                   <span class="stat done">已完成 ${p.tasks.done}</span>
+                   ${p.tasks.pending > 0 ? `<span class="stat pending">待办 ${p.tasks.pending}</span>` : ""}
+                 </div>`
+              : `<div class="card-stats">
+                   ${statusBadge}
+                   <span class="stat unconfigured">未配置任务（可通过面板新增）</span>
+                 </div>`;
+
+            const progressHtml = p.tasks.configured && p.tasks.total > 0
+              ? `<div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`
+              : "";
+
+            const btnText = p.tasks.configured
+              ? (p.tasks.pending > 0 ? "进入开发" : "查看详情")
+              : "进入配置";
+
+            html += `
+              <div class="project-card">
+                <div class="card-header">
+                  <div class="card-icon">${p.icon}</div>
+                  <div>
+                    <h2 class="card-title">${p.name}</h2>
+                    <p class="card-framework">${p.framework || p.dir}</p>
+                  </div>
+                </div>
+                <p class="card-desc">${p.description || "暂无描述"}</p>
+                ${statsHtml}
+                <div class="card-footer">
+                  ${progressHtml}
+                  <a class="card-link" href="/agent.html?project=${encodeURIComponent(p.id)}">${btnText} <span class="arrow">&rarr;</span></a>
+                  <button class="btn-delete" onclick="deleteProject('${p.id}','${p.name.replace(/'/g, "\\'")}')">删除</button>
+                </div>
+              </div>`;
+          }
+          html += "</div>";
+          container.innerHTML = html;
         } catch (e) {
-          alert("发送失败：" + (e && e.message ? e.message : String(e)));
-        } finally {
-          $("btnSend").disabled = false;
+          container.innerHTML = `<div class="error-msg">无法加载项目列表：${e.message || e}</div>`;
         }
-        await refresh();
       }
 
-      $("btnStart").onclick = () => postControl("start");
-      $("btnPause").onclick = () => postControl("pause");
-      $("btnReset").onclick = () => {
-        if (confirm("确定重置面板状态？不会撤销已写代码。")) postControl("reset");
-      };
-      $("chkAutoAdvance").addEventListener("change", function () {
-        this._userChanged = true;
-        postControl("set-auto-advance", { value: this.checked }).then(() => {
-          this._userChanged = false;
-        });
-      });
-      $("btnSend").onclick = sendAgentInput;
-      $("agentInput").addEventListener("input", () => {
-        $("btnSend").disabled = !$("agentInput").value.trim();
-      });
-      $("agentInput").addEventListener("keydown", (e) => {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          sendAgentInput();
-        }
-      });
-
-      refresh();
-      setInterval(refresh, 1000);
+      loadProjects();
+      setInterval(loadProjects, 5000);
     </script>
   </body>
 </html>

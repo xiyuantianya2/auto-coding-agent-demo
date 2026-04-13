@@ -36,11 +36,16 @@ npm start
 | `HOST` | 监听地址，默认 `127.0.0.1`。 |
 | `AUTOCODING_AGENT_TIMEOUT_MS` | 单次 Agent 超时（毫秒），默认 45 分钟。 |
 | `AUTOCODING_AGENT_MODEL` | 传给 `agent --model`。**未设置或空字符串时默认使用 `auto`**（与 IDE「Auto」一致）。若某环境报错，可设为 `omit`（不传 `--model`，CLI 可能回退为 `composer-2-fast` 等）。其它值则原样作为模型名。 |
+| `AUTOCODING_APPROVE_MCPS` | 默认 **`1`/未设置即开启**：为 `agent` 追加 **`--approve-mcps`**，全自动运行时自动批准 MCP，避免浏览器类 MCP 卡住等人点「允许」。若你的 CLI 版本不支持该参数，设为 `0` 或 `false` 关闭。 |
 | `AUTOCODING_PASS_POLL_ATTEMPTS` / `AUTOCODING_PASS_POLL_MS` | Agent 返回 0 后，轮询根目录 `task.json` 是否已把当前任务标为 `passes: true`（默认约 8 次 × 250ms）。 |
 | `AUTOCODING_AGENT_CLI_MAX_CHARS` | 单任务 CLI 输出在内存中保留的最大字符数（默认约 90 万），超出会截断尾部保留。 |
 | `AUTOCODING_TRUST_ZERO_EXIT` | 设为 `1` 时：若 Agent 退出码为 0 但 `passes` 仍未变，**仍视为本步成功**（仅当你确认实现已完成、仅漏改 JSON 时使用）。 |
 | `CURSOR_CLI` | 自定义 `agent` 可执行文件路径。 |
 | `AUTOCODING_USE_CURSOR_EXE_FALLBACK` | Windows 下 `agent` 失败后再试 `Cursor.exe`（会启动图形界面）。 |
+
+## 浏览器 MCP（自动化验收）
+
+面板调起的 `agent` 默认带 **`--approve-mcps`**，以便在**无交互**下使用已配置的 MCP。要让 Agent 能**自动打开页面做 UI 验证**，还需在本机配置至少一种 **浏览器类 MCP**（例如在 Cursor / `~/.cursor/mcp.json` 中配置 Playwright MCP，或使用 Cursor 自带的 `cursor-ide-browser` 等）。配置完成后可在终端执行 `agent mcp list` 确认已加载；必要时 `agent mcp enable <identifier>`。
 
 状态文件：`<repo>/.auto-coding-agent/state.json`（建议勿提交）。
 

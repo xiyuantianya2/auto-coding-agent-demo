@@ -1,0 +1,70 @@
+---
+description: Playwright E2E testing requirements for all game sub-projects
+alwaysApply: true
+---
+
+# Playwright E2E 测试规范
+
+本仓库所有游戏子项目（link-game、duiduipeng 及未来新增项目）**必须**使用 Playwright 进行浏览器端 E2E 测试，且测试用例必须**完整覆盖**核心游戏流程。
+
+## 每个子项目必须包含
+
+1. `@playwright/test` 作为 devDependency（版本与其他项目保持一致）
+2. `playwright.config.ts`（`testDir: "./e2e"`，`webServer` 自动启动 dev server）
+3. `e2e/` 目录存放测试文件
+4. `package.json` 中的 `test:e2e` 和 `test:e2e:headed` 脚本
+
+## 必须覆盖的测试场景（缺一不可）
+
+每个游戏项目的 E2E 测试必须覆盖以下 **10 类场景**：
+
+1. **页面加载与渲染** — 棋盘/画面元素数量正确、HUD（得分/关卡/步数等）完整显示
+2. **计时器** — 向上计数、暂停时冻结、恢复后继续
+3. **核心交互** — 选中/取消选中（aria-pressed）、点击反馈
+4. **有效操作** — 合法操作后得分增加、步数/资源消耗正确
+5. **无效操作** — 非法操作后显示提示、步数/资源不变
+6. **提示功能** — 提示按钮高亮有效目标、冷却机制
+7. **暂停** — 暂停冻结交互与计时、恢复正常
+8. **重置/新游戏** — 重置后得分归零、棋盘恢复初始
+9. **胜负弹窗** — 胜利/失败弹窗内容正确、重试/下一关按钮可用
+10. **完整流程** — 连续通关多关（含失败重试），验证关卡递进
+
+参考实现：`link-game/e2e/link-game.spec.ts` 和 `duiduipeng/e2e/duiduipeng.spec.ts`。
+
+## 测试编写要点
+
+- 用 `page.evaluate` 实现自动 solver（读取 DOM 棋盘状态 → 找合法操作 → 点击执行）
+- 用 `emulateMedia({ reducedMotion: "reduce" })` 跳过动画加速测试
+- 用 `data-testid` / `aria-label` / `role` 定位元素，避免依赖 CSS 类名
+- 关卡难度必须保证 solver 在合理重试次数内（≤25 次）可通关第 1 关
+
+## 浏览器共享（禁止重复下载）
+
+- Playwright 浏览器二进制统一在系统缓存目录（`%LOCALAPPDATA%\ms-playwright`）
+- 安装 npm 包时使用 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`
+- 需安装浏览器时仅在任一子项目中执行一次 `npx playwright install chromium`
+
+## 任务验收流程
+
+每个任务完成后，测试步骤**必须**包含：
+
+1. `npm run lint` 无错误
+2. `npm run build` 成功
+3. `npm run test:e2e`（Playwright E2E）通过 — **不可跳过**
+4. 若有单元测试：`npm test` 通过
+
+## 新建子项目时
+
+初始化脚手架任务中必须配置 Playwright 并编写完整测试：
+- 添加 `@playwright/test` 依赖（与现有项目同版本）
+- 创建 `playwright.config.ts`（端口与其他项目错开）
+- 创建 `e2e/` 目录并编写覆盖上述 10 类场景的测试
+- 在 README 和 architecture.md 中说明 E2E 命令
+
+## 端口分配
+
+| 项目 | 开发端口 |
+|------|----------|
+| link-game | 3000 |
+| duiduipeng | 3001 |
+| 新项目 | 3002+ （递增，避免冲突） |

@@ -29,17 +29,17 @@ export interface LevelProgressionConfig {
  * 避免前期「一手清屏即过关」，同时保留足够容错过关。
  */
 export const EARLY_GAME_LEVEL_CONFIG: readonly LevelConfig[] = [
-  { levelIndex: 0, targetScore: 2_500, moves: 22 },
-  { levelIndex: 1, targetScore: 2_900, moves: 24 },
-  { levelIndex: 2, targetScore: 3_300, moves: 26 },
-  { levelIndex: 3, targetScore: 3_700, moves: 28 },
-  { levelIndex: 4, targetScore: 4_100, moves: 28 },
-  { levelIndex: 5, targetScore: 4_500, moves: 30 },
+  { levelIndex: 0, targetScore: 200, moves: 22 },
+  { levelIndex: 1, targetScore: 400, moves: 24 },
+  { levelIndex: 2, targetScore: 600, moves: 26 },
+  { levelIndex: 3, targetScore: 800, moves: 28 },
+  { levelIndex: 4, targetScore: 1_000, moves: 28 },
+  { levelIndex: 5, targetScore: 1_200, moves: 30 },
 ] as const;
 
 export const DEFAULT_LEVEL_PROGRESSION: LevelProgressionConfig = {
-  baseTargetScore: 4_500,
-  targetScorePerLevel: 450,
+  baseTargetScore: 1_200,
+  targetScorePerLevel: 200,
   baseMoves: 30,
   movesPerLevel: 2,
 };

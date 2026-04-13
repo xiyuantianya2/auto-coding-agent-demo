@@ -2,7 +2,7 @@
  * 调用 Cursor Agent CLI（与 curriculum-cursor-check 同源参数风格）
  */
 import { execFileSync, spawn } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
 
 /**
@@ -79,6 +79,56 @@ function isAgentExecutable(executable) {
 }
 
 /**
+ * 直接解析到 agent 的 node.exe + index.js，跳过 cmd→PowerShell 链路。
+ * 好处：stdin 管道直通、无 cmd.exe 换行截断风险、省去 PowerShell 启动开销。
+ * @returns {{ node: string; index: string; env: Record<string, string> } | null}
+ */
+function resolveAgentDirect() {
+  if (process.platform !== "win32") return null;
+  const agentDir = path.join(process.env.LOCALAPPDATA || "", "cursor-agent");
+  const versionsDir = path.join(agentDir, "versions");
+  if (!existsSync(versionsDir)) return null;
+
+  let entries;
+  try {
+    entries = readdirSync(versionsDir, { withFileTypes: true });
+  } catch {
+    return null;
+  }
+
+  const versionPattern = /^\d{4}\.\d{1,2}\.\d{1,2}-[a-f0-9]+$/;
+  const versions = entries
+    .filter((e) => e.isDirectory() && versionPattern.test(e.name))
+    .map((e) => e.name)
+    .sort((a, b) => {
+      const parse = (v) => {
+        const [year, month, day] = v.split("-")[0].split(".");
+        return parseInt(year + month.padStart(2, "0") + day.padStart(2, "0"), 10);
+      };
+      return parse(b) - parse(a);
+    });
+
+  if (versions.length === 0) return null;
+
+  const latest = versions[0];
+  const nodePath = path.join(versionsDir, latest, "node.exe");
+  const indexPath = path.join(versionsDir, latest, "index.js");
+  if (!existsSync(nodePath) || !existsSync(indexPath)) return null;
+
+  const extraEnv = {
+    CURSOR_INVOKED_AS: "agent",
+  };
+  if (!process.env.NODE_COMPILE_CACHE) {
+    extraEnv.NODE_COMPILE_CACHE = path.join(
+      process.env.LOCALAPPDATA || "",
+      "cursor-compile-cache",
+    );
+  }
+
+  return { node: nodePath, index: indexPath, env: extraEnv };
+}
+
+/**
  * @param {string} hostCommand
  * @param {string[]} standaloneArgs
  * @returns {string[]}
@@ -93,10 +143,22 @@ function argvForHost(hostCommand, standaloneArgs) {
 }
 
 /**
+ * 默认开启：全自动面板无交互，需自动批准 MCP，否则浏览器类 MCP 会卡住等人工点允许。
+ * 设为 0 / false 可关闭（例如旧版 CLI 不支持该参数时）。
+ */
+function shouldApproveMcps() {
+  const v = process.env.AUTOCODING_APPROVE_MCPS;
+  if (v === "0" || v === "false") return false;
+  return true;
+}
+
+/**
  * 组装 agent CLI 参数。默认显式传 `--model auto`，与 IDE 中「Auto」路由一致；
  * 若省略 `--model`，当前 CLI 往往会落到 `composer-2-fast` 等固定模型。
  *
  * 若某环境对 `--model auto` 报错，可设环境变量 `AUTOCODING_AGENT_MODEL=omit`（不传 --model，恢复旧行为）。
+ *
+ * 默认追加 `--approve-mcps`（可用 `AUTOCODING_APPROVE_MCPS=0` 关闭），便于 MCP 浏览器自动化验收。
  *
  * @param {string} modelRaw 来自 override 或 AUTOCODING_AGENT_MODEL；空则视为 auto
  * @param {string} workspaceRoot
@@ -104,6 +166,10 @@ function argvForHost(hostCommand, standaloneArgs) {
  */
 function buildStandaloneArgs(modelRaw, workspaceRoot, agentMessage) {
   const args = ["-p", "-f", "--trust"];
+  if (shouldApproveMcps()) {
+    args.push("--approve-mcps");
+  }
+  args.push("--output-format", "stream-json");
   let resolved = String(modelRaw ?? "").trim();
   if (!resolved) {
     resolved = "auto";
@@ -190,7 +256,23 @@ function runChild(command, args, cwd, timeoutMs, hooks) {
 
     let child;
     const childEnv = envForAgentChild();
-    if (isDirectExe) {
+
+    // 优先直接定位 agent 的 node.exe + index.js，跳过 cmd→PowerShell 链路：
+    // 1) stdin 管道直通 Node 进程，不经过 cmd.exe / PowerShell 中转
+    // 2) 避免多行提示词被 cmd.exe 换行截断
+    const directAgent =
+      win && isAgentExecutable(exe) ? resolveAgentDirect() : null;
+
+    if (directAgent) {
+      const mergedEnv = { ...childEnv, ...directAgent.env };
+      child = spawn(directAgent.node, [directAgent.index, ...args], {
+        cwd,
+        env: mergedEnv,
+        stdio: ["pipe", "pipe", "pipe"],
+        windowsHide: true,
+        shell: false,
+      });
+    } else if (isDirectExe) {
       child = spawn(exe, args, {
         cwd,
         env: childEnv,

@@ -74,19 +74,50 @@ function posKey(p: CellPos): string {
   return `${p.row},${p.col}`;
 }
 
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(() =>
-    typeof window !== "undefined"
-      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
-      : false,
-  );
-  useEffect(() => {
+const FULL_CHAIN_ANIMATIONS_LS_KEY = "ddp-full-chain-animations";
+
+function useSystemPrefersReducedMotion(): boolean {
+  // 首帧必须与 SSR 一致（false），避免 matchMedia 在客户端 initializer 里读到与服务器不同的值导致 hydration mismatch
+  const [reduced, setReduced] = useState(false);
+  useLayoutEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    setReduced(mq.matches);
     const fn = () => setReduced(mq.matches);
     mq.addEventListener("change", fn);
     return () => mq.removeEventListener("change", fn);
   }, []);
   return reduced;
+}
+
+/**
+ * 默认开启完整连锁动画；多数系统/浏览器会开启「减弱动效」导致连锁一步结算、肉眼看不到过程。
+ * 用户可关闭本项以重新遵循系统减弱动效（与「跳过动画」即时结算一致）。
+ */
+function useFullChainAnimationsPreference(): readonly [
+  boolean,
+  (value: boolean) => void,
+] {
+  const [fullChainAnimations, setFullChainAnimations] = useState(true);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(FULL_CHAIN_ANIMATIONS_LS_KEY);
+      if (raw === "0") setFullChainAnimations(false);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const persist = useCallback((next: boolean) => {
+    setFullChainAnimations(next);
+    try {
+      window.localStorage.setItem(
+        FULL_CHAIN_ANIMATIONS_LS_KEY,
+        next ? "1" : "0",
+      );
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  return [fullChainAnimations, persist] as const;
 }
 
 type MatchFxPhase = "idle" | "highlight" | "clear";
@@ -167,7 +198,12 @@ export function SwapPlayground() {
   const [gravityAnim, setGravityAnim] = useState<GravityAnimState | null>(
     null,
   );
-  const prefersReducedMotion = usePrefersReducedMotion();
+  const systemPrefersReducedMotion = useSystemPrefersReducedMotion();
+  const [fullChainAnimations, persistFullChainAnimations] =
+    useFullChainAnimationsPreference();
+  /** 仅在「关闭完整动画」且系统要求减弱动效时为 true，连锁将一步结算 */
+  const prefersReducedMotion =
+    !fullChainAnimations && systemPrefersReducedMotion;
 
   const playbackActive = state.playback !== null;
   const ended = state.meetsWinTarget || state.isFailed;
@@ -942,6 +978,31 @@ export function SwapPlayground() {
             新游戏（第 1 关）
           </button>
         </div>
+        {!ended ? (
+          <label className="flex cursor-pointer select-none flex-wrap items-center justify-center gap-2 text-center text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              data-testid="ddp-full-chain-toggle"
+              className="h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-900 text-emerald-600 focus:ring-emerald-500/40"
+              checked={fullChainAnimations}
+              onChange={(e) => persistFullChainAnimations(e.target.checked)}
+            />
+            <span>
+              完整连锁动画（高亮 → 消除 → 下落）
+              {fullChainAnimations ? (
+                <span className="text-zinc-500">
+                  {" "}
+                  · 开启时不受系统「减弱动效」影响，便于看清连锁过程
+                </span>
+              ) : (
+                <span className="text-zinc-500">
+                  {" "}
+                  · 关闭后将遵循系统减弱动效（若已开启则一步结算终局）
+                </span>
+              )}
+            </span>
+          </label>
+        ) : null}
         {!ended ? (
           <p className="text-center text-[11px] text-zinc-500">
             提示：每局最多 {MAX_HINTS_PER_GAME} 次，使用后 {HINT_COOLDOWN_MS / 1000}{" "}

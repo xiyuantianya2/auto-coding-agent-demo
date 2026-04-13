@@ -3,10 +3,11 @@ import path from "node:path";
 
 /**
  * @param {string} repoRoot
+ * @param {string} [taskJsonPath] 可选的自定义 task.json 路径，默认为 repoRoot/task.json
  * @returns {{ id: number; title: string; description?: string; steps: string[]; passes: boolean }[]}
  */
-export function loadIncompleteTasks(repoRoot) {
-  const p = path.join(repoRoot, "task.json");
+export function loadIncompleteTasks(repoRoot, taskJsonPath) {
+  const p = taskJsonPath || path.join(repoRoot, "task.json");
   const raw = fs.readFileSync(p, "utf8");
   const data = JSON.parse(raw);
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -18,9 +19,10 @@ export function loadIncompleteTasks(repoRoot) {
 /**
  * @param {string} repoRoot
  * @param {number} taskId
+ * @param {string} [taskJsonPath] 可选的自定义 task.json 路径
  */
-export function isTaskDone(repoRoot, taskId) {
-  const p = path.join(repoRoot, "task.json");
+export function isTaskDone(repoRoot, taskId, taskJsonPath) {
+  const p = taskJsonPath || path.join(repoRoot, "task.json");
   const raw = fs.readFileSync(p, "utf8");
   const data = JSON.parse(raw);
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];

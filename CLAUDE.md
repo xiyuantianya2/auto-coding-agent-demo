@@ -1,4 +1,4 @@
-# 连连看（Link Game）— Coding Agent 指南
+# Coding Agent 指南（全项目通用）
 
 > 参考：[Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents)
 
@@ -13,8 +13,16 @@
 
 ## Project Context
 
-网页连连看游戏，前端在 `link-game/`（Next.js + TypeScript + Tailwind）。
-需求在 **`task.json`**（feature list）；进度在 **`progress.txt`**。
+本仓库包含多个游戏子项目，每个子项目独立运行：
+
+| 子项目 | 目录 | 端口 | task.json 位置 |
+|--------|------|------|----------------|
+| 连连看 | `link-game/` | 3000 | 仓库根 `task.json` |
+| 对对碰 | `duiduipeng/` | 3001 | `duiduipeng/task.json` |
+
+技术栈统一：Next.js + TypeScript + Tailwind。
+所有子项目均配置 Playwright E2E 测试（`e2e/` 目录 + `playwright.config.ts`）。
+需求在各自的 **`task.json`**；进度在 **`progress.txt`**。
 
 ---
 
@@ -31,7 +39,7 @@
 3. **读取 `task.json`** — 通读任务与 `passes` 状态（仅同步上下文，不要开始写代码）。
 4. **`git log --oneline -20`** — 查看最近提交。
 5. **阅读并执行 `./init.sh`** — 安装依赖、启动 dev server（默认 http://localhost:3000）。
-6. **基线冒烟** — 验证已有功能可用（开发服务可达、首页可加载）。项目早期至少确认 dev server 启动成功即可。
+6. **基线冒烟** — 在当前任务所属子项目目录下执行 `npx playwright test --headed`（Playwright E2E 会自动启动 dev server 并打开浏览器验证游戏流程）。例如 `link-game/` 或 `duiduipeng/`。若 Playwright 浏览器未安装，先执行 `npx playwright install chromium`（系统级缓存，一次安装全项目共享）。若 Playwright 不可用，退而使用 MCP 浏览器类工具（cursor-ide-browser 等）打开应用入口 URL 确认页面可达；不要仅用 `curl` 代替可见验证。
 
 **硬性规则：基线确认前不得开始实现新功能。**
 
@@ -50,7 +58,9 @@
 
 1. `npm run lint` 无错误
 2. `npm run build` 成功
-3. UI 相关修改须在浏览器验证
+3. **Playwright E2E 浏览器验证**（**必选**）：在当前任务所属子项目目录下执行 `npx playwright test --headed`，运行 headed 模式的端到端测试。每个子项目的 `playwright.config.ts` 已内置 `webServer` 自动启动 dev server（端口各不相同）。如果 Playwright 尚未安装浏览器，先执行 `npx playwright install chromium`（系统级缓存，一次安装全项目共享，**不要重复下载**）。
+4. 若子项目尚无 E2E 测试文件，**必须**为当前任务的功能编写对应的 Playwright 测试用例到 `e2e/` 目录
+5. 若 Playwright E2E 不可用或需要额外页面级验收，可退而使用 **MCP 浏览器工具**（如 cursor-ide-browser）做可见路径验证；不要只做 lint/build
 
 ### Step 5: 更新进度
 
@@ -100,32 +110,46 @@ git commit -m "[task description] - completed"
 
 ```
 /
-├── CLAUDE.md          # 本文件
+├── CLAUDE.md          # 本文件（全项目通用）
 ├── INITIALIZER.md     # 首轮初始化用
-├── task.json          # 任务定义（唯一真相源）
+├── task.json          # link-game 任务定义
 ├── progress.txt       # 每次会话的进度日志
 ├── init.sh            # 开发环境初始化脚本
 ├── architecture.md    # 连连看架构说明
-└── link-game/         # Next.js 应用
+├── .cursor/rules/     # Cursor 规则（含 Playwright 测试规范）
+├── link-game/         # 连连看（端口 3000）
+│   ├── app/           # App Router 页面
+│   ├── lib/           # 工具函数、游戏逻辑
+│   ├── e2e/           # Playwright E2E 测试
+│   └── playwright.config.ts
+└── duiduipeng/        # 对对碰（端口 3001）
     ├── app/           # App Router 页面
-    ├── lib/           # 工具函数、游戏逻辑
-    └── components/    # UI 组件（渐进补齐）
+    ├── lib/           # 纯逻辑与类型
+    ├── components/    # UI 组件
+    ├── e2e/           # Playwright E2E 测试
+    ├── task.json      # 对对碰任务定义
+    └── playwright.config.ts
 ```
 
 ## Commands
 
 ```bash
-# 在 link-game/ 目录下
-npm run dev      # 启动开发服务器
-npm run build    # 生产构建
-npm run lint     # 运行 linter
+# 在各子项目目录下（link-game/ 或 duiduipeng/）
+npm run dev              # 启动开发服务器
+npm run build            # 生产构建
+npm run lint             # 运行 linter
+npm run test:e2e         # Playwright E2E 测试（headed 浏览器，自动验证）
+npm run test:e2e:headed  # 同上（别名）
+npm test                 # 单元测试（Vitest）
 ```
+
+**Playwright 浏览器共享**：所有子项目共用系统级 Playwright 浏览器缓存（`%LOCALAPPDATA%\ms-playwright`），**不要**在每个项目中重复安装浏览器。
 
 ## Key Rules
 
 1. **会话开场先执行** — 基线未确认前不开始新功能
 2. **一个会话一个任务** — 做好一件事
-3. **测试后才标记完成** — lint + build + 浏览器验证
+3. **测试后才标记完成** — lint + build + Playwright E2E 浏览器验证（**必选，不可跳过**）
 4. **记录进度** — progress.txt 帮助后续 agent 理解上下文
 5. **一个 commit 一个 task** — 代码、进度、标记一起提交
 6. **不要删任务** — 只能把 `passes: false` 改成 `true`

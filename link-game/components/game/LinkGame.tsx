@@ -1,6 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import { createDeterministicStripeBoard } from "@/lib/game/board-generation";
 
 import { BoardGrid } from "@/components/game/BoardGrid";
 import {
@@ -11,9 +13,10 @@ import {
   createInitialPlayState,
   handleCellClick,
   restartPlayState,
+  type PlayState,
 } from "@/lib/game/game-state";
 import { DEFAULT_LEVELS, getLevelById, getNextLevelId } from "@/lib/game/levels";
-import type { CellCoord } from "@/lib/game/types";
+import type { CellCoord, LevelConfig } from "@/lib/game/types";
 
 type LinkGameProps = {
   /** 起始关卡 id（默认 1）。 */
@@ -29,9 +32,20 @@ function formatMmSs(totalMs: number): string {
 
 const AUTO_NEXT_MS = 2600;
 
-export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
-  const firstLevel = getLevelById(initialLevelId) ?? DEFAULT_LEVELS[0]!;
+function createPlayStateForLevel(level: LevelConfig): PlayState {
+  try {
+    return createInitialPlayState(level);
+  } catch {
+    return {
+      level,
+      board: createDeterministicStripeBoard(level),
+      selected: null,
+      won: false,
+    };
+  }
+}
 
+export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
   const [currentLevelId, setCurrentLevelId] = useState(initialLevelId);
   const [maxUnlockedLevelId, setMaxUnlockedLevelId] = useState(initialLevelId);
 
@@ -40,7 +54,11 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
     throw new Error(`LinkGame: unknown level id ${currentLevelId}`);
   }
 
-  const [state, setState] = useState(() => createInitialPlayState(firstLevel));
+  /**
+   * 棋盘仅在客户端 `useEffect` 中生成：`useState(null)` 在 SSR 与首屏 hydration 时一致，不会双次 `Math.random()`。
+   * 此处必须同步 `setState`，勿用 `setTimeout(0)`——否则在部分环境下定时器可能被取消/延迟过久，导致永远停在「加载棋盘…」。
+   */
+  const [state, setState] = useState<PlayState | null>(null);
 
   const [gameStartMs, setGameStartMs] = useState(() => Date.now());
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -54,7 +72,28 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
 
   const [autoNextLevel, setAutoNextLevel] = useState(true);
 
-  const { board, selected, won } = state;
+  const selected = state?.selected ?? null;
+  const won = state?.won ?? false;
+
+  useEffect(() => {
+    const lvl = getLevelById(currentLevelId);
+    if (!lvl) return;
+    setState(createPlayStateForLevel(lvl));
+  }, [currentLevelId]);
+
+  const prevWonRef = useRef(false);
+  useEffect(() => {
+    if (won && !prevWonRef.current) {
+      queueMicrotask(() => {
+        setWinAtMs(Date.now());
+        setMaxUnlockedLevelId((m) => {
+          const unlockTarget = getNextLevelId(level.id) ?? level.id;
+          return Math.max(m, unlockTarget);
+        });
+      });
+    }
+    prevWonRef.current = won;
+  }, [won, level.id]);
 
   const nextLevelId = getNextLevelId(currentLevelId);
   const isLastLevel = nextLevelId === null;
@@ -62,8 +101,11 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
   const applyLevel = useCallback((id: number) => {
     const lvl = getLevelById(id);
     if (!lvl) return;
-    setCurrentLevelId(id);
-    setState(createInitialPlayState(lvl));
+    const idChanged = id !== currentLevelId;
+    if (idChanged) {
+      setCurrentLevelId(id);
+      setState(null);
+    }
     const t = Date.now();
     setGameStartMs(t);
     setNowMs(t);
@@ -73,7 +115,10 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
     setWinAtMs(null);
     setHintPair(null);
     setToastMessage(null);
-  }, []);
+    if (!idChanged) {
+      setState(createPlayStateForLevel(lvl));
+    }
+  }, [currentLevelId]);
 
   useEffect(() => {
     if (!hintPair) return;
@@ -88,19 +133,19 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
   }, [toastMessage]);
 
   useEffect(() => {
-    if (won) return;
+    if (state?.won) return;
     const id = setInterval(() => setNowMs(Date.now()), 250);
     return () => clearInterval(id);
-  }, [won]);
+  }, [state?.won]);
 
   useEffect(() => {
-    if (!won || !autoNextLevel || isLastLevel) return;
+    if (!state?.won || !autoNextLevel || isLastLevel) return;
     if (nextLevelId === null) return;
     const id = setTimeout(() => {
       applyLevel(nextLevelId);
     }, AUTO_NEXT_MS);
     return () => clearTimeout(id);
-  }, [won, autoNextLevel, isLastLevel, nextLevelId, applyLevel]);
+  }, [state?.won, autoNextLevel, isLastLevel, nextLevelId, applyLevel]);
 
   const getLiveElapsedMs = () => {
     const now = nowMs;
@@ -134,34 +179,27 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
 
   const onCellClick = useCallback(
     (coord: CellCoord) => {
-      if (paused || won) return;
+      if (!state || paused || won) return;
       setHintPair(null);
       setState((prev) => {
-        const next = handleCellClick(prev, coord);
-        if (next.won && !prev.won) {
-          setWinAtMs(Date.now());
-          setMaxUnlockedLevelId((m) => {
-            const unlockTarget = getNextLevelId(level.id) ?? level.id;
-            return Math.max(m, unlockTarget);
-          });
-        }
-        return next;
+        if (!prev) return prev;
+        return handleCellClick(prev, coord);
       });
     },
-    [paused, won, level.id],
+    [state, paused, won],
   );
 
   const onHint = useCallback(() => {
-    if (paused || won) return;
+    if (!state || paused || won) return;
     setToastMessage(null);
-    const pairs = enumerateConnectablePairs(board);
+    const pairs = enumerateConnectablePairs(state.board);
     if (pairs.length === 0) {
       setToastMessage("当前没有可消的一对");
       return;
     }
     const pick = pairs[Math.floor(Math.random() * pairs.length)];
     setHintPair(pick);
-  }, [board, paused, won]);
+  }, [state, paused, won]);
 
   const togglePause = useCallback(() => {
     if (won) return;
@@ -178,7 +216,11 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
   }, [won, paused, pauseStartedAt]);
 
   const onRestart = useCallback(() => {
-    setState((s) => restartPlayState(s));
+    setState((s) => {
+      const lvl = getLevelById(currentLevelId);
+      if (!lvl) return s;
+      return s ? restartPlayState(s) : createPlayStateForLevel(lvl);
+    });
     const t = Date.now();
     setGameStartMs(t);
     setNowMs(t);
@@ -188,7 +230,7 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
     setWinAtMs(null);
     setHintPair(null);
     setToastMessage(null);
-  }, []);
+  }, [currentLevelId]);
 
   return (
     <div className="relative flex w-full max-w-2xl flex-col items-stretch gap-6">
@@ -291,13 +333,26 @@ export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
         </div>
       </section>
 
-      <BoardGrid
-        board={board}
-        selected={selected}
-        hintPair={hintPair}
-        won={won}
-        onCellClick={onCellClick}
-      />
+      {state ? (
+        <BoardGrid
+          board={state.board}
+          selected={selected}
+          hintPair={hintPair}
+          won={won}
+          onCellClick={onCellClick}
+        />
+      ) : (
+        <div
+          role="status"
+          className="flex min-h-[18rem] w-full flex-col items-center justify-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/30 px-6 py-12 text-sm text-zinc-400"
+        >
+          <span
+            className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-zinc-500 border-t-emerald-400"
+            aria-hidden
+          />
+          加载棋盘…
+        </div>
+      )}
 
       {won && !isLastLevel ? (
         <div

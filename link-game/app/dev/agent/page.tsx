@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import {
+  formatApiTimeForDisplay,
+  rewriteRecentLogLinesToBeijing,
+} from "@/lib/beijing-display";
 import { PANEL_DISPLAY_MAX_LINES, takeLastLines } from "@/lib/last-lines";
 
 function getAgentBase(): string {
@@ -92,7 +96,7 @@ export default function AgentPanelPage() {
 
   const fullPrompt = data?.agentPrompt?.trim() ? data.agentPrompt : "";
   const fullCli = data?.agentCliText?.trim() ? data.agentCliText : "";
-  const fullRunLog = (data?.recentLog ?? []).join("");
+  const fullRunLog = rewriteRecentLogLinesToBeijing((data?.recentLog ?? []).join(""));
 
   const displayPrompt = fullPrompt
     ? takeLastLines(fullPrompt, PANEL_DISPLAY_MAX_LINES)
@@ -209,10 +213,26 @@ export default function AgentPanelPage() {
         >
           重置状态
         </button>
+        <button
+          type="button"
+          disabled={busy}
+          title="task.json 全 false、删 lib/game、恢复首页、写 progress，并清空面板"
+          onClick={() => {
+            if (
+              window.confirm(
+                "将执行：task.json 全部 passes 置为 false；删除 link-game/lib/game（若存在）；首页恢复为占位；progress.txt 追加记录；并终止 agent、清空面板（与「重置状态」相同）。已实现的连连看代码将丢失。确定？",
+              )
+            )
+              void postControl("reset-link-game");
+          }}
+          className="rounded-lg border border-amber-800/70 bg-amber-950/50 px-4 py-2 text-sm text-amber-100 hover:border-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          清理连连看项目
+        </button>
         <label className="ml-2 flex items-center gap-1.5 text-xs text-zinc-500 select-none cursor-pointer">
           <input
             type="checkbox"
-            checked={!!data?.autoAdvance}
+            checked={data?.autoAdvance ?? true}
             onChange={(e) => void postControl("set-auto-advance", { value: e.target.checked })}
             className="accent-emerald-500"
           />
@@ -275,7 +295,7 @@ export default function AgentPanelPage() {
           </div>
           <p className="mt-1 text-xs text-zinc-500">
             {data?.agentPrompt && String(data.agentPrompt).trim()
-              ? `task id=${data.agentPromptTaskId ?? "—"}${data.agentPromptUpdatedAt ? ` · ${data.agentPromptUpdatedAt}` : ""}${lineCount(fullPrompt) > PANEL_DISPLAY_MAX_LINES ? ` · 面板显示末尾 ${PANEL_DISPLAY_MAX_LINES} 行` : ""}`
+              ? `task id=${data.agentPromptTaskId ?? "—"}${data.agentPromptUpdatedAt ? ` · ${formatApiTimeForDisplay(data.agentPromptUpdatedAt)}` : ""}${lineCount(fullPrompt) > PANEL_DISPLAY_MAX_LINES ? ` · 面板显示末尾 ${PANEL_DISPLAY_MAX_LINES} 行` : ""}`
               : "—"}
           </p>
           <pre className="mt-2 min-h-0 flex-1 max-h-[min(52vh,28rem)] overflow-auto rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs leading-relaxed text-sky-200/95">
@@ -297,7 +317,7 @@ export default function AgentPanelPage() {
           </div>
           <p className="mt-1 text-xs text-zinc-500">
             {data?.agentCliText && String(data.agentCliText).trim()
-              ? `task id=${data.agentCliTaskId ?? "—"}${data.agentCliUpdatedAt ? ` · ${data.agentCliUpdatedAt}` : ""}${data.agentCliMaxChars ? ` · 最长约 ${data.agentCliMaxChars} 字符` : ""}${lineCount(fullCli) > PANEL_DISPLAY_MAX_LINES ? ` · 面板显示末尾 ${PANEL_DISPLAY_MAX_LINES} 行` : ""}`
+              ? `task id=${data.agentCliTaskId ?? "—"}${data.agentCliUpdatedAt ? ` · ${formatApiTimeForDisplay(data.agentCliUpdatedAt)}` : ""}${data.agentCliMaxChars ? ` · 最长约 ${data.agentCliMaxChars} 字符` : ""}${lineCount(fullCli) > PANEL_DISPLAY_MAX_LINES ? ` · 面板显示末尾 ${PANEL_DISPLAY_MAX_LINES} 行` : ""}`
               : "—"}
           </p>
           <pre
