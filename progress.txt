@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-13 - Task: 连通判定（≤2 次拐弯）（id=4）
+
+### What was done:
+- `link-game/lib/game/connectivity.ts`：保留既有 `canConnect`（BFS、转弯 ≤2、边界外 padding 为空）；新增 `ConnectablePair` 与 `enumerateConnectablePairs(board)`，枚举所有同图案可连的无序格对（坐标规范为先行后列），供后续「提示」选用。
+- `link-game/lib/game/board-selftest.ts`：自检中校验 `enumerateConnectablePairs` 与 `hasAtLeastOneConnectablePair` 一致且生成棋盘至少存在一对可连。
+- 根目录 `task.json` id=4 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run board-selftest` 通过。
+- `npm run lint`、`npm run build` 通过。
+- 基线：`./init.sh` 后 `http://127.0.0.1:3000` 返回 200（本机已有 dev 占用端口时脚本可能另起端口）。
+
+### Notes:
+- 提示任务可调用 `enumerateConnectablePairs` 后随机或固定取 `pairs[0]`；若数组为空则无解可提示。
+
+---
+
 ## 2026-04-13 - Task: 棋盘生成与洗牌（id=3）
 
 ### What was done:

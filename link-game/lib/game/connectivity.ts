@@ -3,6 +3,19 @@ import type { Board, CellCoord, PatternId } from "./types";
 const DR = [-1, 0, 1, 0] as const;
 const DC = [0, 1, 0, -1] as const;
 
+/** 一对可连格子（`a` 在 `b` 之前：先按行再按列）。 */
+export interface ConnectablePair {
+  readonly a: CellCoord;
+  readonly b: CellCoord;
+}
+
+function normalizePair(p: CellCoord, q: CellCoord): ConnectablePair {
+  if (p.row < q.row || (p.row === q.row && p.col < q.col)) {
+    return { a: p, b: q };
+  }
+  return { a: q, b: p };
+}
+
 /**
  * 判断两格是否可按连连看规则连通：仅上下左右移动，转弯不超过 2 次，
  * 路径中间格须为空；棋盘边界外视为空（用一圈 padding 表示）。
@@ -66,6 +79,42 @@ export function canConnect(a: CellCoord, b: CellCoord, board: Board): boolean {
   }
 
   return false;
+}
+
+/**
+ * 枚举棋盘上所有「同图案且可连通」的无序格对（每对只出现一次，`a` 先于 `b`）。
+ * 供提示等功能在剩余棋子中任选一对可消组合。
+ */
+export function enumerateConnectablePairs(board: Board): ConnectablePair[] {
+  const byPattern = new Map<number, CellCoord[]>();
+
+  for (let r = 0; r < board.rows; r++) {
+    for (let c = 0; c < board.cols; c++) {
+      const v = board.cells[r][c];
+      if (v === null) continue;
+      let list = byPattern.get(v);
+      if (!list) {
+        list = [];
+        byPattern.set(v, list);
+      }
+      list.push({ row: r, col: c });
+    }
+  }
+
+  const out: ConnectablePair[] = [];
+  for (const coords of byPattern.values()) {
+    for (let i = 0; i < coords.length; i++) {
+      for (let j = i + 1; j < coords.length; j++) {
+        const p = coords[i];
+        const q = coords[j];
+        if (canConnect(p, q, board)) {
+          out.push(normalizePair(p, q));
+        }
+      }
+    }
+  }
+
+  return out;
 }
 
 /** 棋盘上是否存在至少一对「同图案且可连通」的格子（用于开局可解性检查）。 */

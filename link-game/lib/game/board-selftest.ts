@@ -1,5 +1,8 @@
 import { generateBoardFromLevel } from "./board-generation";
-import { hasAtLeastOneConnectablePair } from "./connectivity";
+import {
+  enumerateConnectablePairs,
+  hasAtLeastOneConnectablePair,
+} from "./connectivity";
 import { DEFAULT_LEVELS } from "./levels";
 import type { Board, PatternId } from "./types";
 
@@ -34,7 +37,11 @@ export function runBoardGenerationSelfTest(): void {
           throw new Error("Each pattern must appear exactly twice.");
         }
       }
-      if (!hasAtLeastOneConnectablePair(board)) {
+      const pairs = enumerateConnectablePairs(board);
+      if ((pairs.length > 0) !== hasAtLeastOneConnectablePair(board)) {
+        throw new Error("enumerateConnectablePairs vs hasAtLeastOneConnectablePair mismatch.");
+      }
+      if (pairs.length === 0) {
         throw new Error("Generated board has no connectable pair.");
       }
     }
