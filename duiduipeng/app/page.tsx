@@ -14,7 +14,7 @@ export default function Home() {
             对对碰
           </h1>
           <p className="mt-4 text-base leading-relaxed text-zinc-400">
-            相邻交换形成三消与连锁下落补位；在固定步数内达成目标分。任务与验收见{" "}
+            相邻交换仅当能触发三消时有效；一次有效步后会反复「检测三消 → 消除 → 下落补位」，直至盘面上不再有三消（连锁按波次计分，详见游戏说明）。在固定步数内达成目标分。任务与验收见{" "}
             <code className="rounded bg-zinc-800 px-1.5 py-0.5 text-sm text-zinc-200">
               duiduipeng/task.json
             </code>
@@ -38,7 +38,11 @@ export default function Home() {
           className="duiduipeng-game-main w-full min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 text-left text-sm text-zinc-400 sm:p-8"
         >
           <p className="mb-6 text-center text-zinc-400">
-            先点一格再点正交相邻格交换；仅当形成三消时消耗步数，非法交换会回滚并提示。开发服务器默认端口{" "}
+            先点一格再点正交相邻格交换；仅当交换后能形成三消时消耗步数，非法交换会回滚并提示。得分仅含三消每格基础分（
+            <code className="rounded bg-zinc-800 px-1 py-0.5 font-mono text-zinc-200">
+              BASE_SCORE_PER_CELL
+            </code>
+            ）与连锁波次加成。开发服务器默认端口{" "}
             <span className="font-mono text-zinc-200">3001</span>（与连连看{" "}
             <span className="font-mono text-zinc-200">3000</span> 错开）。
           </p>

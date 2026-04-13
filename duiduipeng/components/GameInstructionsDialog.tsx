@@ -121,6 +121,9 @@ export function GameInstructionsDialog(props: {
                 </h3>
                 <ul className="list-inside list-disc space-y-1.5 text-zinc-400 marker:text-zinc-600">
                   <li>
+                    本游戏得分<strong>仅</strong>来自下方三消基础分与连锁波次倍率，无其他加分项。
+                  </li>
+                  <li>
                     <span className="font-mono text-zinc-200">
                       BASE_SCORE_PER_CELL = {base}
                     </span>
