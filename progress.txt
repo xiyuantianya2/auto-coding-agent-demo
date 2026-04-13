@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 点击、消除与胜负（id=5）
+
+### What was done:
+- 新增 `link-game/lib/game/game-state.ts`：`PlayState`（棋盘、选中格、胜利）、`createInitialPlayState` / `restartPlayState`（复用 `generateBoardFromLevel`）、`handleCellClick`（空位忽略；首击选中；同格再点取消；第二次同图案且 `canConnect` 则消除并 `isBoardCleared` 判胜；否则第二次格作为新选中）。
+- 新增 `link-game/components/game/LinkGame.tsx`：客户端棋盘与「重新开始本关」按钮；首页 `app/page.tsx` 嵌入试玩区。
+- 根目录 `task.json` id=5 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- 基线：仓库根执行 `bash init.sh` 后本机 `http://127.0.0.1:3000` HTTP 200（多实例时端口可能不同）。
+
+### Notes:
+- 胜利后盘面为空；计时/提示/多关卡见后续 task。`isBoardCleared` 已导出供测试或后续 HUD 使用。
+
+---
+
 ## 2026-04-13 - Task: 连通判定（≤2 次拐弯）（id=4）
 
 ### What was done:
