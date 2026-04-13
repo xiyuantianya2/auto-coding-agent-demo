@@ -23,6 +23,8 @@ test.describe("游戏说明", () => {
     await expect(dialog).toContainText("检测三消 → 消除 → 下落补位");
     await expect(dialog).toContainText("BASE_SCORE_PER_CELL");
     await expect(dialog).toContainText("CHAIN_BONUS_PER_EXTRA_WAVE");
+    await expect(dialog).toContainText("分步展示");
+    await expect(dialog).toContainText("连锁呈现");
     await expect(dialog).not.toContainText("MERGE_PAIR_SCORE");
     await expect(dialog).not.toContainText("对碰合并");
 

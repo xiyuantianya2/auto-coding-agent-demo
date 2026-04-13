@@ -348,7 +348,7 @@
         "手测：一次有效交换触发连锁时，能跟随「高亮→消除→下落→补位→下一波」的完整过程。",
         "若更新 `GameInstructionsDialog` 等用户可见文案，须与真实行为一致。"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: 测试与整体验收（duiduipeng id=31）
+
+### What was done:
+- `lib/swap-input.test.ts`：多波连锁下 `playback_advance` 与 `StabilizationStepSequence` 盘面逐步对齐；播放中总分/连锁统计冻结直至结算完成。
+- `e2e/playback.spec.ts`：`data-ddp-playback` / `data-ddp-playback-pending-score`、跳过动画后得分更新；`prefers-reduced-motion: reduce` 下跳过按钮禁用与即时终局。
+- `components/GameInstructionsDialog.tsx`：新增「连锁呈现」分步展示与减弱动效说明；`e2e/instructions.spec.ts` 断言关键词。
+- `duiduipeng/task.json`：id=31 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`、`npm test -- --run`、`npm run test:e2e` 全部通过。
+
+### Notes:
+- 默认种子首步可行交换为棋子 (1,5)↔(2,5)（与 `mulberry32(2026)` 盘面一致）；手测连锁可视路径仍可用同一开局。
+
+---
+
 ## 2026-04-14 - Task: 播放期交互、得分时机与减弱动效（duiduipeng id=30）
 
 ### What was done:
