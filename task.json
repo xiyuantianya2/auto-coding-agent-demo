@@ -134,7 +134,7 @@
         "构造或固定种子得到「至少一对可连但无法消完全盘」的布局（若需可手写 cells），断言 isBoardFullySolvable 为 false",
         "运行测试命令并确保全部通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 13,

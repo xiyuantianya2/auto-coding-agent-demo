@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-13 - Task: 可解性算法的单元测试与反例（id=12）
+
+### What was done:
+- 在 `link-game/` 增加 **Vitest**（`vitest` devDependency）、`vitest.config.ts`（`lib/**/*.test.ts`，Node 环境，`@/*` 别名）。
+- 新增 `link-game/lib/game/full-solvability.test.ts`：`isBoardFullySolvable` 覆盖空盘为 true；1×2 与 2×2「明显可消完」为 true；手写 2×3 反例 `[1,2,3,1,3,2]`（`hasAtLeastOneConnectablePair` / `enumerateConnectablePairs` 非空但全盘 DFS 不可清空）断言为 false。
+- `package.json` 增加 `test:unit` → `vitest run`。
+
+### Testing:
+- `cd link-game && npm run test:unit`：4 项单元测试全部通过。
+- `npm run lint`、`npm run build` 通过。
+- `npx playwright test --headed`：6/6 通过（无 flaky）。
+
+### Notes:
+- 反例布局由对 multiset `[1,1,2,2,3,3]` 在 2×3 上全排列搜索得到；测试中固定为行主序扁平数组以锁定行为。
+
+---
+
 ## 2026-04-13 - Task: 全棋盘可解性判定算法（id=11）
 
 ### What was done:
