@@ -32,6 +32,7 @@ export {
 } from "./swap-legality";
 export {
   createSwapInteractionState,
+  GRAVITY_REFILL_MS,
   MATCH_CLEAR_MS,
   MATCH_CLEAR_STAGGER_MS,
   MATCH_HIGHLIGHT_MS,
@@ -51,12 +52,17 @@ export { mulberry32 } from "./seeded-random";
 export {
   CHAIN_BONUS_PER_EXTRA_WAVE,
   applyGravityAndRefill,
+  applyGravityOnly,
   applyTripleClear,
   boardHasEmpty,
   stabilizeAfterSwap,
   type StabilizeAfterSwapOptions,
   type GravityRefillOptions,
 } from "./stabilization";
+export {
+  computeGravityRefillOffsets,
+  type GravityCellOffset,
+} from "./gravity-display";
 export {
   buildStabilizationStepSequence,
   buildStabilizationStepSequenceFromAcceptedSwap,

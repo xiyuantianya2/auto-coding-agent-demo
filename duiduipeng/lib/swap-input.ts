@@ -43,6 +43,9 @@ export const MATCH_CLEAR_MS = 300;
  */
 export const MATCH_CLEAR_STAGGER_MS = 40;
 
+/** 重力下落与顶部补位（FLIP / translate 回终局格）的大致时长，与 CSS transition 对齐 */
+export const GRAVITY_REFILL_MS = 320;
+
 /** 交换已接受、正按 {@link StabilizationStepSequence} 分步展示盘面时尚未写入本步得分与连锁统计 */
 export interface StabilizationPlaybackState {
   readonly sequence: StabilizationStepSequence;

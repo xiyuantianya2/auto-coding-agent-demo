@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-14 - Task: 重力下落与顶部补位动效（duiduipeng id=28）
+
+### What was done:
+- `lib/stabilization.ts`：新增 `applyGravityOnly`（仅列压缩、不补位），供展示层计算下落起点。
+- `lib/gravity-display.ts` + 单测：`computeGravityRefillOffsets` 按列配对「旧格→重力后格」位移与顶部补位生成格的大负偏移。
+- `lib/swap-input.ts`：导出 `GRAVITY_REFILL_MS`（与 CSS transition 对齐）。
+- `components/SwapPlayground.tsx`：消除阶段结束后以 FLIP（invert 双 rAF + translateY 过渡）播放下落/补位，再 `playback_advance`；`prefers-reduced-motion: reduce` 时跳过动画直接推进；格子仍为固定 `r-c` key，数据与 `boardAfterGravityRefill` 一致。
+- `duiduipeng/task.json`：id=28 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`、`npm test -- --run`、`npm run test:e2e` 均通过。
+
+### Notes:
+- 连锁多波间隔与减弱动效更细策略见 task 29/30。
+
+---
+
 ## 2026-04-14 - Task: 匹配高亮与消除可见动效（duiduipeng id=27）
 
 ### What was done:

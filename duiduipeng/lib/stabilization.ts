@@ -104,6 +104,32 @@ export function applyGravityAndRefill(board: Board, options: GravityRefillOption
   return freezeBoard(next);
 }
 
+/**
+ * 仅列重力压缩：非空块落至底部，顶部空位保持 {@link EMPTY_CELL}（不补新符号）。
+ * 用于动画层计算「消除后 → 补位前」的块位移来源。
+ */
+export function applyGravityOnly(board: Board): Board {
+  const rows = board.length;
+  const cols = board[0]?.length ?? 0;
+  const next = cloneBoardMutable(board);
+
+  for (let c = 0; c < cols; c += 1) {
+    let write = rows - 1;
+    for (let r = rows - 1; r >= 0; r -= 1) {
+      const v = next[r]![c]!;
+      if (!isEmptyCell(v)) {
+        next[write]![c] = v;
+        write -= 1;
+      }
+    }
+    for (let r = write; r >= 0; r -= 1) {
+      next[r]![c] = EMPTY_CELL;
+    }
+  }
+
+  return freezeBoard(next);
+}
+
 export function boardHasEmpty(board: Board): boolean {
   for (const row of board) {
     for (const v of row) {

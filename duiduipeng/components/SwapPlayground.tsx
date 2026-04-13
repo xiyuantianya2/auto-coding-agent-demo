@@ -1,20 +1,24 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useReducer,
   useRef,
   useState,
 } from "react";
 import { createInitialBoard } from "@/lib/create-initial-board";
-import { CellSymbol, isEmptyCell } from "@/lib/board-types";
+import { CellSymbol, isEmptyCell, type Board } from "@/lib/board-types";
 import { getLevelConfigForIndex } from "@/lib/level-progression";
 import { mulberry32 } from "@/lib/seeded-random";
 import { cn } from "@/lib/utils";
+import { computeGravityRefillOffsets } from "@/lib/gravity-display";
 import {
   createSwapInteractionState,
+  GRAVITY_REFILL_MS,
   MATCH_CLEAR_MS,
   MATCH_CLEAR_STAGGER_MS,
   MATCH_HIGHLIGHT_MS,
@@ -69,7 +73,29 @@ function posKey(p: CellPos): string {
   return `${p.row},${p.col}`;
 }
 
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      : false,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const fn = () => setReduced(mq.matches);
+    mq.addEventListener("change", fn);
+    return () => mq.removeEventListener("change", fn);
+  }, []);
+  return reduced;
+}
+
 type MatchFxPhase = "idle" | "highlight" | "clear";
+
+type GravityAnimState = {
+  readonly waveKey: string;
+  readonly finalBoard: Board;
+  readonly offsets: ReturnType<typeof computeGravityRefillOffsets>;
+  phase: "invert" | "play";
+};
 
 function staggerIndexForCell(
   positions: readonly CellPos[],
@@ -137,6 +163,10 @@ export function SwapPlayground() {
   const [hintCooldownUntil, setHintCooldownUntil] = useState(0);
   const [hintsUsed, setHintsUsed] = useState(0);
   const [matchFx, setMatchFx] = useState<MatchFxPhase>("idle");
+  const [gravityAnim, setGravityAnim] = useState<GravityAnimState | null>(
+    null,
+  );
+  const prefersReducedMotion = usePrefersReducedMotion();
 
   const playbackActive = state.playback !== null;
   const ended = state.meetsWinTarget || state.isFailed;
@@ -282,7 +312,8 @@ export function SwapPlayground() {
   }, [toastMessage]);
 
   /**
-   * 每波：高亮本批待消坐标（与 stabilization-steps 中 clearedPositions 一致）→ CSS 消除过渡 → playback_advance。
+   * 每波：高亮本批待消坐标（与 stabilization-steps 中 clearedPositions 一致）→ CSS 消除过渡 →
+   * 重力/补位 FLIP（见 gravityAnim）→ playback_advance。
    * 错开时间由 MATCH_CLEAR_STAGGER_MS 配置，与逻辑层行主序一致。
    */
   useEffect(() => {
@@ -315,7 +346,21 @@ export function SwapPlayground() {
       setMatchFx("clear");
       idAdvance = window.setTimeout(() => {
         if (cancelled) return;
-        dispatch({ type: "playback_advance" });
+        if (prefersReducedMotion) {
+          dispatch({ type: "playback_advance" });
+          setMatchFx("idle");
+          return;
+        }
+        const offsets = computeGravityRefillOffsets(
+          step.boardAfterClear,
+          step.boardAfterGravityRefill,
+        );
+        setGravityAnim({
+          waveKey: `g-${completedWaves}-${step.waveIndex}`,
+          finalBoard: step.boardAfterGravityRefill,
+          offsets,
+          phase: "invert",
+        });
         setMatchFx("idle");
       }, clearPhaseMs);
     }, MATCH_HIGHLIGHT_MS);
@@ -334,7 +379,53 @@ export function SwapPlayground() {
     state.playback?.completedWaves,
     state.playback?.sequence,
     dispatch,
+    prefersReducedMotion,
   ]);
+
+  useLayoutEffect(
+    () => {
+      if (!gravityAnim || gravityAnim.phase !== "invert") return undefined;
+      const { waveKey } = gravityAnim;
+      let raf2 = 0;
+      const raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          setGravityAnim((g) =>
+            g && g.waveKey === waveKey && g.phase === "invert"
+              ? { ...g, phase: "play" }
+              : g,
+          );
+        });
+      });
+      return () => {
+        cancelAnimationFrame(raf1);
+        if (raf2) cancelAnimationFrame(raf2);
+      };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- waveKey+phase 唯一定位单次 FLIP；完整 gravityAnim 会重复触发
+    [gravityAnim?.waveKey, gravityAnim?.phase],
+  );
+
+  useEffect(
+    () => {
+      if (!gravityAnim || gravityAnim.phase !== "play" || isPaused || ended) {
+        return;
+      }
+      const { waveKey } = gravityAnim;
+      const id = window.setTimeout(() => {
+        dispatch({ type: "playback_advance" });
+        setGravityAnim((g) => (g && g.waveKey === waveKey ? null : g));
+      }, GRAVITY_REFILL_MS);
+      return () => window.clearTimeout(id);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- waveKey+phase 区分波次；避免依赖整个 gravityAnim
+    [
+      gravityAnim?.waveKey,
+      gravityAnim?.phase,
+      isPaused,
+      ended,
+      dispatch,
+    ],
+  );
 
   useEffect(() => {
     const lr = state.lastResult;
@@ -383,8 +474,9 @@ export function SwapPlayground() {
     return undefined;
   }, [state.lastResult]);
 
-  const rows = state.board.length;
-  const cols = state.board[0]?.length ?? 0;
+  const displayBoard = gravityAnim !== null ? gravityAnim.finalBoard : state.board;
+  const rows = displayBoard.length;
+  const cols = displayBoard[0]?.length ?? 0;
 
   const playback = state.playback;
   const pendingMatchStep =
@@ -602,6 +694,9 @@ export function SwapPlayground() {
         )}
         data-ddp-playback={playbackActive ? "true" : "false"}
         data-ddp-match-fx={matchFx}
+        data-ddp-gravity={
+          gravityAnim ? (gravityAnim.phase === "play" ? "play" : "invert") : "idle"
+        }
       >
         {isPaused && !ended ? (
           <div
@@ -619,6 +714,7 @@ export function SwapPlayground() {
               "inline-grid gap-1 overflow-visible rounded-xl border border-zinc-800/80 bg-zinc-900/80 p-2 shadow-inner shadow-black/30 sm:gap-1.5 sm:p-3",
               boardShake && "ddp-board-shake",
               "[--cell:1.65rem] [--emoji:text-sm] sm:[--cell:2rem] sm:[--emoji:text-base] md:[--cell:2.5rem] md:[--emoji:text-lg]",
+              "[--ddp-pitch:calc(var(--cell)+0.25rem)] sm:[--ddp-pitch:calc(var(--cell)+0.375rem)]",
             )}
             style={{
               gridTemplateColumns: `repeat(${cols}, minmax(0, var(--cell)))`,
@@ -627,7 +723,7 @@ export function SwapPlayground() {
             {Array.from({ length: rows * cols }, (_, i) => {
               const r = Math.floor(i / cols);
               const c = i % cols;
-              const sym = state.board[r]![c]!;
+              const sym = displayBoard[r]![c]!;
               const empty = isEmptyCell(sym);
               const picked =
                 state.pick.phase === "first" &&
@@ -649,6 +745,23 @@ export function SwapPlayground() {
               const matchHighlight =
                 inMatchBatch && matchFx === "highlight" && !empty;
               const matchClear = inMatchBatch && matchFx === "clear" && !empty;
+
+              const yu =
+                gravityAnim && !empty
+                  ? (gravityAnim.offsets[r]?.[c]?.translateYRowUnits ?? 0)
+                  : 0;
+              const gPhase = gravityAnim?.phase;
+              const gravityInnerStyle: CSSProperties | undefined =
+                gravityAnim && !empty
+                  ? {
+                      transform: `translateY(calc(${gPhase === "invert" ? yu : 0} * var(--ddp-pitch)))`,
+                      transition:
+                        gPhase === "play"
+                          ? `transform ${GRAVITY_REFILL_MS}ms cubic-bezier(0.33, 1, 0.68, 1)`
+                          : "none",
+                      willChange: "transform",
+                    }
+                  : undefined;
 
               return (
                 <button
@@ -696,7 +809,15 @@ export function SwapPlayground() {
                   }
                   onClick={() => onCellClick({ row: r, col: c })}
                 >
-                  {empty ? "·" : symbolEmoji[sym as CellSymbol]}
+                  <span
+                    className={cn(
+                      "inline-flex min-h-full min-w-full flex-1 items-center justify-center",
+                      gravityAnim && !empty && "relative z-[5]",
+                    )}
+                    style={gravityInnerStyle}
+                  >
+                    {empty ? "·" : symbolEmoji[sym as CellSymbol]}
+                  </span>
                 </button>
               );
             })}
