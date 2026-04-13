@@ -5,6 +5,7 @@ import {
   DIFFICULTY_TIER_CONFIG,
   allowedTechniquesForTier,
   createRngFromSeed,
+  digPuzzleFromSolution,
   generateCompleteGrid,
   generatePuzzle,
   isValidPuzzleSeedString,
@@ -49,5 +50,22 @@ test.describe("Suduku puzzle generator (contract smoke)", () => {
         expect(v).toBeLessThanOrEqual(9);
       }
     }
+  });
+
+  test("digPuzzleFromSolution keeps a unique-solution puzzle with givens >= tier min", () => {
+    const tier = "normal" as const;
+    const givens = digPuzzleFromSolution({
+      completedGrid: SOLVED_GRID_SAMPLE,
+      tier,
+      rng: createRngFromSeed("0123456789abcdef0123456789abcdef"),
+    });
+    expect(verifyUniqueSolution(givens)).toBe(true);
+    let filled = 0;
+    for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        if (givens[r]![c]! !== 0) filled++;
+      }
+    }
+    expect(filled).toBeGreaterThanOrEqual(DIFFICULTY_TIER_CONFIG[tier].givensCount.min);
   });
 });

@@ -30,6 +30,11 @@ export { verifyUniqueSolution } from "./verify-unique-solution";
 export { generateCompleteGrid } from "./complete-grid";
 
 export {
+  digPuzzleFromSolution,
+  type DigPuzzleFromSolutionOptions,
+} from "./dig-puzzle";
+
+export {
   DIFFICULTY_TIER_CONFIG,
   DIFFICULTY_TIER_ORDER,
   DIFFICULTY_TIER_SCORE_RANGE_OVERLAP_POLICY,

@@ -68,7 +68,7 @@
         "Vitest：对固定终盘与固定 rng 序列，挖空结果唯一解且给定数不少于配置下界；多解路径被排除",
         "仅使用 lib/core 的 Grid9 与任务 3 的 verifyUniqueSolution，不在此任务计算 difficultyScore"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
