@@ -210,7 +210,7 @@
         "findFirstValidSwap / 确定性遍历顺序仍可用，且只返回能形成三消的相邻对。",
         "npm test 中与 swap-legality 相关的用例全部更新并通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 19,

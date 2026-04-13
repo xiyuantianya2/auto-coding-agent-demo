@@ -44,26 +44,26 @@ describe("attemptAdjacentSwap", () => {
     expect(row0).toEqual([CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Ruby]);
   });
 
-  it("accepts a swap that only forms a merge pair (no line of three)", () => {
+  it("rejects a swap that only forms an adjacent pair (no line of three)", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Emerald],
       [CellSymbol.Ruby, CellSymbol.Sapphire, CellSymbol.Emerald],
       [CellSymbol.Emerald, CellSymbol.Emerald, CellSymbol.Ruby],
     ]);
     const r = attemptAdjacentSwap(before, { row: 0, col: 0 }, { row: 1, col: 0 });
-    expect(r.kind).toBe("accepted");
-    const row0 = r.board[0]!.slice(0, 2);
-    expect(row0).toEqual([CellSymbol.Ruby, CellSymbol.Ruby]);
+    expect(r.kind).toBe("rejected");
+    expect(r.reason).toBe("no_match");
+    expect(r.board).toBe(before);
   });
 
-  it("rejects a legal orthogonal swap that creates neither triple nor pair at swapped cells", () => {
+  it("rejects a legal orthogonal swap that creates no triple at swapped cells", () => {
     const before = boardFromLines([
       [CellSymbol.Ruby, CellSymbol.Emerald, CellSymbol.Sapphire],
       [CellSymbol.Amber, CellSymbol.Sapphire, CellSymbol.Ruby],
     ]);
     const r = attemptAdjacentSwap(before, { row: 0, col: 0 }, { row: 0, col: 1 });
     expect(r.kind).toBe("rejected");
-    expect(r.reason).toBe("no_match_or_merge");
+    expect(r.reason).toBe("no_match");
     expect(r.board).toBe(before);
   });
 

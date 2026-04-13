@@ -64,8 +64,8 @@ function posEq(a: CellPos, b: CellPos): boolean {
 
 function rejectionToast(reason?: string): string {
   switch (reason) {
-    case "no_match_or_merge":
-      return "未形成三消或对碰，已还原";
+    case "no_match":
+      return "未形成三消，已还原";
     case "same_symbol_noop":
       return "同色交换无效，已还原";
     case "empty_cell":

@@ -63,15 +63,16 @@ describe("swap-input (task 7: moves & win/fail)", () => {
 
   it("marks failure when moves reach 0 without target", () => {
     const before = boardFromLines([
-      [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Sapphire],
-      [CellSymbol.Ruby, CellSymbol.Amber, CellSymbol.Emerald],
+      [CellSymbol.Ruby, CellSymbol.Ruby, CellSymbol.Amethyst],
+      [CellSymbol.Sapphire, CellSymbol.Emerald, CellSymbol.Ruby],
+      [CellSymbol.Emerald, CellSymbol.Sapphire, CellSymbol.Amber],
     ]);
     let s = createSwapInteractionState(before, {
-      refillSeed: 101,
+      refillSeed: 99,
       levelConfig: { levelIndex: 0, targetScore: 999_999, moves: 1 },
     });
-    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 0 } });
-    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 0 } });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 2 } });
+    s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 2 } });
     expect(s.lastResult?.kind).toBe("accepted");
     expect(s.movesRemaining).toBe(0);
     expect(s.meetsWinTarget).toBe(false);

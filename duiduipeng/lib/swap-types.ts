@@ -26,7 +26,7 @@ export interface AdjacentSwapAttemptResult {
     | "out_of_bounds"
     | "not_orthogonal_adjacent"
     | "same_symbol_noop"
-    | "no_match_or_merge"
+    | "no_match"
     | "empty_cell"
     | "game_ended";
 }

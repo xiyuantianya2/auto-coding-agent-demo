@@ -26,7 +26,7 @@ describe("swap + stabilization (tasks 5–6)", () => {
     }
   });
 
-  it("accepts swap that only triggers pair-adjacency but stabilization scores triple clears only", () => {
+  it("rejects swap that only forms adjacent pair without triple", () => {
     const before = boardFromLines([
       [CellSymbol.Sapphire, CellSymbol.Ruby, CellSymbol.Sapphire],
       [CellSymbol.Ruby, CellSymbol.Amber, CellSymbol.Emerald],
@@ -34,8 +34,10 @@ describe("swap + stabilization (tasks 5–6)", () => {
     let s = createSwapInteractionState(before, { refillSeed: 101 });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 0, col: 0 } });
     s = reduceSwapInteraction(s, { type: "cell_click", cell: { row: 1, col: 0 } });
-    expect(s.lastResult?.kind).toBe("accepted");
+    expect(s.lastResult?.kind).toBe("rejected");
+    expect(s.lastResult?.reason).toBe("no_match");
     expect(s.turnMatchScore).toBe(0);
+    expect(s.board).toBe(before);
     for (const row of s.board) {
       for (const cell of row) {
         expect(isEmptyCell(cell)).toBe(false);
