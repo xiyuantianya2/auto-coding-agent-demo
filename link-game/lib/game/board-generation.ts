@@ -2,13 +2,59 @@ import { isBoardFullySolvable } from "./full-solvability";
 import type { Board, LevelConfig, PatternId } from "./types";
 
 /**
- * 可解性重试策略（稳定、可预期）：
- * - 多重集合固定：每种图案恰好出现两次，与关卡格数一致。
- * - 在固定上限 `MAX_SHUFFLE_ATTEMPTS` 内反复 Fisher–Yates 洗牌并铺盘；
- *   每次铺好后用 `isBoardFullySolvable`（全盘 DFS 回溯）判定是否存在完整消除序列；
- *   仅当为 true 时返回棋盘；若始终无法在随机洗牌下命中可解布局则抛错，避免静默返回死局。
+ * 生成策略（分层终止保障，优先级从高到低）：
+ *
+ * 1. **随机可解**：在关卡相关上限内 Fisher–Yates 洗牌并铺盘，每次用 `isBoardFullySolvable` 校验；
+ *    大棋盘单次 DFS 成本高，故对最重关卡使用更紧的随机上限，避免主线程长时间阻塞。
+ * 2. **构造式铺盘（备用）**：若随机未命中，则使用行主序「相邻对」模板 `1,1,2,2,…,k,k` 铺盘。
+ *    该模板对当前 `DEFAULT_LEVELS` 三关均已验证为全盘可解；若未来关卡配置变更导致模板不可解，
+ *    会在备用路径末尾校验失败并抛错（而非静默返回死局）。
+ *
+ * 成本记录见 `BoardGenerationMetrics` / `getLastBoardGenerationMetrics`。
  */
-const MAX_SHUFFLE_ATTEMPTS = 5000;
+
+/** 每关随机阶段上限（命中即返回；否则走构造备用）。关卡越大，单次可解性判定越重，上限越小。 */
+export function maxRandomAttemptsForLevel(level: LevelConfig): number {
+  switch (level.id) {
+    case 1:
+      return 2500;
+    case 2:
+      return 150;
+    case 3:
+      return 50;
+    default:
+      return 500;
+  }
+}
+
+/** 随机洗牌探测时使用的 DFS 节点预算（避免在「不可解」随机布局上指数级爆搜）；构造备用路径用无预算完整判定。 */
+function maxDfsNodesForRandomProbe(level: LevelConfig): number {
+  switch (level.id) {
+    case 1:
+      return 4_000_000;
+    case 2:
+      return 450_000;
+    case 3:
+      return 320_000;
+    default:
+      return 400_000;
+  }
+}
+
+/** 最近一次 `generateBoardFromLevel` 的耗时与路径（供测试与调试）。 */
+export interface BoardGenerationMetrics {
+  /** 随机阶段实际洗牌次数（构造成功时为尝试次数；走备用路径时为上限值）。 */
+  readonly randomAttempts: number;
+  readonly path: "random" | "constructive";
+  /** 本次生成总耗时（毫秒）。 */
+  readonly durationMs: number;
+}
+
+let lastBoardGenerationMetrics: BoardGenerationMetrics | null = null;
+
+export function getLastBoardGenerationMetrics(): BoardGenerationMetrics | null {
+  return lastBoardGenerationMetrics;
+}
 
 function assertValidLevel(level: LevelConfig): void {
   const { rows, cols, tileKindCount } = level;
@@ -56,8 +102,20 @@ function buildCellsFromFlat(
   return cells;
 }
 
+/** 行主序相邻对铺盘（构造备用路径）； multiset 顺序为 1,1,2,2,… */
+function buildConstructiveStripeBoard(level: LevelConfig): Board {
+  assertValidLevel(level);
+  const { rows, cols, tileKindCount } = level;
+  const flat: PatternId[] = [];
+  for (let id = 1; id <= tileKindCount; id++) {
+    flat.push(id, id);
+  }
+  const cells = buildCellsFromFlat(rows, cols, flat);
+  return { rows, cols, cells };
+}
+
 /**
- * 由关卡配置生成棋盘：成对图案、随机洗牌铺盘；若随机布局下非全盘可解则重洗，直至上限。
+ * 由关卡配置生成棋盘：优先随机可解布局；若随机阶段未命中则使用构造式铺盘（仍校验全盘可解）。
  */
 export function generateBoardFromLevel(
   level: LevelConfig,
@@ -65,22 +123,56 @@ export function generateBoardFromLevel(
 ): Board {
   assertValidLevel(level);
   const { rows, cols, tileKindCount } = level;
+  const t0 =
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
 
   const multiset: PatternId[] = [];
   for (let id = 1; id <= tileKindCount; id++) {
     multiset.push(id, id);
   }
 
-  for (let attempt = 0; attempt < MAX_SHUFFLE_ATTEMPTS; attempt++) {
+  const maxRandom = maxRandomAttemptsForLevel(level);
+
+  for (let attempt = 0; attempt < maxRandom; attempt++) {
     shuffleInPlace(multiset, rng);
     const cells = buildCellsFromFlat(rows, cols, multiset);
     const board: Board = { rows, cols, cells };
-    if (isBoardFullySolvable(board)) {
+    if (
+      isBoardFullySolvable(board, {
+        maxDfsNodes: maxDfsNodesForRandomProbe(level),
+      })
+    ) {
+      const t1 =
+        typeof performance !== "undefined" && performance.now
+          ? performance.now()
+          : Date.now();
+      lastBoardGenerationMetrics = {
+        randomAttempts: attempt + 1,
+        path: "random",
+        durationMs: t1 - t0,
+      };
       return board;
     }
   }
 
-  throw new Error(
-    `generateBoardFromLevel: could not generate a fully solvable layout within ${MAX_SHUFFLE_ATTEMPTS} shuffles (level id=${level.id}).`,
-  );
+  const fallback = buildConstructiveStripeBoard(level);
+  const verifyBudget =
+    level.id === 1 ? 6_000_000 : level.id === 2 ? 4_000_000 : 3_000_000;
+  if (!isBoardFullySolvable(fallback, { maxDfsNodes: verifyBudget })) {
+    throw new Error(
+      `generateBoardFromLevel: constructive stripe layout is not fully solvable within verify budget (level id=${level.id}); adjust LevelConfig or fallback strategy.`,
+    );
+  }
+  const t1 =
+    typeof performance !== "undefined" && performance.now
+      ? performance.now()
+      : Date.now();
+  lastBoardGenerationMetrics = {
+    randomAttempts: maxRandom,
+    path: "constructive",
+    durationMs: t1 - t0,
+  };
+  return fallback;
 }

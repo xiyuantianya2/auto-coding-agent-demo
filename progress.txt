@@ -1,5 +1,25 @@
 # Progress Log
 
+## 2026-04-13 - Task: 生成终止保障与性能基线（id=14）
+
+### What was done:
+- `link-game/lib/game/board-generation.ts`：分层策略（注释标明优先级）— 先随机洗牌并在关卡相关次数上限内探测全盘可解；失败则行主序相邻对构造铺盘，并在预算内二次校验。随机探测使用 `isBoardFullySolvable` 的 `maxDfsNodes` 限制，避免在不可解随机布局上指数级爆搜；导出 `maxRandomAttemptsForLevel`、`getLastBoardGenerationMetrics` 记录重试次数/路径/耗时。
+- `link-game/lib/game/full-solvability.ts`：可选 `maxDfsNodes` 预算；完整判定（不传预算）仍用于单元测试与构造校验。
+- `link-game/lib/game/rng.ts`：`mulberry32` 固定种子 PRNG；`scripts/benchmark-board-generation.ts` + `npm run bench:board-gen` 批量统计（默认每关 100 次，可用 `BENCH_BATCH` 覆盖）。
+- `link-game/lib/game/board-generation.metrics.test.ts`：Vitest 冒烟覆盖三关固定种子与指标边界。
+- `architecture.md`：生成策略与 bench 脚本说明一句。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- `npm run test:unit`：5/5 通过。
+- `npm run bench:board-gen`（`BENCH_BATCH=5` 样例）：三关均输出 avg/max 重试与耗时。
+- `npx playwright test --headed`：6/6 通过。
+
+### Notes:
+- 最重关卡随机阶段次数上限更紧 + DFS 节点预算为当前「最小可行」主线程方案；若未来关卡变大，可调 `maxDfsNodesForRandomProbe` / `maxRandomAttemptsForLevel` 或再引入 Worker。
+
+---
+
 ## 2026-04-13 - Task: 生成器仅接受全局可解布局（id=13）
 
 ### What was done:

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test:unit": "vitest run",
     "board-selftest": "tsx scripts/run-board-selftest.ts",
+    "bench:board-gen": "tsx scripts/benchmark-board-generation.ts",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
