@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-04-14 - Task: 稳定化动画事件序列（纯逻辑）（duiduipeng id=25）
+
+### What was done:
+- 新增 `lib/stabilization-steps.ts`：`buildStabilizationStepSequence`、`buildStabilizationStepSequenceFromAcceptedSwap`，类型 `StabilizationChainWaveStep` / `StabilizationStepSequence`；每连锁波次一步，含待消坐标、消除后盘、补位后盘、本波得分增量与补位种子。
+- `lib/index.ts` 导出上述 API；`lib/stabilization-steps.test.ts` 对照 `stabilizeAfterSwap` 与逐步重放，并搜索多波连锁用例。
+- `duiduipeng/task.json`：id=25 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`、`npm test -- --run` 均通过。
+
+### Notes:
+- UI 接入与播放状态见 task id=26。
+
+---
+
 ## 2026-04-14 - Task: 整体验收与回归（duiduipeng id=24）
 
 ### What was done:

@@ -52,3 +52,9 @@ export {
   type StabilizeAfterSwapOptions,
   type GravityRefillOptions,
 } from "./stabilization";
+export {
+  buildStabilizationStepSequence,
+  buildStabilizationStepSequenceFromAcceptedSwap,
+  type StabilizationChainWaveStep,
+  type StabilizationStepSequence,
+} from "./stabilization-steps";
