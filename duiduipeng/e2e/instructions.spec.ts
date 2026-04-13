@@ -17,7 +17,7 @@ test.describe("游戏说明", () => {
     await expect(dialog.getByRole("heading", { name: "游戏说明与得分" })).toBeVisible();
 
     await expect(dialog).toContainText("三消");
-    await expect(dialog).toContainText("对碰合并");
+    await expect(dialog).toContainText("合法与步数");
     await expect(dialog).toContainText("目标分");
     await expect(dialog).toContainText("剩余步数");
     await expect(dialog).toContainText("BASE_SCORE_PER_CELL");

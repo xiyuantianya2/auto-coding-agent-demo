@@ -94,14 +94,12 @@ export function GameInstructionsDialog(props: {
                   合法与步数
                 </h3>
                 <p>
-                  交换后须能触发<strong>三消</strong>（横或纵至少三个同色相连）或
-                  <strong>对碰合并</strong>
-                  （未形成三消时，符合条件的相邻两格同色「一对」可合并或双消）；否则盘面会恢复为交换前，
+                  交换后须能在被交换格上触发<strong>三消</strong>（横或纵至少三个同色相连）；否则盘面会恢复为交换前，
                   <strong>不消耗步数</strong>
                   ，并会有提示。
                 </p>
                 <p>
-                  仅当交换被接受并进入消除/合并结算时，<strong>消耗 1 步</strong>
+                  仅当交换被接受并进入三消消除与连锁结算时，<strong>消耗 1 步</strong>
                   （一整次「稳定化」连锁仍只算一手）。
                 </p>
               </section>

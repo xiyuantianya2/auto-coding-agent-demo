@@ -75,6 +75,20 @@ function rejectionToast(reason?: string): string {
   }
 }
 
+/** 状态行用：与 {@link rejectionToast} 同义，略去「已还原」等 toast 尾语 */
+function rejectionStatusDetail(reason?: string): string {
+  switch (reason) {
+    case "no_match":
+      return "未形成三消";
+    case "same_symbol_noop":
+      return "同色交换无效";
+    case "empty_cell":
+      return "空格无法参与交换";
+    default:
+      return "条件不满足";
+  }
+}
+
 export function SwapPlayground() {
   const initialBoard = useMemo(
     () => createInitialBoard({ rows: 6, cols: 6, random: mulberry32(2026) }),
@@ -301,9 +315,9 @@ export function SwapPlayground() {
             : state.lastResult.kind === "accepted"
               ? state.turnMatchScore > 0
                 ? `交换有效：连锁 ${state.chainWaves} 波，本步 +${state.turnMatchScore} 分（含连锁加成）。`
-                : "交换有效：盘面无三消或可对碰的二连（不应出现于合法交换）。"
+                : "交换有效：本步未累计三消得分（不应出现于合法交换）。"
               : state.lastResult.kind === "rejected"
-                ? `交换无效：${state.lastResult.reason ?? "未触发消除或合并"}，盘面已回滚，不消耗步数。`
+                ? `交换无效：${rejectionStatusDetail(state.lastResult.reason)}，盘面已回滚，不消耗步数。`
                 : state.lastResult.reason === "game_ended"
                   ? "对局已结束，无法继续交换。"
                   : `未尝试交换：${state.lastResult.reason ?? "非相邻或对角线忽略"}。`;

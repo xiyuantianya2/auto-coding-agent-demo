@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "对对碰 | Duiduipeng",
   description:
-    "浏览器对对碰三消小游戏：相邻交换、三消与对碰合并、步数内达成目标分。Browser match-3 style puzzle with moves and scoring.",
+    "浏览器对对碰三消小游戏：相邻交换、三消连锁与下落补位、步数内达成目标分。Browser match-3 style puzzle with moves and scoring.",
 };
 
 export default function RootLayout({
