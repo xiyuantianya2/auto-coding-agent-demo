@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-04-13 - Task: 多关卡流程（id=9）
+
+### What was done:
+- `link-game/lib/game/levels.ts`：新增 `getNextLevelId(currentId)`，用于顺序下一关。
+- `link-game/components/game/LinkGame.tsx`：维护 `currentLevelId` 与 `maxUnlockedLevelId`（过关解锁下一关）；顶部「关卡（顺序解锁）」与 `DEFAULT_LEVELS` 一致的可选关按钮；非最后一关胜利后提供「下一关」与「过关自动进入下一关」勾选（默认开启，约 2.6s 后自动 `applyLevel`）；最后一关胜利后展示全部通关文案与「再玩一次」（重置为起始关并仅解锁该关）。切换关卡时 `applyLevel` 同步重置棋盘与计时/暂停/提示等状态，避免 HUD 与盘面短暂不一致。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- 基线：`http://127.0.0.1:3000` HTTP 200。
+
+### Notes:
+- 可选 props `levelId` 仍为起始关卡；再玩一次回到该起始关并恢复仅解锁该关。若需持久化解锁进度可后续接 localStorage。
+
+---
+
 ## 2026-04-13 - Task: 提示一步（id=8）
 
 ### What was done:

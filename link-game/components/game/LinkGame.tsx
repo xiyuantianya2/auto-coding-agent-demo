@@ -12,10 +12,11 @@ import {
   handleCellClick,
   restartPlayState,
 } from "@/lib/game/game-state";
-import { getLevelById } from "@/lib/game/levels";
+import { DEFAULT_LEVELS, getLevelById, getNextLevelId } from "@/lib/game/levels";
 import type { CellCoord } from "@/lib/game/types";
 
 type LinkGameProps = {
+  /** 起始关卡 id（默认 1）。 */
   levelId?: number;
 };
 
@@ -26,13 +27,20 @@ function formatMmSs(totalMs: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-export function LinkGame({ levelId = 1 }: LinkGameProps) {
-  const level = getLevelById(levelId);
+const AUTO_NEXT_MS = 2600;
+
+export function LinkGame({ levelId: initialLevelId = 1 }: LinkGameProps) {
+  const firstLevel = getLevelById(initialLevelId) ?? DEFAULT_LEVELS[0]!;
+
+  const [currentLevelId, setCurrentLevelId] = useState(initialLevelId);
+  const [maxUnlockedLevelId, setMaxUnlockedLevelId] = useState(initialLevelId);
+
+  const level = getLevelById(currentLevelId);
   if (!level) {
-    throw new Error(`LinkGame: unknown level id ${levelId}`);
+    throw new Error(`LinkGame: unknown level id ${currentLevelId}`);
   }
 
-  const [state, setState] = useState(() => createInitialPlayState(level));
+  const [state, setState] = useState(() => createInitialPlayState(firstLevel));
 
   const [gameStartMs, setGameStartMs] = useState(() => Date.now());
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -44,7 +52,28 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
   const [hintPair, setHintPair] = useState<ConnectablePair | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  const [autoNextLevel, setAutoNextLevel] = useState(true);
+
   const { board, selected, won } = state;
+
+  const nextLevelId = getNextLevelId(currentLevelId);
+  const isLastLevel = nextLevelId === null;
+
+  const applyLevel = useCallback((id: number) => {
+    const lvl = getLevelById(id);
+    if (!lvl) return;
+    setCurrentLevelId(id);
+    setState(createInitialPlayState(lvl));
+    const t = Date.now();
+    setGameStartMs(t);
+    setNowMs(t);
+    setPausedAccumMs(0);
+    setPauseStartedAt(null);
+    setPaused(false);
+    setWinAtMs(null);
+    setHintPair(null);
+    setToastMessage(null);
+  }, []);
 
   useEffect(() => {
     if (!hintPair) return;
@@ -64,6 +93,15 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
     return () => clearInterval(id);
   }, [won]);
 
+  useEffect(() => {
+    if (!won || !autoNextLevel || isLastLevel) return;
+    if (nextLevelId === null) return;
+    const id = setTimeout(() => {
+      applyLevel(nextLevelId);
+    }, AUTO_NEXT_MS);
+    return () => clearTimeout(id);
+  }, [won, autoNextLevel, isLastLevel, nextLevelId, applyLevel]);
+
   const getLiveElapsedMs = () => {
     const now = nowMs;
     const pauseExtra =
@@ -76,6 +114,24 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
       ? Math.max(0, winAtMs - gameStartMs - pausedAccumMs)
       : getLiveElapsedMs();
 
+  const goToNextLevel = useCallback(() => {
+    if (nextLevelId === null) return;
+    applyLevel(nextLevelId);
+  }, [nextLevelId, applyLevel]);
+
+  const replayFromStart = useCallback(() => {
+    setMaxUnlockedLevelId(initialLevelId);
+    applyLevel(initialLevelId);
+  }, [initialLevelId, applyLevel]);
+
+  const selectLevel = useCallback(
+    (id: number) => {
+      if (id > maxUnlockedLevelId) return;
+      applyLevel(id);
+    },
+    [maxUnlockedLevelId, applyLevel],
+  );
+
   const onCellClick = useCallback(
     (coord: CellCoord) => {
       if (paused || won) return;
@@ -84,11 +140,15 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
         const next = handleCellClick(prev, coord);
         if (next.won && !prev.won) {
           setWinAtMs(Date.now());
+          setMaxUnlockedLevelId((m) => {
+            const unlockTarget = getNextLevelId(level.id) ?? level.id;
+            return Math.max(m, unlockTarget);
+          });
         }
         return next;
       });
     },
-    [paused, won],
+    [paused, won, level.id],
   );
 
   const onHint = useCallback(() => {
@@ -191,6 +251,46 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
         </div>
       </header>
 
+      <section
+        className="rounded-2xl border border-zinc-800/80 bg-zinc-900/30 px-4 py-3 sm:px-5"
+        aria-label="关卡选择"
+      >
+        <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
+          关卡（顺序解锁）
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {DEFAULT_LEVELS.map((lv) => {
+            const locked = lv.id > maxUnlockedLevelId;
+            const active = lv.id === currentLevelId;
+            return (
+              <button
+                key={lv.id}
+                type="button"
+                onClick={() => selectLevel(lv.id)}
+                disabled={locked}
+                className={[
+                  "rounded-full border px-3 py-1.5 text-sm font-medium transition-colors",
+                  active
+                    ? "border-emerald-500/70 bg-emerald-500/15 text-emerald-100"
+                    : "border-zinc-700 bg-zinc-900/80 text-zinc-300 hover:bg-zinc-800",
+                  locked
+                    ? "cursor-not-allowed opacity-45"
+                    : "cursor-pointer",
+                ].join(" ")}
+                title={
+                  locked
+                    ? "尚未解锁：请先完成前一关"
+                    : `${lv.name}（${lv.rows}×${lv.cols}）`
+                }
+              >
+                {lv.id}. {lv.name}
+                {locked ? " · 未解锁" : ""}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
       <BoardGrid
         board={board}
         selected={selected}
@@ -199,19 +299,64 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
         onCellClick={onCellClick}
       />
 
-      {won ? (
-        <p
-          className="rounded-lg border border-emerald-500/40 bg-emerald-950/50 px-5 py-3 text-center text-emerald-200"
+      {won && !isLastLevel ? (
+        <div
+          className="space-y-3 rounded-lg border border-emerald-500/40 bg-emerald-950/50 px-5 py-4 text-center text-emerald-100"
           role="status"
         >
-          胜利：已全部消除。
-        </p>
-      ) : (
+          <p className="font-medium">本关已完成</p>
+          <p className="text-sm text-emerald-200/90">
+            {autoNextLevel
+              ? `将在约 ${Math.round(AUTO_NEXT_MS / 1000)} 秒后自动进入下一关；也可立即点击按钮。`
+              : "点击「下一关」继续。"}
+          </p>
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+            <button
+              type="button"
+              onClick={goToNextLevel}
+              className="rounded-full border border-emerald-400/80 bg-emerald-600/30 px-6 py-2 text-sm font-semibold text-emerald-50 hover:bg-emerald-600/45"
+            >
+              下一关
+            </button>
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-emerald-200/90">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-emerald-600/80 bg-zinc-900 text-emerald-500 focus:ring-emerald-500"
+                checked={autoNextLevel}
+                onChange={(e) => setAutoNextLevel(e.target.checked)}
+              />
+              过关自动进入下一关
+            </label>
+          </div>
+        </div>
+      ) : null}
+
+      {won && isLastLevel ? (
+        <div
+          className="space-y-4 rounded-lg border border-sky-500/40 bg-sky-950/40 px-5 py-5 text-center text-sky-50"
+          role="status"
+        >
+          <p className="text-lg font-semibold">恭喜，全部通关！</p>
+          <p className="text-sm text-sky-100/85">
+            你已完成「{DEFAULT_LEVELS[0]?.name}」至「{level.name}
+            」全部关卡。
+          </p>
+          <button
+            type="button"
+            onClick={replayFromStart}
+            className="rounded-full border border-sky-400/70 bg-sky-600/35 px-6 py-2 text-sm font-semibold text-sky-50 hover:bg-sky-600/50"
+          >
+            再玩一次
+          </button>
+        </div>
+      ) : null}
+
+      {!won ? (
         <p className="max-w-md self-center text-center text-sm text-zinc-500">
           第一次点击选中；第二次若图案相同且路径可连（≤2 拐弯）则消除，否则以第二次为新的选中。
           再点已选格子可取消。
         </p>
-      )}
+      ) : null}
     </div>
   );
 }

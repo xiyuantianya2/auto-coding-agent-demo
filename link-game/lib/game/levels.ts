@@ -31,3 +31,10 @@ export const DEFAULT_LEVELS: readonly LevelConfig[] = [
 export function getLevelById(id: number): LevelConfig | undefined {
   return DEFAULT_LEVELS.find((level) => level.id === id);
 }
+
+/** 顺序下一关 id；已是最后一关则返回 `null`。 */
+export function getNextLevelId(currentId: number): number | null {
+  const idx = DEFAULT_LEVELS.findIndex((level) => level.id === currentId);
+  if (idx < 0 || idx >= DEFAULT_LEVELS.length - 1) return null;
+  return DEFAULT_LEVELS[idx + 1]!.id;
+}
