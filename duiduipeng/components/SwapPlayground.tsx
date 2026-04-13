@@ -21,6 +21,7 @@ import {
 } from "@/lib/swap-input";
 import { findFirstValidSwap } from "@/lib/swap-legality";
 import type { CellPos } from "@/lib/swap-types";
+import { GameInstructionsDialog } from "@/components/GameInstructionsDialog";
 
 const HINT_COOLDOWN_MS = 8_000;
 const MAX_HINTS_PER_GAME = 12;
@@ -397,28 +398,33 @@ export function SwapPlayground() {
         </div>
       ) : null}
 
-      <header className="flex flex-col gap-4 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-4 shadow-lg shadow-black/20 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-        <div className="min-w-0 space-y-1">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-300/95">
-              第 {levelDisplay} 关
-            </span>
-            {isPaused && !ended ? (
-              <span
-                className="inline-flex shrink-0 items-center rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-amber-200/95"
-                role="status"
-              >
-                已暂停
+      <header className="flex flex-col gap-4 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-4 shadow-lg shadow-black/20 sm:px-5">
+        <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-semibold uppercase tracking-wide text-emerald-300/95">
+                第 {levelDisplay} 关
               </span>
-            ) : null}
-            <h2 className="text-lg font-semibold text-zinc-100 sm:text-xl">
-              对对碰
-            </h2>
+              {isPaused && !ended ? (
+                <span
+                  className="inline-flex shrink-0 items-center rounded-full border border-amber-500/50 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold tracking-wide text-amber-200/95"
+                  role="status"
+                >
+                  已暂停
+                </span>
+              ) : null}
+              <h2 className="text-lg font-semibold text-zinc-100 sm:text-xl">
+                对对碰
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-500">
+              棋盘 {rows}×{cols} · 在步数内达到目标分
+              {ended ? null : isPaused ? " · 用时已冻结" : ` · 用时 ${formatElapsed(elapsedSec)}`}
+            </p>
           </div>
-          <p className="text-sm text-zinc-500">
-            棋盘 {rows}×{cols} · 在步数内达到目标分
-            {ended ? null : isPaused ? " · 用时已冻结" : ` · 用时 ${formatElapsed(elapsedSec)}`}
-          </p>
+          <div className="flex shrink-0 items-center sm:pt-0.5">
+            <GameInstructionsDialog />
+          </div>
         </div>
         <div
           className="grid w-full min-w-0 grid-cols-2 gap-3 sm:max-w-3xl sm:grid-cols-5"

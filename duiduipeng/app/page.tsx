@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GameInstructionsDialog } from "@/components/GameInstructionsDialog";
 import { SwapPlayground } from "@/components/SwapPlayground";
 
 export default function Home() {
@@ -21,14 +22,15 @@ export default function Home() {
           </p>
         </div>
 
-        <p>
+        <div className="flex flex-wrap items-center justify-center gap-3">
+          <GameInstructionsDialog />
           <Link
             href="#duiduipeng-game-main"
             className="inline-flex rounded-full border border-emerald-500/40 bg-emerald-950/40 px-5 py-2.5 text-sm font-medium text-emerald-300/95 hover:bg-emerald-900/50"
           >
             前往游戏主区域
           </Link>
-        </p>
+        </div>
 
         {/* 游戏主界面与棋盘；容器类名固定便于样式与测试定位 */}
         <section
