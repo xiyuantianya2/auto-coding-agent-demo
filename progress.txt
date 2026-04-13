@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 类型与关卡配置（id=2）
+
+### What was done:
+- 新增 `link-game/lib/game/types.ts`：`CellCoord`、`GridSize`、`PatternId`、`Tile`、`Board`、`LevelConfig` 等类型，描述网格坐标、棋盘单元与关卡静态配置。
+- 新增 `link-game/lib/game/levels.ts`：内置 3 关（4×4 / 5×6 / 6×8，`tileKindCount` 8 / 15 / 24），导出 `DEFAULT_LEVELS` 与 `getLevelById`。
+- 根目录 `task.json` id=2 已标记 `passes: true`。
+
+### Testing:
+- 仓库根已执行 `./init.sh`（依赖安装；dev 与已有 Next 实例并存时端口可能非 3000）；对运行中的 dev 地址做 HTTP 冒烟返回 200。
+- `cd link-game && npm run lint`、`npm run build` 通过。
+
+### Notes:
+- 下一任务为 id=3「棋盘生成与洗牌」，可消费 `LevelConfig` 与 `Board`。
+
+---
+
 ## 2026-04-13 - Task: 脚手架与入口占位（id=1）
 
 ### What was done:

@@ -24,7 +24,7 @@
         "新增 lib/game/levels.ts：至少 3 个关卡（不同行列或图案数递增）",
         "导出默认关卡列表与按 id 查询"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,
