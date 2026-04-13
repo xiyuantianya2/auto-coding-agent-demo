@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import type { Grid9 } from "@/lib/core";
+import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import {
   createRngFromSeed,
   generatePuzzle,
@@ -21,7 +22,8 @@ test.describe("Suduku puzzle generator (contract smoke)", () => {
     expect(typeof r()).toBe("number");
   });
 
-  test("verifyUniqueSolution remains unimplemented (task 3)", () => {
-    expect(() => verifyUniqueSolution(EMPTY_GRID)).toThrow(/not implemented yet/);
+  test("verifyUniqueSolution: full valid grid is uniquely solvable; empty board is not", () => {
+    expect(verifyUniqueSolution(SOLVED_GRID_SAMPLE)).toBe(true);
+    expect(verifyUniqueSolution(EMPTY_GRID)).toBe(false);
   });
 });

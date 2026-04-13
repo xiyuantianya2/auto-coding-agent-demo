@@ -25,6 +25,8 @@ import {
 
 export type { DifficultyTier } from "../core";
 
+export { verifyUniqueSolution } from "./verify-unique-solution";
+
 export {
   PUZZLE_SEED_HEX_DIGITS,
   createMulberry32,
@@ -68,16 +70,3 @@ export function generatePuzzle(options: {
   };
 }
 
-/**
- * 判定 `givens` 在标准数独规则下是否**恰好有一个**完整解（占位：尚未实现判定逻辑）。
- *
- * 与 `lib/solver`：`findTechniques` / `scoreDifficulty` 用于分析给定盘面，不替代唯一解计数；本函数实现可不调用技巧引擎。
- *
- * @param givens — 9×9 提示面，语义与 core 的 {@link Grid9} 一致。
- * @returns `true` 当且仅当唯一解（占位阶段不会返回）。
- * @throws 在占位阶段始终抛出，提示尚未实现。
- */
-export function verifyUniqueSolution(givens: Grid9): boolean {
-  void givens;
-  throw new Error("puzzle-generator: verifyUniqueSolution is not implemented yet");
-}

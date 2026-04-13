@@ -35,7 +35,7 @@
         "Vitest：使用已知唯一解、多解、无解（或矛盾）小样例网格，断言返回值正确",
         "函数签名与 module-plan 中 verifyUniqueSolution 一致，并在测试中覆盖至少一个 9×9 完整唯一解题"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
