@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 计时器（id=7）
+
+### What was done:
+- 更新 `link-game/components/game/LinkGame.tsx`：HUD 显示「已用时间」`mm:ss`（等宽数字）；开局自动计时（`gameStartMs` + `nowMs` 每 250ms 刷新）；胜利时在点击回调中记录 `winAtMs` 并停止 tick interval，时间冻结；「重新开始本关」重置开局时间与暂停状态并清空 `winAtMs`。
+- 可选暂停：「暂停 / 继续」与 `paused`、`pauseStartedAt`、`pausedAccumMs` 一致；暂停时禁止落子；胜利后暂停按钮禁用并显示「已结束」。
+- 根目录 `task.json` id=7 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- 基线：`http://127.0.0.1:3000` HTTP 200。
+
+### Notes:
+- 胜利后不再刷新 `nowMs`，展示用 `winAtMs` 与累计暂停时间推导；后续多关卡可沿用同一套计时状态或按关重置。
+
+---
+
 ## 2026-04-13 - Task: 棋盘与 HUD 界面（id=6）
 
 ### What was done:
