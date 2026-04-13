@@ -1,5 +1,47 @@
 # Progress Log
 
+## 2026-04-13 - Task: 全棋盘可解性判定算法（id=11）
+
+### What was done:
+- 新增 `link-game/lib/game/full-solvability.ts`：导出 `isBoardFullySolvable(board)`，在 `canConnect` / `enumerateConnectablePairs` 规则下对盘面做 DFS 回溯，尝试每一步消除任意一对当前可连同图案子，直至全盘清空或分支穷尽。
+- 空盘判定为可解（`true`）；文件头注释说明与 `hasAtLeastOneConnectablePair` 的局部一步条件 vs 全局完整消除序列之差异。
+- `link-game/lib/game/connectivity.ts`：`hasAtLeastOneConnectablePair` 注释补充与全局可解性的交叉引用。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- `npx playwright test --headed`：6/6 全部通过（页面加载、计时、提示、重开、暂停、三关通关）。
+
+### Notes:
+- 生成器仍使用 `hasAtLeastOneConnectablePair`（task 13 将切换为 `isBoardFullySolvable`）；单元测试与反例见 task 12。
+
+---
+
+## 2026-04-13 - Task: 收尾与验收 — Playwright headed E2E 浏览器自动验证（id=10 增强）
+
+### What was done:
+- 新增 Playwright headed 模式 E2E 测试：`link-game/e2e/link-game.spec.ts`，6 项测试用例覆盖完整游戏流程。
+- 新增 `link-game/playwright.config.ts`（headed + slowMo 150 + 视频/截图录制 + webServer 自动启动 dev）。
+- `package.json` 新增 `test:e2e` / `test:e2e:headed` 脚本；`eslint.config.mjs` 忽略 `e2e/` 与 `playwright.config.ts`。
+- 安装 `@playwright/test` 及 Chromium 浏览器。
+
+### Testing:
+- `npm run lint` 无错误、`npm run build` 生产构建成功。
+- `npx playwright test --headed` 6/6 全部通过（~30s），具体测试项：
+  1. **Page loads with game board and HUD** — 验证首页加载、HUD 元素、关卡选择器、棋盘 16 格（第 1 关）。
+  2. **Timer ticks upward** — 开局后计时器数值持续递增。
+  3. **Hint highlights a pair of tiles** — 点击「提示」后两个棋子获得琥珀色高亮，约 2.6s 后自动消失。
+  4. **Restart resets the board** — 消除一对后「重新开始本关」恢复满格棋盘。
+  5. **Pause freezes the game** — 暂停冻结计时、继续后计时恢复。
+  6. **Play through all 3 levels to victory** — 自动通过入门(4×4)→进阶(5×6)→挑战(6×8)三关，验证「本关已完成」→「下一关」→「全部通关」→「再玩一次」完整流程。
+- 测试使用 `page.evaluate` 在浏览器内直接读取棋盘 DOM 并运行 BFS 连通判定，原子性地 find+click 消除对，确保无竞态条件。
+
+### Notes:
+- 运行方式：`cd link-game && npm run test:e2e:headed`（需先安装 Chromium：`npx playwright install chromium`）。
+- 测试录制视频和截图保存在 `test-results/` 目录下。
+- 如需调整浏览器可见速度，修改 `playwright.config.ts` 中 `slowMo` 值（当前 150ms）。
+
+---
+
 ## 2026-04-13 - Task: 收尾与验收（id=10）
 
 ### What was done:

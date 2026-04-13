@@ -113,6 +113,83 @@
         "更新 progress.txt 记录结论"
       ],
       "passes": true
+    },
+    {
+      "id": 11,
+      "title": "全棋盘可解性判定算法",
+      "description": "实现「存在一种消除顺序能清空全盘」的判定，区别于仅「至少一对可连」",
+      "steps": [
+        "在 lib/game/ 新增模块或扩展现有文件：基于现有 canConnect 规则，用回溯/DFS 尝试每一步任选一对可连同图案子并消除，递归直至空盘或穷尽失败",
+        "空盘视为可解；明确与 hasAtLeastOneConnectablePair 的语义差异并在代码注释中说明",
+        "导出如 isBoardFullySolvable(board)（或项目内一致命名），供生成与测试复用"
+      ],
+      "passes": true
+    },
+    {
+      "id": 12,
+      "title": "可解性算法的单元测试与反例",
+      "description": "用测试锁定算法行为，覆盖可解与不可解布局",
+      "steps": [
+        "新增或扩展测试（如 Vitest/Jest 或现有测试方式）：至少包含「明显可消完」的小棋盘为 true",
+        "构造或固定种子得到「至少一对可连但无法消完全盘」的布局（若需可手写 cells），断言 isBoardFullySolvable 为 false",
+        "运行测试命令并确保全部通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 13,
+      "title": "生成器仅接受全局可解布局",
+      "description": "将 generateBoardFromLevel 的准入条件从「至少一对可连」改为「全盘可解」",
+      "steps": [
+        "修改 link-game/lib/game/board-generation.ts：洗牌后除校验成对外，调用 id=11 的全盘可解判定；仅当为 true 时返回棋盘",
+        "更新文件头注释与 architecture.md 中「可解性」表述（若该处仍写「可选校验」则改为与实际一致）",
+        "保留合理重试上限；若上限内仍失败，错误信息应指向「无法生成可解布局」而非旧文案"
+      ],
+      "passes": false
+    },
+    {
+      "id": 14,
+      "title": "生成终止保障与性能基线",
+      "description": "避免大棋盘下纯随机重试过久或永远无法命中，并记录成本",
+      "steps": [
+        "对 DEFAULT_LEVELS 每关用固定种子或脚本批量调用生成（如每关 ≥50～100 次），统计平均/最坏重试次数与耗时；若纯随机在默认上限内不稳定，实现构造式生成或分层备用策略，确保在约定上限内总能返回可解棋盘",
+        "若引入备用路径，在注释中说明优先级（先随机可解，失败则构造）",
+        "避免阻塞主线程过久：必要时对最重关卡设更紧上限或 Web Worker（按项目现状选最小可行方案）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 15,
+      "title": "更新棋盘生成自检与开发入口",
+      "description": "开发期自检与随机回归断言「生成结果必全盘可解」",
+      "steps": [
+        "更新 link-game/lib/game/board-selftest.ts（或等价）：在现有成对/枚举校验之外，对每次 generateBoardFromLevel 结果调用全盘可解判定",
+        "若 dev 页或脚本调用了自检，确认仍可在开发环境触发且无类型错误",
+        "运行自检相关路径（若有 npm script 则执行）验证通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 16,
+      "title": "Playwright E2E 回归",
+      "description": "确保可解性改动后自动化三关通关与用户可见流程仍稳定",
+      "steps": [
+        "在 link-game/ 执行 npx playwright test（或项目约定的 test:e2e），必要时调整超时/等待条件以适应生成耗时变化",
+        "确认用例仍覆盖：加载、计时、提示、重开、暂停（若有）、三关至胜利",
+        "headed 模式至少本地跑通一次或说明 CI 等价命令"
+      ],
+      "passes": false
+    },
+    {
+      "id": 17,
+      "title": "收尾与整体验收（可解关卡）",
+      "description": "lint、build、完整测试与进度记录",
+      "steps": [
+        "cd link-game && npm run lint、npm run build 无错误",
+        "npx playwright test --headed（或项目脚本）全绿",
+        "在 progress.txt 顶部记录本需求「保证关卡可解」的实现与测试结论"
+      ],
+      "passes": false
     }
   ]
 }

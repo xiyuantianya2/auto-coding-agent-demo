@@ -117,7 +117,11 @@ export function enumerateConnectablePairs(board: Board): ConnectablePair[] {
   return out;
 }
 
-/** 棋盘上是否存在至少一对「同图案且可连通」的格子（用于开局可解性检查）。 */
+/**
+ * 棋盘上是否存在至少一对「同图案且可连通」的格子（用于开局「至少一步可消」检查）。
+ *
+ * 这不等于「全盘可按某种顺序消至空盘」；全局可解性见 `isBoardFullySolvable`（`./full-solvability`）。
+ */
 export function hasAtLeastOneConnectablePair(board: Board): boolean {
   const byPattern = new Map<number, CellCoord[]>();
 
