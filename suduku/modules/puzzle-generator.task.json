@@ -24,7 +24,7 @@
         "Vitest：固定若干 seed，断言连续多次 rng() 输出与预期快照或可重复序列一致",
         "不修改 lib/core、lib/solver 已有实现，仅在 lib/generator 新增工具模块"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,
