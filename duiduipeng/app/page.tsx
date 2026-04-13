@@ -26,20 +26,19 @@ export default function Home() {
             href="#duiduipeng-game-main"
             className="inline-flex rounded-full border border-emerald-500/40 bg-emerald-950/40 px-5 py-2.5 text-sm font-medium text-emerald-300/95 hover:bg-emerald-900/50"
           >
-            前往游戏主区域（占位）
+            前往游戏主区域
           </Link>
         </p>
 
-        {/* 后续任务接入棋盘与 HUD；容器类名固定便于样式与测试定位 */}
+        {/* 游戏主界面与棋盘；容器类名固定便于样式与测试定位 */}
         <section
           id="duiduipeng-game-main"
-          className="duiduipeng-game-main w-full min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-8 text-center text-sm text-zinc-400"
+          className="duiduipeng-game-main w-full min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 text-left text-sm text-zinc-400 sm:p-8"
         >
-          <p className="mb-6 text-zinc-400">
-            相邻交换合法性（任务 4）：先点一格再点正交相邻格尝试交换；无效交换会回滚。开发服务器默认端口{" "}
-            <span className="font-mono text-zinc-200">3001</span>（与连连看
-            <span className="font-mono text-zinc-200"> 3000 </span>
-            错开）。
+          <p className="mb-6 text-center text-zinc-400">
+            先点一格再点正交相邻格交换；仅当形成三消或对碰时消耗步数，非法交换会回滚并提示。开发服务器默认端口{" "}
+            <span className="font-mono text-zinc-200">3001</span>（与连连看{" "}
+            <span className="font-mono text-zinc-200">3000</span> 错开）。
           </p>
           <SwapPlayground />
         </section>
