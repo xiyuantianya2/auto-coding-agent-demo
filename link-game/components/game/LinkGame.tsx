@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 
 import { BoardGrid } from "@/components/game/BoardGrid";
 import {
+  enumerateConnectablePairs,
+  type ConnectablePair,
+} from "@/lib/game/connectivity";
+import {
   createInitialPlayState,
   handleCellClick,
   restartPlayState,
@@ -37,7 +41,22 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
   const [paused, setPaused] = useState(false);
   const [winAtMs, setWinAtMs] = useState<number | null>(null);
 
+  const [hintPair, setHintPair] = useState<ConnectablePair | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
   const { board, selected, won } = state;
+
+  useEffect(() => {
+    if (!hintPair) return;
+    const id = setTimeout(() => setHintPair(null), 2600);
+    return () => clearTimeout(id);
+  }, [hintPair]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const id = setTimeout(() => setToastMessage(null), 3200);
+    return () => clearTimeout(id);
+  }, [toastMessage]);
 
   useEffect(() => {
     if (won) return;
@@ -60,6 +79,7 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
   const onCellClick = useCallback(
     (coord: CellCoord) => {
       if (paused || won) return;
+      setHintPair(null);
       setState((prev) => {
         const next = handleCellClick(prev, coord);
         if (next.won && !prev.won) {
@@ -70,6 +90,18 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
     },
     [paused, won],
   );
+
+  const onHint = useCallback(() => {
+    if (paused || won) return;
+    setToastMessage(null);
+    const pairs = enumerateConnectablePairs(board);
+    if (pairs.length === 0) {
+      setToastMessage("当前没有可消的一对");
+      return;
+    }
+    const pick = pairs[Math.floor(Math.random() * pairs.length)];
+    setHintPair(pick);
+  }, [board, paused, won]);
 
   const togglePause = useCallback(() => {
     if (won) return;
@@ -94,10 +126,21 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
     setPauseStartedAt(null);
     setPaused(false);
     setWinAtMs(null);
+    setHintPair(null);
+    setToastMessage(null);
   }, []);
 
   return (
-    <div className="flex w-full max-w-2xl flex-col items-stretch gap-6">
+    <div className="relative flex w-full max-w-2xl flex-col items-stretch gap-6">
+      {toastMessage ? (
+        <div
+          className="pointer-events-none fixed bottom-6 left-1/2 z-50 max-w-[min(90vw,20rem)] -translate-x-1/2 rounded-xl border border-zinc-600 bg-zinc-900/95 px-4 py-2.5 text-center text-sm text-zinc-100 shadow-lg shadow-black/40"
+          role="status"
+          aria-live="polite"
+        >
+          {toastMessage}
+        </div>
+      ) : null}
       <header className="flex flex-col gap-4 rounded-2xl border border-zinc-800/90 bg-zinc-900/50 px-4 py-4 shadow-lg shadow-black/20 sm:flex-row sm:items-center sm:justify-between sm:px-5">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -119,7 +162,7 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
           </p>
         </div>
         <div className="flex shrink-0 flex-col gap-2 self-stretch sm:self-center sm:items-end">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <button
               type="button"
               onClick={togglePause}
@@ -130,18 +173,28 @@ export function LinkGame({ levelId = 1 }: LinkGameProps) {
             </button>
             <button
               type="button"
+              onClick={onHint}
+              disabled={won || paused}
+              className="rounded-full border border-amber-600/80 bg-amber-950/40 px-4 py-2 text-sm font-medium text-amber-100 hover:bg-amber-950/70 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              提示
+            </button>
+            <button
+              type="button"
               onClick={onRestart}
               className="rounded-full border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-800"
             >
               重新开始本关
             </button>
           </div>
+          <p className="text-right text-xs text-zinc-500">提示不限次数</p>
         </div>
       </header>
 
       <BoardGrid
         board={board}
         selected={selected}
+        hintPair={hintPair}
         won={won}
         onCellClick={onCellClick}
       />

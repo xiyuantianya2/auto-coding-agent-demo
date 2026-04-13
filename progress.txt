@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 提示一步（id=8）
+
+### What was done:
+- 更新 `link-game/components/game/BoardGrid.tsx`：新增可选 `hintPair`，对提示的一对格子使用琥珀色描边/渐变高亮（与选中态并存时选中仍为翠绿色）。
+- 更新 `link-game/components/game/LinkGame.tsx`：`enumerateConnectablePairs` 随机取一对可连子；约 2.6s 后自动取消高亮；点击落子时清除提示；无可用对时底部固定 Toast 文案「当前没有可消的一对」（约 3.2s 消失）；HUD 增加「提示」按钮（暂停/胜利时禁用）及说明「提示不限次数」。
+- 根目录 `task.json` id=8 已标记 `passes: true`。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- 基线：`http://127.0.0.1:3000` HTTP 200。
+
+### Notes:
+- 提示与暂停一致：暂停时不可点提示；重开本关会清空提示与 Toast。
+
+---
+
 ## 2026-04-13 - Task: 计时器（id=7）
 
 ### What was done:

@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
+import type { ConnectablePair } from "@/lib/game/connectivity";
 import type { Board, CellCoord } from "@/lib/game/types";
 
 const PATTERN_LABELS = [
@@ -45,9 +46,15 @@ function patternEmoji(patternId: number): string {
 export type BoardGridProps = {
   board: Board;
   selected: CellCoord | null;
+  /** 提示高亮的一对格子（与选中态可同时存在；选中格仍用选中样式）。 */
+  hintPair?: ConnectablePair | null;
   won: boolean;
   onCellClick: (coord: CellCoord) => void;
 };
+
+function coordEq(p: CellCoord, q: CellCoord): boolean {
+  return p.row === q.row && p.col === q.col;
+}
 
 /**
  * Responsive tile grid: on narrow viewports the outer wrapper scrolls; cell size scales down via CSS variables.
@@ -55,6 +62,7 @@ export type BoardGridProps = {
 export function BoardGrid({
   board,
   selected,
+  hintPair = null,
   won,
   onCellClick,
 }: BoardGridProps) {
@@ -72,9 +80,14 @@ export function BoardGrid({
         >
           {board.cells.map((row, r) =>
             row.map((cell, c) => {
+              const coord = { row: r, col: c };
+              const empty = cell === null;
               const isSel =
                 selected?.row === r && selected?.col === c && cell !== null;
-              const empty = cell === null;
+              const isHint =
+                !empty &&
+                hintPair !== null &&
+                (coordEq(coord, hintPair.a) || coordEq(coord, hintPair.b));
               return (
                 <button
                   key={`${r}-${c}`}
@@ -87,6 +100,9 @@ export function BoardGrid({
                     !empty &&
                       !won &&
                       "bg-gradient-to-b from-zinc-700/90 to-zinc-800/95 hover:from-zinc-600 hover:to-zinc-700 active:scale-[0.97]",
+                    isHint &&
+                      !isSel &&
+                      "z-[5] scale-[1.02] bg-gradient-to-b from-amber-900/90 to-amber-950/95 shadow-[0_0_0_2px_theme(colors.amber.400),0_0_0_4px_theme(colors.zinc.900)]",
                     isSel &&
                       "z-10 scale-[1.03] bg-gradient-to-b from-emerald-900/90 to-emerald-950/95 shadow-[0_0_0_2px_theme(colors.emerald.400),0_0_0_4px_theme(colors.zinc.900)]",
                     won && !empty && "opacity-55",
