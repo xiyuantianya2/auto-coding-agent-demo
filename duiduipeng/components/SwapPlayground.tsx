@@ -17,6 +17,7 @@ import { mulberry32 } from "@/lib/seeded-random";
 import { cn } from "@/lib/utils";
 import { computeGravityRefillOffsets } from "@/lib/gravity-display";
 import {
+  CHAIN_INTER_WAVE_GAP_MS,
   createSwapInteractionState,
   GRAVITY_REFILL_MS,
   MATCH_CLEAR_MS,
@@ -337,36 +338,56 @@ export function SwapPlayground() {
     const clearPhaseMs =
       MATCH_CLEAR_MS + (n > 1 ? (n - 1) * MATCH_CLEAR_STAGGER_MS : 0);
 
-    setMatchFx("highlight");
+    /** 第 2 波起在「上一波补位完成」与「本波高亮」之间插入间隔，避免多波视觉上连成一跳 */
+    const interWaveMs =
+      completedWaves > 0 && completedWaves < sequence.steps.length
+        ? CHAIN_INTER_WAVE_GAP_MS
+        : 0;
+
     let cancelled = false;
+    let idInterWave: number | undefined;
+    let idHighlight: number | undefined;
     let idAdvance: number | undefined;
 
-    const idHighlight = window.setTimeout(() => {
-      if (cancelled) return;
-      setMatchFx("clear");
-      idAdvance = window.setTimeout(() => {
+    const beginWaveFx = () => {
+      setMatchFx("highlight");
+      idHighlight = window.setTimeout(() => {
         if (cancelled) return;
-        if (prefersReducedMotion) {
-          dispatch({ type: "playback_advance" });
+        setMatchFx("clear");
+        idAdvance = window.setTimeout(() => {
+          if (cancelled) return;
+          if (prefersReducedMotion) {
+            dispatch({ type: "playback_advance" });
+            setMatchFx("idle");
+            return;
+          }
+          const offsets = computeGravityRefillOffsets(
+            step.boardAfterClear,
+            step.boardAfterGravityRefill,
+          );
+          setGravityAnim({
+            waveKey: `g-${completedWaves}-${step.waveIndex}`,
+            finalBoard: step.boardAfterGravityRefill,
+            offsets,
+            phase: "invert",
+          });
           setMatchFx("idle");
-          return;
-        }
-        const offsets = computeGravityRefillOffsets(
-          step.boardAfterClear,
-          step.boardAfterGravityRefill,
-        );
-        setGravityAnim({
-          waveKey: `g-${completedWaves}-${step.waveIndex}`,
-          finalBoard: step.boardAfterGravityRefill,
-          offsets,
-          phase: "invert",
-        });
-        setMatchFx("idle");
-      }, clearPhaseMs);
-    }, MATCH_HIGHLIGHT_MS);
+        }, clearPhaseMs);
+      }, MATCH_HIGHLIGHT_MS);
+    };
+
+    if (interWaveMs > 0) {
+      idInterWave = window.setTimeout(() => {
+        if (cancelled) return;
+        beginWaveFx();
+      }, interWaveMs);
+    } else {
+      beginWaveFx();
+    }
 
     return () => {
       cancelled = true;
+      if (idInterWave !== undefined) window.clearTimeout(idInterWave);
       if (idHighlight !== undefined) window.clearTimeout(idHighlight);
       if (idAdvance !== undefined) window.clearTimeout(idAdvance);
       setMatchFx("idle");

@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-04-14 - Task: 连锁多波次顺序展示（duiduipeng id=29）
+
+### What was done:
+- `lib/swap-input.ts`：新增 `CHAIN_INTER_WAVE_GAP_MS`（默认 300ms），用于连锁相邻两波之间「补位完成 → 下一波高亮」的静止间隔；仅影响 UI 时序，不改变 reducer/计分。
+- `components/SwapPlayground.tsx`：第 2 波起在每波 `highlight` 前插入上述间隔（与 `completedWaves` 对齐）；`lib/index.ts` 导出该常量。
+- `duiduipeng/task.json`：id=29 `passes: true`。
+
+### Testing:
+- `cd duiduipeng && npm run lint`、`npm run build`（见本条目执行结果）。
+
+### Notes:
+- 多波可辨性：`stabilization-steps.test.ts` 中已有 ≥2 波连锁用例；手测可用固定 seed（如首页 `mulberry32(2026)`）找连锁交换。
+
+---
+
 ## 2026-04-14 - Task: 重力下落与顶部补位动效（duiduipeng id=28）
 
 ### What was done:

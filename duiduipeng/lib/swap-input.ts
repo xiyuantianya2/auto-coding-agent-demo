@@ -46,6 +46,12 @@ export const MATCH_CLEAR_STAGGER_MS = 40;
 /** 重力下落与顶部补位（FLIP / translate 回终局格）的大致时长，与 CSS transition 对齐 */
 export const GRAVITY_REFILL_MS = 320;
 
+/**
+ * 连锁中相邻两波之间的静止间隔（毫秒）：上一波「下落补位」结束后再开始下一波「高亮→消除」，
+ * 便于区分第几波消除（仅影响呈现时序，不改变 reducer/计分）。
+ */
+export const CHAIN_INTER_WAVE_GAP_MS = 300;
+
 /** 交换已接受、正按 {@link StabilizationStepSequence} 分步展示盘面时尚未写入本步得分与连锁统计 */
 export interface StabilizationPlaybackState {
   readonly sequence: StabilizationStepSequence;

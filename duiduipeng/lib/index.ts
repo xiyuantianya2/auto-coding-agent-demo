@@ -31,6 +31,7 @@ export {
   findFirstValidSwap,
 } from "./swap-legality";
 export {
+  CHAIN_INTER_WAVE_GAP_MS,
   createSwapInteractionState,
   GRAVITY_REFILL_MS,
   MATCH_CLEAR_MS,
