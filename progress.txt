@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: Playwright E2E 回归（id=16）
+
+### What was done:
+- 在 `link-game/` 验证可解性相关改动后 E2E 仍全绿：`e2e/link-game.spec.ts` 六项（加载/HUD、计时、提示、重开、暂停、三关至「全部通关」与「再玩一次」）均通过。
+- `link-game/playwright.config.ts`：将 `webServer.timeout` 从 30s 提高到 120s，避免冷机/首次 `next dev` 编译较慢时误杀 webServer 等待（与「生成耗时变化」下的稳定启动一致）。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build` 通过。
+- `npx playwright test --headed`：6/6 通过（Chromium、`webServer` 自动拉起 dev；本仓库 config 为 `headless: false`，与 `npm run test:e2e` 行为一致）。
+- 无界面 CI 如需 headless，可在运行前设置环境变量或临时覆盖 `use.headless`；验收本条以本地 headed 跑通为准。
+
+### Notes:
+- 三关自动解题用例偶发耗时较长（大棋盘 DFS/重试），当前 `test.setTimeout(300_000)` 与 webServer 120s 已覆盖本环境；若 CI 仍偶发超时可再单独拉长「三关通关」用例或调低 `slowMo`。
+
+---
+
 ## 2026-04-13 - Task: 更新棋盘生成自检与开发入口（id=15）
 
 ### What was done:
