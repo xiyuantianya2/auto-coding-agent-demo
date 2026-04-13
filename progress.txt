@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-13 - Task: 收尾与整体验收（可解关卡）（id=17）
+
+### What was done:
+- **「保证关卡可解」实现脉络（与 architecture.md 一致）**：`generateBoardFromLevel` 在洗牌后用 `isBoardFullySolvable`（DFS 回溯、可带节点预算）筛选**全盘可解**布局；随机阶段在约定上限内未命中则走构造式备用铺盘；`board-selftest` / `generateBoardFromLevel` 输出路径上对生成结果做全盘可解复验（与 task 11–15 交付一致，本任务不重述代码改动）。
+- 本任务在 `link-game/` 完成整体验收：`npm run lint`、`npm run build`；headed Playwright 六项 E2E 全绿。
+
+### Testing:
+- `cd link-game && npm run lint`、`npm run build`：通过。
+- `npx playwright test --headed`：**6/6 通过**（页面与 HUD、计时、提示、重开、暂停、三关通关至「全部通关」/「再玩一次」）；`playwright.config.ts` 的 `webServer` 自动拉起 dev。
+- 基线冒烟：任务开始前已跑通同一套 E2E；收尾前再次全绿以锁定验收。
+
+### Notes:
+- 可解性核心逻辑与单测见历史条目 id=11–12；生成器与性能/自检见 id=13–15；E2E 稳定性与超时见 id=16。后续若改关卡尺寸或生成预算，应同步跑 `npm run board-selftest`、`npm run test:unit` 与本套 E2E。
+
+---
+
 ## 2026-04-13 - Task: Playwright E2E 回归（id=16）
 
 ### What was done:

@@ -189,7 +189,7 @@
         "npx playwright test --headed（或项目脚本）全绿",
         "在 progress.txt 顶部记录本需求「保证关卡可解」的实现与测试结论"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
