@@ -2,6 +2,8 @@ import { test, expect } from "@playwright/test";
 import type { Grid9 } from "@/lib/core";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import {
+  DIFFICULTY_TIER_CONFIG,
+  allowedTechniquesForTier,
   createRngFromSeed,
   generateCompleteGrid,
   generatePuzzle,
@@ -26,6 +28,15 @@ test.describe("Suduku puzzle generator (contract smoke)", () => {
   test("verifyUniqueSolution: full valid grid is uniquely solvable; empty board is not", () => {
     expect(verifyUniqueSolution(SOLVED_GRID_SAMPLE)).toBe(true);
     expect(verifyUniqueSolution(EMPTY_GRID)).toBe(false);
+  });
+
+  test("difficulty tier config: score ranges are ordered; allowed techniques expand toward hell", () => {
+    expect(DIFFICULTY_TIER_CONFIG.easy.difficultyScoreRange.max).toBeLessThan(
+      DIFFICULTY_TIER_CONFIG.normal.difficultyScoreRange.min,
+    );
+    expect(allowedTechniquesForTier("easy").length).toBeLessThan(
+      allowedTechniquesForTier("hell").length,
+    );
   });
 
   test("generateCompleteGrid returns a 9×9 grid of digits 1–9 that passes placement checks", () => {

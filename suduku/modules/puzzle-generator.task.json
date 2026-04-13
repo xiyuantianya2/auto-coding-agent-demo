@@ -57,7 +57,7 @@
         "Vitest：断言每档配置的区间互不重叠或文档化重叠策略；各档引用的 TechniqueId 均在 lib/solver 的技法常量表中存在",
         "不实现 generatePuzzle 主循环（留给任务 7），本任务仅交付可导入的配置与类型"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

@@ -30,6 +30,16 @@ export { verifyUniqueSolution } from "./verify-unique-solution";
 export { generateCompleteGrid } from "./complete-grid";
 
 export {
+  DIFFICULTY_TIER_CONFIG,
+  DIFFICULTY_TIER_ORDER,
+  DIFFICULTY_TIER_SCORE_RANGE_OVERLAP_POLICY,
+  allowedTechniquesForTier,
+  type DifficultyTierConfigEntry,
+  type TierDifficultyScoreRange,
+  type TierGivensConstraint,
+} from "./difficulty-tier-config";
+
+export {
   PUZZLE_SEED_HEX_DIGITS,
   createMulberry32,
   createRngFromSeed,
