@@ -36,7 +36,7 @@
         "关卡 progression：下一关目标分数高于上一关（公式或表驱动均可，需可配置）。",
         "TypeScript 严格模式下无 any 滥用，导出函数有明确类型。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
