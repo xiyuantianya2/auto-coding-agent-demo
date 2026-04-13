@@ -1,5 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { cloneGameState, createGameStateFromGivens } from "@/lib/core";
+import {
+  cloneGameState,
+  createGameStateFromGivens,
+  deserializeGameState,
+  serializeGameState,
+} from "@/lib/core";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import { isWinningState } from "@/lib/core/rules";
 
@@ -51,5 +56,12 @@ test.describe("Suduku core rules (Node-side)", () => {
     copy.cells[1][1].value = 1;
     expect(original.cells[0][0].notes?.size ?? 0).toBe(0);
     expect(original.cells[1][1].value).toBeUndefined();
+  });
+
+  test("serialize → deserialize round-trip matches clone", () => {
+    const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
+    state.cells[2][3].notes = new Set([4, 7, 1]);
+    const back = deserializeGameState(serializeGameState(state));
+    expect(back).toEqual(cloneGameState(state));
   });
 });

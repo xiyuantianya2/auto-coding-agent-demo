@@ -57,7 +57,7 @@
         "round-trip：serialize → deserialize 后与 clone 等价（结构相等、Set 内容一致）的测试",
         "非法输入测试至少覆盖非 JSON 字符串与结构不符两类"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,
