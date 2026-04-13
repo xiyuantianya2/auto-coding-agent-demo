@@ -1,7 +1,7 @@
 import type { Board } from "./board-types";
 import type { AdjacentSwapAttemptResult, CellPos, SwapPickState } from "./swap-types";
-import { applyMatchClear } from "./match-clear";
 import { attemptAdjacentSwap } from "./swap-legality";
+import { stabilizeAfterSwap } from "./stabilization";
 
 /**
  * 表示「选格 → 与第二格尝试相邻交换」的交互一步。
@@ -15,12 +15,27 @@ export interface SwapInteractionState {
   readonly board: Board;
   readonly pick: SwapPickState;
   readonly lastResult: AdjacentSwapAttemptResult | null;
-  /** 最近一次有效交换后，三消消除阶段累计的基础分（无三消、仅对碰预备时保持 0） */
+  /** 最近一次有效交换后，本步稳定化（三消 + 对碰合并）累计得分 */
   readonly turnMatchScore: number;
+  /** 补位随机种子；传入 {@link stabilizeAfterSwap} 以保证可复现 */
+  readonly refillSeed: number;
 }
 
-export function createSwapInteractionState(board: Board): SwapInteractionState {
-  return { board, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
+export interface CreateSwapInteractionStateOptions {
+  readonly refillSeed?: number;
+}
+
+export function createSwapInteractionState(
+  board: Board,
+  options?: CreateSwapInteractionStateOptions,
+): SwapInteractionState {
+  return {
+    board,
+    pick: { phase: "idle" },
+    lastResult: null,
+    turnMatchScore: 0,
+    refillSeed: options?.refillSeed ?? 0x2026_0414,
+  };
 }
 
 /**
@@ -31,17 +46,32 @@ export function reduceSwapInteraction(
   event: SwapInteractionEvent,
 ): SwapInteractionState {
   if (event.type === "clear_selection") {
-    return { ...state, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
+    return {
+      ...state,
+      pick: { phase: "idle" },
+      lastResult: null,
+      turnMatchScore: 0,
+    };
   }
 
   const cell = event.cell;
   if (state.pick.phase === "idle") {
-    return { ...state, pick: { phase: "first", first: cell }, lastResult: null, turnMatchScore: 0 };
+    return {
+      ...state,
+      pick: { phase: "first", first: cell },
+      lastResult: null,
+      turnMatchScore: 0,
+    };
   }
 
   const first = state.pick.first;
   if (first.row === cell.row && first.col === cell.col) {
-    return { ...state, pick: { phase: "idle" }, lastResult: null, turnMatchScore: 0 };
+    return {
+      ...state,
+      pick: { phase: "idle" },
+      lastResult: null,
+      turnMatchScore: 0,
+    };
   }
 
   const result = attemptAdjacentSwap(state.board, first, cell);
@@ -65,11 +95,13 @@ export function reduceSwapInteraction(
     };
   }
 
-  const cleared = applyMatchClear(result.board);
+  const stabilized = stabilizeAfterSwap(result.board, { refillSeed: state.refillSeed });
+  const nextSeed = (state.refillSeed + 0x9e37_79b9) >>> 0;
   return {
-    board: cleared.board,
+    board: stabilized.board,
     lastResult: result,
     pick: { phase: "idle" },
-    turnMatchScore: cleared.score,
+    turnMatchScore: stabilized.score,
+    refillSeed: nextSeed,
   };
 }

@@ -3,6 +3,7 @@
 import { useMemo, useReducer } from "react";
 import { createInitialBoard } from "@/lib/create-initial-board";
 import { CellSymbol, isEmptyCell } from "@/lib/board-types";
+import { mulberry32 } from "@/lib/seeded-random";
 import {
   createSwapInteractionState,
   reduceSwapInteraction,
@@ -17,17 +18,6 @@ const symbolClass: Record<CellSymbol, string> = {
   [CellSymbol.Amethyst]: "bg-violet-600/90",
 };
 
-function mulberry32(seed: number): () => number {
-  let state = seed >>> 0;
-  return () => {
-    state = (state + 0x6d2b79f5) >>> 0;
-    let t = state;
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
 export function SwapPlayground() {
   const initialBoard = useMemo(
     () => createInitialBoard({ rows: 6, cols: 6, random: mulberry32(2026) }),
@@ -38,7 +28,7 @@ export function SwapPlayground() {
     (s: SwapInteractionState, cell: { row: number; col: number }) =>
       reduceSwapInteraction(s, { type: "cell_click", cell }),
     initialBoard,
-    (board) => createSwapInteractionState(board),
+    (board) => createSwapInteractionState(board, { refillSeed: 2026 }),
   );
 
   const rows = state.board.length;
@@ -49,8 +39,8 @@ export function SwapPlayground() {
       ? "点选一格，再点相邻一格尝试交换（仅上下左右）。"
       : state.lastResult.kind === "accepted"
         ? state.turnMatchScore > 0
-          ? `交换有效：已消除匹配格，本回合基础分 +${state.turnMatchScore}。`
-          : "交换有效：已触发对碰预备（三消消除见匹配时）；盘面无三连，未进入消除。"
+          ? `交换有效：稳定化完成，本步得分 +${state.turnMatchScore}（三消与对碰合并合计）。`
+          : "交换有效：盘面无三消或可对碰的二连（不应出现于合法交换）。"
         : state.lastResult.kind === "rejected"
           ? `交换无效：${state.lastResult.reason ?? "未触发消除或合并"}，盘面已回滚。`
           : `未尝试交换：${state.lastResult.reason ?? "非相邻或对角线忽略"}。`;

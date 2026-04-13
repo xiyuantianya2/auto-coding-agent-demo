@@ -40,3 +40,15 @@ export {
   findAllMatchPositions,
   hasAnyMatch,
 } from "./match-clear";
+export { mulberry32 } from "./seeded-random";
+export {
+  MERGE_PAIR_SCORE,
+  applyGravityAndRefill,
+  applyTripleClearAndPairMerge,
+  boardHasEmpty,
+  findNonOverlappingPairMergeEdges,
+  mergedSymbolAfterPair,
+  stabilizeAfterSwap,
+  type StabilizeAfterSwapOptions,
+  type GravityRefillOptions,
+} from "./stabilization";
