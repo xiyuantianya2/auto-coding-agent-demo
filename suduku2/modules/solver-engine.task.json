@@ -1,0 +1,99 @@
+{
+  "project": "数独2",
+  "module": "solver-engine",
+  "moduleTitle": "求解、技巧识别与难度打分",
+  "description": "维护候选数网格；实现与教学命名对齐的低/中/高阶技巧识别（如唯一候选、显性数对、区块摒除、X-Wing、链/鱼/ALS 等），输出可解释的推理步骤（高亮单元格、涉及候选、删减方向）。提供难度分数或区间供选题与 UI 展示；单次对典型盘面分析与打分应在秒级完成（常规硬件上以约 2 秒内完成为目标，避免无界深度搜索）。先保证正确与可解释，不追求技巧覆盖的理论完备性的极限。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "求解模块类型、`CandidatesGrid` 与 `computeCandidates` 基础设施",
+      "description": "在 `suduku2/lib/solver` 建立模块骨架：定义对外契约中的 `TechniqueId`（建议以常量表或联合类型 + 字符串字面量导出，便于与后续 curriculum 对齐）、`SolveStep`（含 `technique`、`highlights`、`eliminations`、`explanationKey` 等字段的可序列化结构）、`CandidatesGrid`（与 9×9 盘面一一对应，空格为候选集合，已填格语义在注释与类型中约定清楚）。实现 `computeCandidates(state: GameState): CandidatesGrid`：仅基于 `@/lib/core` 的 `GameState`（给定/填数/空格）与标准数独约束计算每格候选，不实现任何推理技巧；单次调用应在毫秒级完成（通常远小于 5 秒）。不引入「最少候选」「最优填法」等模块未要求的极限目标。提供 `lib/solver` 入口导出，供后续任务扩展。",
+      "steps": [
+        "新增 `suduku2/lib/solver` 下类型、`computeCandidates` 实现与对外导出，并从 `@/lib/core` 正确读取盘面与单元格状态。",
+        "为 `computeCandidates` 编写 Vitest：覆盖全空、多给定、同行/列/宫排除后候选缩减、已填格与笔记字段存在时的约定行为（以实现文档为准）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "低阶技巧识别与可解释 `SolveStep`（裸单、隐单、宫内指向/摒除等）",
+      "description": "在已有 `CandidatesGrid` 上实现与教学命名一致的一组**低阶**技巧检测（如唯一候选/裸单、隐唯一、宫内摒除与指向等，具体命名与 `TechniqueId` 常量对齐）：输出 `SolveStep[]`，每一步须带可解释的高亮信息（单元格、行/列/宫、涉及候选数字）及候选删减方向；不要求一步内合并多种技巧。检测过程应为有界遍历（单元、候选数字双层循环量级），单次整盘分析在典型硬件上目标约 2 秒内完成，最坏情况亦应明显低于 5 秒；禁止将无界深度搜索作为主实现路径。先保证正确与可读，不追求技巧枚举的理论完备极限。",
+      "steps": [
+        "实现低阶技巧检测函数，并由统一入口（可为内部函数）返回 `SolveStep[]`，步骤结构与模块公开契约一致。",
+        "编写 Vitest：使用小棋盘或固定谜题fixture，断言至少一种低阶技巧在预期局面下被检出，且 `highlights`/`eliminations` 字段语义与实现注释一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "中阶技巧识别（显性/隐性数对、三数组、区块摒除等）",
+      "description": "在任务 2 基础上扩展**中阶**技巧：例如显性数对、隐性数对、（可选）三数组、区块摒除等与教学命名对齐的条目；输出仍为可解释 `SolveStep`。实现上采用清晰的数据结构与有界扫描；同一任务内优先「能稳定跑通」而非覆盖全部变体。单次对典型盘面追加本层检测后的总耗时应仍以满足约 2 秒分析目标为主，明显超时的路径需加步数/候选规模保护或提前返回空结果，避免卡死；不要求最少步数或最短链。",
+      "steps": [
+        "扩展技巧检测，使中阶技巧产生的步骤可与低阶步骤区分（`TechniqueId` 不同）。",
+        "编写 Vitest：针对已知需要数对/区块摒除等中阶技巧的少量 fixture 做正确性断言；对刻意构造的极重候选网格仅做「在合理超时内返回、不抛错」的冒烟（可使用 `test.timeout` 或拆分轻量用例），不对超高难度档位做全量穷举。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "高阶技巧子集（如鱼、链、ALS 中择要实现）与有界搜索预算",
+      "description": "在任务 3 基础上增加**高阶**技巧中的**一子集**（例如 X-Wing/Swordfish 之一类「鱼」、或有限长度的简单链、或 ALS 中一种可实现的形态），与 `TechniqueId` 命名对齐。必须显式设定**搜索/回溯深度或扩展步数上限**，超时或超预算时跳过该技巧而非无限枚举；主路径仍以多项式级扫描为主。目标仍为：典型盘面单次分析约 2 秒内、一般调用在 5 秒内可完成；不追求高阶技巧覆盖的完备性，也不要求「最短链」或「所有 ALS」。",
+      "steps": [
+        "实现选定的高阶技巧检测，并在代码或注释中写明预算参数（如最大链长、最大模式实例数）。",
+        "编写 Vitest：至少一例能触发该高阶技巧的 fixture 断言检出；另含一例在预算内安全退出的场景。对已知慢路径或极端随机盘仅做结构/不崩溃冒烟，不强制全量覆盖。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "聚合 `findApplicableSteps`：优先级、去重与性能预算",
+      "description": "实现对外函数 `findApplicableSteps(state: GameState): SolveStep[]`：内部基于当前盘面调用 `computeCandidates`，再按约定顺序运行已实现的各层技巧检测（顺序应体现教学难度或实现复杂度，并在注释中说明）；合并结果时对明显重复的等价步骤去重或择优保留一种。对整次调用设置整体时间或步骤数量上限（例如总检测预算），避免无界组合爆炸；典型随机中档盘面应在约 2 秒内返回，一般输入应在 5 秒内完成。不要求返回「全部可能技巧」或「最优下一步」，只需在预算内返回非空的可应用步骤集或空数组。",
+      "steps": [
+        "实现并导出 `findApplicableSteps`，与 `module-plan.json` 中本模块接口描述一致。",
+        "编写 Vitest：若干 `GameState`（从常量网格构造或经 `deserializeGameState`）上调用，断言返回数组结构合法、步骤内 `technique` 为已注册 id；可选对执行时间做宽松断言或仅记录耗时（非强依赖环境）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "`scoreDifficulty` 难度分与可选区间",
+      "description": "实现 `scoreDifficulty(state: GameState, steps: SolveStep[]): { score: number; band?: [number, number] }`：根据传入的步骤列表（可为 `findApplicableSteps` 的结果或预先记录的解题轨迹）映射为数值分数；`band` 为可选展示用区间，映射规则在代码注释中简要说明（例如按所涉技巧权重加权、取区间上下界等）。不要求全局最优难度估计或与外部标准严格一致；不引入模块未要求的「最少步数」「最难唯一解」等目标。单次调用应在毫秒级完成（通常远小于 5 秒）。",
+      "steps": [
+        "实现 `scoreDifficulty` 并导出；类型与 `module-plan.json` 一致。",
+        "编写 Vitest：空步骤、单步、多步不同 `TechniqueId` 组合的分数单调性或稳定性（以文档化规则为准）；不要求与人工评级完全一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "公开 API 聚合与模块集成测试（Vitest）",
+      "description": "在 `suduku2/lib/solver` 入口统一导出：`TechniqueId`（或技巧常量表）、`SolveStep`、`CandidatesGrid`、`computeCandidates`、`findApplicableSteps`、`scoreDifficulty`，并确保与 `module-plan.json` 及下游 `puzzle-generator`/`hint-system`/`notes-logic` 的类型契约一致。新增集成测试文件：串联「从 `@/lib/core` 构造或克隆 `GameState` → `computeCandidates` → `findApplicableSteps` → `scoreDifficulty`」，覆盖至少一条完整路径；本模块不涉及 UI，**仅使用 Vitest** 验收，不要求 Playwright E2E。性能相关：对少量fixture断言在默认测试超时内完成；若包含较慢的合成盘面，仅做结构冒烟或单独设置合理 `test.timeout`。",
+      "steps": [
+        "整理 `lib/solver` 对外导出与必要 JSDoc（`highlights.ref` 等 `unknown` 字段的推荐形状说明）。",
+        "编写并运行集成用例，确认与 `core-model` 的序列化/克隆无冲突（至少一种通过 `cloneGameState` 或反序列化得到的盘面）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
