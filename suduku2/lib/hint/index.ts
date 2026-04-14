@@ -38,6 +38,8 @@ export {
   type MergedHighlightCandidateEntry,
 } from "./merge-highlight-candidates";
 
+export { mapSolveStepToHintResult } from "./map-solve-step-to-hint-result";
+
 /**
  * 单条提示的高亮与说明载荷，与 `module-plan.json` 中 `hint-system` 契约一致。
  *
