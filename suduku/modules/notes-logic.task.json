@@ -24,7 +24,7 @@
         "执行 npm test，Vitest 覆盖 syncNotesWithCandidates 至少 3 类代表性样例",
         "不修改 lib/solver 与 lib/core 的规则实现，仅消费公开 API"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { cloneGameState, createGameStateFromGivens } from "@/lib/core";
-import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
+import { SAMPLE_GIVENS_MINIMAL, SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import { computeCandidates } from "@/lib/solver";
 import {
   applyNotesCommand,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/notes";
 
 test.describe("Suduku notes logic (contract smoke)", () => {
-  test("applyNotesCommand / syncNotesWithCandidates stubs clone GameState", () => {
+  test("applyNotesCommand stub clones; syncNotesWithCandidates tightens notes vs candidates", () => {
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     const candidates = computeCandidates(state);
 
@@ -20,6 +20,28 @@ test.describe("Suduku notes logic (contract smoke)", () => {
     const synced = syncNotesWithCandidates(state, candidates);
     expect(synced).not.toBe(state);
     expect(synced).toEqual(state);
+
+    const base = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+    const candSparse = computeCandidates(base);
+    let picked: { r: number; c: number; wrong: number } | null = null;
+    outer: for (let r = 0; r < 9; r++) {
+      for (let c = 0; c < 9; c++) {
+        const allowed = candSparse[r][c];
+        if (allowed.size === 0) continue;
+        const wrong = [1, 2, 3, 4, 5, 6, 7, 8, 9].find((d) => !allowed.has(d));
+        if (wrong !== undefined) {
+          picked = { r, c, wrong };
+          break outer;
+        }
+      }
+    }
+    expect(picked).not.toBeNull();
+    const { r, c, wrong } = picked!;
+    const allowed = candSparse[r][c];
+    const dirty = cloneGameState(base);
+    dirty.cells[r][c].notes = new Set([...allowed, wrong]);
+    const syncedSparse = syncNotesWithCandidates(dirty, candSparse);
+    expect(syncedSparse.cells[r][c].notes).toEqual(allowed);
   });
 
   test("createUndoStack stub: undo returns null until implemented", () => {

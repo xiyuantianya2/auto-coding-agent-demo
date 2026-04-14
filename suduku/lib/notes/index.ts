@@ -10,8 +10,8 @@
  * - 类型名：`NotesCommand`、`HighlightFilter`（本包将 `NotesCommand.payload` 细化为可辨识联合，见 `./types`）。
  * - 函数：`applyNotesCommand`、`syncNotesWithCandidates`、`createUndoStack`（签名见下方导出）。
  *
- * 当前为骨架实现：`applyNotesCommand` / `syncNotesWithCandidates` 返回基于 {@link cloneGameState} 的快照；
- * `createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
+ * `syncNotesWithCandidates` 已实现：按候选收紧笔记、清理已解格笔记。
+ * `applyNotesCommand` 仍为骨架；`createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
  */
 
 import type { GameState } from "@/lib/core";
@@ -19,6 +19,7 @@ import { cloneGameState } from "@/lib/core";
 import type { CandidatesGrid } from "@/lib/solver";
 
 import type { NotesCommand } from "./types";
+import { syncNotesWithCandidates as syncNotesWithCandidatesImpl } from "./sync-notes";
 
 export type {
   BatchClearNotesPayload,
@@ -43,16 +44,12 @@ export function applyNotesCommand(
   return cloneGameState(state);
 }
 
-/**
- * 按当前候选网格剔除不再合法的铅笔数、并清理已解格笔记等（与 `computeCandidates` 输出对齐）。
- * 骨架阶段：返回克隆状态，不改变笔记内容。
- */
+/** 按当前候选网格剔除不再合法的铅笔数、并清理已解格笔记（与 `computeCandidates` 输出对齐）。 */
 export function syncNotesWithCandidates(
   state: GameState,
   candidates: CandidatesGrid,
 ): GameState {
-  void candidates;
-  return cloneGameState(state);
+  return syncNotesWithCandidatesImpl(state, candidates);
 }
 
 /**
