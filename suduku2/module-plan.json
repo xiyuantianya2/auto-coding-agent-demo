@@ -1,0 +1,119 @@
+{
+  "project": "数独2",
+  "description": "局域网浏览器端数独（独立子项目，建议端口 3003）：Next.js + TypeScript + Tailwind。含低/中/高阶技巧教学与每技巧专项无尽练习、四档难度（入门/普通/困难/专家）无尽关卡；唯一解生成与可向玩家展示的难度分或区间；高亮式提示（可选技巧名、不限次数）与完整笔记及撤销/重做；用户名+密码（可选昵称）注册登录，进度按账号持久化到可配置目录的本地 JSON，并支持导出与从文件导入。部署为内网 HTTP（Windows 主机 Node/Next），简体中文界面，桌面优先、平板适配，可选暗色与高对比候选色。",
+  "modules": [
+    {
+      "id": "core-model",
+      "title": "核心数据模型与规则",
+      "description": "定义 9×9 盘面、单元格（给定/填数/笔记候选）、合法落子校验、胜负与冲突判定，以及存档/会话用的纯数据结构。不包含求解与生成算法；为序列化与 API 契约提供稳定类型边界。",
+      "dir": "lib/core",
+      "dependencies": [],
+      "interface": "type Grid9 = number[][]; type CellState = { given?: number; value?: number; notes?: Set<number> }; type GameState = { grid: Grid9; cells: CellState[][]; mode: 'fill'|'notes' }; function isValidPlacement(state: GameState, r: number, c: number, n: number): boolean; function cloneGameState(state: GameState): GameState; function serializeGameState(state: GameState): string; function deserializeGameState(json: string): GameState;",
+      "status": "running"
+    },
+    {
+      "id": "solver-engine",
+      "title": "求解、技巧识别与难度打分",
+      "description": "维护候选数网格；实现与教学命名对齐的低/中/高阶技巧识别（如唯一候选、显性数对、区块摒除、X-Wing、链/鱼/ALS 等），输出可解释的推理步骤（高亮单元格、涉及候选、删减方向）。提供难度分数或区间供选题与 UI 展示；单次对典型盘面分析与打分应在秒级完成（常规硬件上以约 2 秒内完成为目标，避免无界深度搜索）。先保证正确与可解释，不追求技巧覆盖的理论完备性的极限。",
+      "dir": "lib/solver",
+      "dependencies": [
+        "core-model"
+      ],
+      "interface": "type TechniqueId = string; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: unknown[]; explanationKey?: string }; function computeCandidates(state: GameState): CandidatesGrid; function findApplicableSteps(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): { score: number; band?: [number, number] };",
+      "status": "pending"
+    },
+    {
+      "id": "puzzle-generator",
+      "title": "唯一解出题与四档难度约束",
+      "description": "生成带唯一解的题目，面向四档难度（入门/普通/困难/专家）约束所需技巧层级与难度分区间；向玩家侧暴露难度分或区间元数据。不追求最少提示数或极限稀疏盘面；以随机挖洞/约束求解等简单可靠策略为主，超时则重新随机并重试。单次生成目标在 5 秒内完成；失败可重试多次但总耗时应可控，避免单次生成卡死。",
+      "dir": "lib/generator",
+      "dependencies": [
+        "core-model",
+        "solver-engine"
+      ],
+      "interface": "type DifficultyTier = 'entry'|'normal'|'hard'|'expert'; type TechniqueId = string; type PuzzleSpec = { seed: string; givens: Grid9; difficultyScore: number; scoreBand?: [number, number]; requiredTechniques: TechniqueId[] }; function generatePuzzle(options: { tier: DifficultyTier; rng: () => number; timeoutMs?: number }): PuzzleSpec | null; function verifyUniqueSolution(givens: Grid9): boolean;",
+      "status": "pending"
+    },
+    {
+      "id": "hint-system",
+      "title": "高亮式提示引擎",
+      "description": "基于当前盘面与求解引擎，返回「下一步可应用」的推理：高亮相关格与候选、删减方向，可选返回技巧名称文案键；不自动填入答案。每局提示次数不限、无冷却。与 curriculum 中的 TechniqueId 及 solver 输出对齐。",
+      "dir": "lib/hint",
+      "dependencies": [
+        "core-model",
+        "solver-engine"
+      ],
+      "interface": "type TechniqueId = string; type HintResult = { technique: TechniqueId; cells: Array<{ r: number; c: number }>; highlightCandidates?: Array<{ r: number; c: number; digits: number[]; eliminate?: number[] }>; messageKey?: string }; function getNextHint(state: GameState): HintResult | null;",
+      "status": "pending"
+    },
+    {
+      "id": "notes-logic",
+      "title": "笔记、同步剔除与撤销栈",
+      "description": "实现铅笔笔记切换、与填数规则一致的自动同步（填数后剔除同行列宫笔记等，可参考常见数独游戏行为）；维护与提示步兼容的撤销/重做栈。不负责 UI 绘制，仅输出状态变更与候选同步后的 GameState。",
+      "dir": "lib/notes",
+      "dependencies": [
+        "core-model",
+        "solver-engine"
+      ],
+      "interface": "type NotesCommand = { type: 'toggle'|'clearCell'|'fill'|'undo'|'redo'|'setMode'; payload: unknown }; function applyCommand(state: GameState, cmd: NotesCommand, candidates: CandidatesGrid): GameState; function syncNotesAfterValue(state: GameState, candidates: CandidatesGrid): GameState; type UndoRedoApi = { push(snapshot: GameState): void; undo(): GameState | null; redo(): GameState | null; canUndo(): boolean; canRedo(): boolean }; function createUndoRedo(): UndoRedoApi;",
+      "status": "pending"
+    },
+    {
+      "id": "tutorial-curriculum",
+      "title": "教学大纲与专项映射",
+      "description": "以数据驱动方式组织低/中/高阶章节、技巧清单与顺序（与社区常用命名对齐）、每技巧对应专项无尽模式 id 与解锁条件。内容为 JSON/TS 常量，可含简短讲解文案键与步骤高亮预设；首版可无动画。仅依赖核心类型中的标识符约定，不依赖 UI。",
+      "dir": "content/curriculum",
+      "dependencies": [
+        "core-model"
+      ],
+      "interface": "type CurriculumTier = 'low'|'mid'|'high'; type TechniqueModule = { id: string; tier: CurriculumTier; order: number; practiceEndlessModeId: string; titleKey: string }; function getTechniqueCatalog(): TechniqueModule[]; function getUnlockGraph(): Array<{ techniqueId: string; requires: string[] }>;",
+      "status": "pending"
+    },
+    {
+      "id": "server-api",
+      "title": "局域网服务、账号与 JSON 持久化",
+      "description": "提供 HTTP API：注册/登录（会话令牌）、密码最少 6 位、可选昵称；数据目录默认项目下 data/ 或通过环境变量/配置覆盖。持久化：登录凭证索引、每用户技巧解锁与专项练习进度、四档无尽个人进度、最近一次对局草稿。全局规则：按难度维护「所有用户中已达最大关卡数 +1」的共享预生成关卡队列（关卡内容对所有用户一致，服务器存第 1…max+1 关的出题数据）；多设备并发以最后写入为准或简单合并策略待实现时选定。提供「导出进度 JSON」与「从文件导入」接口。内网 HTTP 即可。出题侧内聚调用 puzzle-generator。",
+      "dir": "server",
+      "dependencies": [
+        "core-model",
+        "puzzle-generator"
+      ],
+      "interface": "type DifficultyTier = 'entry'|'normal'|'hard'|'expert'; type UserId = string; type PuzzleSpec = { seed: string; givens: number[][]; difficultyScore: number }; type EndlessGlobalState = Record<DifficultyTier, { maxPreparedLevel: number; puzzles: Record<number, PuzzleSpec> }>; type UserProgress = { techniques: Record<string, { unlocked: boolean }>; practice: Record<string, { streak?: number; bestTimeMs?: number }>; endless: Record<DifficultyTier, { clearedLevel: number }>; draft?: unknown /* GameState, 见 core-model */; settings?: Record<string, unknown> }; function register(username: string, password: string, nickname?: string): Promise<{ userId: UserId }>; function login(username: string, password: string): Promise<{ token: string }>; function getProgress(token: string): Promise<UserProgress & { global: EndlessGlobalState }>; function saveProgress(token: string, patch: Partial<UserProgress>): Promise<void>; function exportProgress(token: string): Promise<string>; function importProgress(token: string, json: string): Promise<void>; function getDataDir(): string;",
+      "status": "pending"
+    },
+    {
+      "id": "client-ui",
+      "title": "前端应用与模式集成",
+      "description": "Next.js 应用（端口与仓库约定如 3003）：登录注册、教学浏览、四档无尽与每技巧专项入口、主棋盘交互（提示高亮、笔记模式、计时/暂停）、暗色主题与高对比候选色、平板布局。整合 curriculum、hint、notes 与 server-api；核心算法模块以 lib 调用为主，无尽供题以 API 返回的全局池与个人进度为准。文案仅简体中文。",
+      "dir": "app",
+      "dependencies": [
+        "core-model",
+        "solver-engine",
+        "hint-system",
+        "notes-logic",
+        "tutorial-curriculum",
+        "server-api"
+      ],
+      "interface": "export function Sudoku2AppProviders(props: { children: React.ReactNode; apiBaseUrl: string }): JSX.Element; export function useSudoku2Game(): { state: GameState; actions: unknown }; // 具体 hooks/路由以实现为准，此处仅表达与后端与 lib 的集成边界",
+      "status": "pending"
+    },
+    {
+      "id": "integration-qa",
+      "title": "集成测试与验收",
+      "description": "端到端与关键契约验收：页面加载与渲染、计时器与暂停、提示与笔记及撤销、注册登录与进度读写、无尽关卡与全局 max+1 池一致性、导入导出、多难度样本唯一解回归。不新增业务逻辑；性能与正确性以可重复自动化脚本验证为主。",
+      "dir": "e2e",
+      "dependencies": [
+        "core-model",
+        "solver-engine",
+        "puzzle-generator",
+        "hint-system",
+        "notes-logic",
+        "tutorial-curriculum",
+        "server-api",
+        "client-ui"
+      ],
+      "interface": "async function runAcceptanceSuite(): Promise<{ passed: boolean; report: string }>; // Playwright 或等价 E2E 入口",
+      "status": "pending"
+    }
+  ]
+}

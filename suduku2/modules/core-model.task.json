@@ -1,0 +1,102 @@
+{
+  "project": "数独2",
+  "module": "core-model",
+  "moduleTitle": "核心数据模型与规则",
+  "description": "定义 9×9 盘面、单元格（给定/填数/笔记候选）、合法落子校验、胜负与冲突判定，以及存档/会话用的纯数据结构。不包含求解与生成算法；为序列化与 API 契约提供稳定类型边界。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "核心类型、常量与 lib/core 目录骨架",
+      "description": "在 `suduku2/lib/core` 建立模块骨架：实现对外契约中的 `Grid9`、`CellState`（`given`/`value`/`notes` 语义）、`GameState`（含 `grid: Grid9`、`cells: CellState[][]`、`mode: 'fill'|'notes'`）。约定 `grid` 与 `cells` 的同步关系（例如给定数与玩家填数如何反映到 `grid`、空格的 0 或占位表示），并导出尺寸与坐标合法性等常量。提供 `index.ts` 或分文件导出，仅类型与文档层面与 `module-plan.json` 中本模块接口及下游模块（solver、存档）对齐；不实现求解/生成。纯数据结构上的校验与遍历应在单次调用毫秒级完成（远低于 5 秒）。",
+      "steps": [
+        "新增或更新 `suduku2/lib/core` 下类型、常量与入口导出，并完成与契约一致的对外类型导出。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "规则校验：`isValidPlacement(state, r, c, n)`",
+      "description": "实现 `isValidPlacement(state: GameState, r: number, c: number, n: number): boolean`：在标准 9×9 规则下判断将数字 `n` 置于 `(r,c)` 是否与同行、同列、同宫已有冲突（基于当前 `state.grid` 或模块约定的等效读盘方式）；不包含求解与生成。补充从盘面读取「单元格当前生效数字」（给定优先于玩家填数等）的辅助函数，供后续任务复用。禁止引入极限优化目标；正确性优先。单次调用应在毫秒级完成。",
+      "steps": [
+        "为 `isValidPlacement` 与读盘辅助编写 Vitest：覆盖合法放置、行/列/宫冲突、边界坐标、数字 1–9 范围及给定格等场景。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "单元格不变式与组合层面的合法落子判定",
+      "description": "在规则层明确 `CellState` 约束：给定格不可改、`value` 与 `notes` 的互斥或优先级、笔记集合仅含 1–9 等。实现组合 API（命名由实现决定）：综合非给定格、数字范围、`isValidPlacement`、与单元格状态一致，判断一次填数、切换笔记或清除是否合法；不涉及求解、自动填数或「最少步数」类目标。单次判定应在毫秒级完成。",
+      "steps": [
+        "为不变式与组合 API 编写 Vitest：覆盖给定格拒绝、冲突放置、笔记与填数关系、清除/改填等。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "胜负与冲突：完成态、全盘冲突与胜利条件",
+      "description": "实现纯函数：判断盘面是否已填满、是否存在规则冲突（任意违反数独约束的成对格子）、以及胜利条件（与项目约定一致，通常为填满且无冲突）。可提供用于调试或后续高亮的「首个冲突」或冲突列表，但不实现 UI。全盘扫描应在毫秒级完成（通常远小于 5 秒）；不要求最优冲突检测，只要正确可维护。",
+      "steps": [
+        "为完成态、冲突与胜利编写 Vitest：含合法完成盘、含冲突盘、未填满盘、仅笔记无填数等。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "深拷贝：`cloneGameState`",
+      "description": "实现 `cloneGameState(state: GameState): GameState`：对 `GameState` 深拷贝；`Grid9` 与 `cells` 嵌套数组需复制；`CellState.notes` 为 `Set<number>` 时需复制为新 `Set`，避免与撤销/序列化/UI 共享引用。不引入求解逻辑。单次拷贝应在毫秒级完成。",
+      "steps": [
+        "编写 Vitest：修改克隆副本不影响原对象，嵌套数组与 `Set` 独立。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "存档序列化：`serializeGameState` / `deserializeGameState`",
+      "description": "实现 `serializeGameState(state: GameState): string` 与 `deserializeGameState(json: string): GameState`：将 `Set<number>` 转为 JSON 友好结构（如排序后的数字数组），并约定 `schemaVersion` 或等价版本字段以便 API 演进。`deserialize` 须校验结构、坐标、数字范围；对非法输入采用明确错误策略（抛错或 Result，实现选定并在测试中覆盖）。不进行唯一解或求解验证。反序列化典型存档应在毫秒级完成；若单测包含极大恶意字符串，仅要求合理拒绝而非性能压测。",
+      "steps": [
+        "编写 Vitest：典型状态往返一致；缺字段、类型错误、越界数字、版本不兼容等按约定处理。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "公开 API 聚合与契约注释",
+      "description": "在 `suduku2/lib/core` 入口统一导出：`Grid9`、`CellState`、`GameState`、`isValidPlacement`、`cloneGameState`、`serializeGameState`、`deserializeGameState` 及本模块必要的辅助类型/函数。为序列化格式与 `grid`/`cells` 约定添加简短 JSDoc，便于 `solver-engine`、`server-api` 与后续模块对接。",
+      "steps": [
+        "确认自其他路径仅通过 `lib/core` 公开入口即可使用本模块能力，导出与 `module-plan.json` 中接口描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "模块集成测试与契约回归",
+      "description": "新增 `suduku2/lib/core` 级集成测试文件：串联「合法落子判定 → `cloneGameState` → 序列化往返 → 胜负/冲突判定」；覆盖空笔记、满盘、含给定数、`fill`/`notes` 模式字段保留等边界。确保本模块单独验收可阻断与对外契约明显不一致的变更。本模块不涉及 UI，验收仅使用 Vitest，不要求 Playwright E2E。",
+      "steps": [
+        "运行并维护本模块相关 Vitest 集成用例全部通过；本模块为轻量规则与序列化，无需对已知慢路径做全量压测，常规用例应在默认超时内完成。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
