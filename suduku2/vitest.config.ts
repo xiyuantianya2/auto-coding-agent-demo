@@ -13,7 +13,12 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["lib/**/*.test.ts", "content/**/*.test.ts", "server/**/*.test.ts"],
+    include: [
+      "lib/**/*.test.ts",
+      "content/**/*.test.ts",
+      "server/**/*.test.ts",
+      "e2e/**/*.test.ts",
+    ],
     passWithNoTests: true,
     testTimeout: 15_000,
   },

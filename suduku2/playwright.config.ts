@@ -2,6 +2,8 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./e2e",
+  /* Vitest 单测使用 `*.test.ts`，与 Playwright `*.spec.ts` 分流，避免被 test runner 误跑 */
+  testMatch: "**/*.spec.ts",
   timeout: 120_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,

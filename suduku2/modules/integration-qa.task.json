@@ -1,0 +1,105 @@
+{
+  "project": "数独2",
+  "module": "integration-qa",
+  "moduleTitle": "集成测试与验收",
+  "description": "端到端与关键契约验收：页面加载与渲染、计时器与暂停、提示与笔记及撤销、注册登录与进度读写、无尽关卡与全局 max+1 池一致性、导入导出、多难度样本唯一解回归。不新增业务逻辑；性能与正确性以可重复自动化脚本验证为主。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "验收模块骨架：`runAcceptanceSuite` 类型、入口与 Playwright 报告约定",
+      "description": "在 `suduku2/e2e`（及必要的 `e2e/lib` 或同目录工具文件）建立集成验收边界：定义并导出 `async function runAcceptanceSuite(): Promise<{ passed: boolean; report: string }>`，由内部调用 Playwright Programmatic API 或复用 `playwright test` 子进程收集结果，将摘要写入 `report` 字符串（含失败用例名与原因片段）。与现有 `playwright.config.ts`（`testDir: ./e2e`、`baseURL`/`webServer` 端口 3003、`workers: 1` 等）对齐，不在应用代码中新增业务逻辑。若需对慢路径单独配置超时，仅在测试层通过 `test.setTimeout` 或 spec 级选项处理。涉及随机生成/求解的库调用在验收脚本中单次应在合理时间内完成（通常 < 5 秒），不在本任务要求全量覆盖高难度生成。",
+      "steps": [
+        "实现 `runAcceptanceSuite` 及配套类型/辅助函数，路径与导出方式在 `e2e` 内文档化（注释或 README 片段即可，勿新增仓库级 markdown 文件除非任务明确要求）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过（若通过 Vitest 对 `runAcceptanceSuite` 做最小 smoke，则包含之；否则至少保证无新增失败）。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "页面加载与渲染基线：棋盘/HUD、无障碍与 `reducedMotion`",
+      "description": "扩展或整理 Playwright 用例：首页/游戏入口可达；棋盘格与关键 HUD（关卡/难度/计时或等价文案、`data-testid`/`role`）可见且数量符合预期；使用 `page.emulateMedia({ reducedMotion: 'reduce' })` 降低动画干扰。不断言业务算法最优性，仅验证 DOM 与可测属性稳定。网络与首屏渲染应在合理时间内完成（通常远小于 5 秒）。",
+      "steps": [
+        "编写或更新 `e2e` 下页面加载与渲染相关 spec，覆盖上述断言。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e`（或 `npm run test:e2e:headed`）通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "计时器与暂停：向上计数、暂停冻结、恢复连续",
+      "description": "用 Playwright 覆盖计时器行为：开局后时间向上增长；暂停时数值冻结且交互与计时停止（与产品行为一致）；取消暂停后继续累计。可用受控时钟（如 `page.clock` 若版本支持）或短轮询差值，避免依赖真实长时间等待。断言逻辑不涉及最少步数或最优解。",
+      "steps": [
+        "在 `e2e` 中新增或补强计时器/暂停相关用例，使用稳定选择器。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "提示、笔记模式与撤销/重做：与 `@/lib/hint`、`@/lib/notes` 行为一致的 UI 契约",
+      "description": "E2E 验证：请求提示后出现高亮或等价可见反馈；切换到笔记模式后操作可测；执行填数/笔记变更后撤销与重做链可用（`canUndo`/`canRedo` 对应的按钮态或键盘路径）。使用 `page.evaluate` 读取 DOM 状态时避免依赖脆弱 CSS 类名。`computeCandidates`/`getNextHint` 等单次调用应在合理时间内完成（通常 < 5 秒）；不在测试中要求穷尽所有技巧。",
+      "steps": [
+        "编写 `e2e` 用例覆盖提示、笔记、撤销/重做的关键路径。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "注册、登录与进度读写：UI 流程与会话/API 契约",
+      "description": "覆盖注册、登录、登出与受保护页面；使用唯一用户名避免与并行冲突（已有 `workers: 1` 仍建议隔离测试数据）。通过 UI 或 `request` 上下文验证 `getProgress`/`saveProgress` 反映在个人进度字段（如 `endless`、`techniques` 之一）上。错误凭证与重复注册可见中文反馈。单次 HTTP 往返应在合理时间内完成（通常 < 5 秒）。",
+      "steps": [
+        "实现或更新 `e2e` 认证与进度读写场景。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "无尽模式与全局池：`maxPreparedLevel`、第 clearedLevel+1 关与 `PuzzleSpec` 一致性",
+      "description": "E2E 断言：`getProgress` 返回的 `global[ tier ]` 中 `maxPreparedLevel` 与个人 `endless[tier].clearedLevel` 关系符合产品设计（至少能取到下一关所需的 `puzzles[level]` 或可见「准备中」行为且最终一致）；题目元数据（如 `seed`、`givens` 非空）与棋盘渲染一致。**不对**「最少提示」或最优挖洞做要求。若某档触发服务端补缺生成，可为该用例单独放宽 `test.setTimeout`（例如不超过 120s 与 `playwright.config` 一致），专家档避免全量随机生成压测，仅做契约冒烟。",
+      "steps": [
+        "编写 `e2e` 用例验证无尽关卡与全局池字段；必要时使用 `test.setTimeout` 标注慢路径。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "进度导出与文件导入：round-trip 与错误文件处理",
+      "description": "覆盖导出（下载或剪贴板/文本区，以实现为准）与从文件导入；对 `e2e/fixtures` 中合法与非法 JSON 验证成功与可见错误提示。断言导入后关键字段与导出前一致或按产品定义合并，不新增服务器业务规则。导入/导出单次应在合理时间内完成（通常 < 5 秒）。",
+      "steps": [
+        "实现或更新 `e2e` 导出/导入用例，可复用现有 fixtures。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "库契约回归：`verifyUniqueSolution` / `generatePuzzle` 多样本与 `runAcceptanceSuite` 总闸",
+      "description": "在 `suduku2` 内增加 Vitest 用例（建议放在 `lib/` 旁或 `e2e` 配套的 `*.test.ts`，不新增业务逻辑）：使用固定种子或内置小样本网格调用 `@/lib/generator` 的 `verifyUniqueSolution`；对 `generatePuzzle` 分档做冒烟——入门/普通可常规断言返回非空且 `verifyUniqueSolution(givens)` 为真，困难档控制 `timeoutMs` 并在合理时间内完成（通常单次 < 5 秒）；专家档仅做「能返回 null 或合法 PuzzleSpec」的结构/超时策略，避免无界搜索。最后将 `runAcceptanceSuite` 纳入 CI 入口（例如在 `npm test` 末尾调用或单独脚本说明），确保整仓验收一键可重复。",
+      "steps": [
+        "编写 Vitest 契约测试并确保不引入极限最优性约束；专家档注明慢路径策略。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。",
+        "在 `suduku2` 目录执行 `npm run test:e2e` 通过；确认 `runAcceptanceSuite` 在本地返回 `passed: true` 且 `report` 含本次摘要。"
+      ],
+      "passes": false
+    }
+  ]
+}
