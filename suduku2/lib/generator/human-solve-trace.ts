@@ -402,6 +402,39 @@ export function derivePuzzleSpecDifficultyFields(
 }
 
 /**
+ * 在指定 tier 下跑一次人类式求解轨迹，并产出 {@link PuzzleSpec} 所需的难度字段。
+ * 与 {@link puzzleMatchesTierProfile} 判定一致：未解完、或总分不在该档目标区间内时返回 `null`。
+ */
+export function derivePuzzleSpecFieldsForTier(
+  givens: Grid9,
+  tier: DifficultyTier,
+  rng: () => number,
+  opts?: { maxWallClockMs?: number; maxSteps?: number },
+): {
+  difficultyScore: number;
+  scoreBand?: [number, number];
+  requiredTechniques: TechniqueId[];
+} | null {
+  const trace = runHumanSolveTrace(givens, {
+    rng,
+    tier,
+    maxWallClockMs: opts?.maxWallClockMs,
+    maxSteps: opts?.maxSteps,
+  });
+  if (!trace.solved) {
+    return null;
+  }
+  if (!scoreFitsTierProfile(trace.difficultyScore, tier)) {
+    return null;
+  }
+  return {
+    difficultyScore: trace.difficultyScore,
+    scoreBand: trace.scoreBand,
+    requiredTechniques: trace.requiredTechniquesOrdered as TechniqueId[],
+  };
+}
+
+/**
  * 在指定 tier 下尝试人类式求解：用于出题时校验「仅用允许技巧能否解完」。
  * 成功时还检查轨迹总分是否落在该档 {@link getTierProfile} 的 `targetScoreRange` 内。
  */
@@ -411,16 +444,7 @@ export function puzzleMatchesTierProfile(
   rng: () => number,
   opts?: { maxWallClockMs?: number; maxSteps?: number },
 ): boolean {
-  const trace = runHumanSolveTrace(givens, {
-    rng,
-    tier,
-    maxWallClockMs: opts?.maxWallClockMs,
-    maxSteps: opts?.maxSteps,
-  });
-  if (!trace.solved) {
-    return false;
-  }
-  return scoreFitsTierProfile(trace.difficultyScore, tier);
+  return derivePuzzleSpecFieldsForTier(givens, tier, rng, opts) !== null;
 }
 
 /**

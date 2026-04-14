@@ -67,14 +67,58 @@ function expectCompleteValidSudoku(g: Grid9): void {
 }
 
 describe("puzzle-generator skeleton (task 1)", () => {
-  it("generatePuzzle placeholder returns null", () => {
-    const rng = () => 0.5;
-    expect(generatePuzzle({ tier: "entry", rng })).toBeNull();
-  });
-
   it("verifyUniqueSolution: empty grid has many solutions → false", () => {
     const empty: Grid9 = Array.from({ length: 9 }, () => Array<number>(9).fill(0));
     expect(verifyUniqueSolution(empty)).toBe(false);
+  });
+});
+
+function expectValidPuzzleSpec(
+  p: NonNullable<ReturnType<typeof generatePuzzle>>,
+): void {
+  expect(p.seed.length).toBeGreaterThan(0);
+  expect(p.givens).toHaveLength(9);
+  for (const row of p.givens) {
+    expect(row).toHaveLength(9);
+  }
+  expect(typeof p.difficultyScore).toBe("number");
+  expect(Number.isFinite(p.difficultyScore)).toBe(true);
+  expect(Array.isArray(p.requiredTechniques)).toBe(true);
+  for (const id of p.requiredTechniques) {
+    expect(typeof id).toBe("string");
+  }
+  if (p.scoreBand !== undefined) {
+    expect(p.scoreBand.length).toBe(2);
+    expect(p.scoreBand[0]! <= p.scoreBand[1]!).toBe(true);
+  }
+}
+
+describe("generatePuzzle: timeout, retry, bounded wall clock (task 6)", () => {
+  it("entry + fixed rng: returns a valid PuzzleSpec within default timeout", () => {
+    const rng = mulberry32(900_013);
+    const p = generatePuzzle({ tier: "entry", rng });
+    expect(p).not.toBeNull();
+    expectValidPuzzleSpec(p!);
+    expect(verifyUniqueSolution(p!.givens)).toBe(true);
+  });
+
+  it("expert + extremely short timeout: returns null or valid spec without throwing", () => {
+    const rng = mulberry32(404);
+    expect(() =>
+      generatePuzzle({ tier: "expert", rng, timeoutMs: 1 }),
+    ).not.toThrow();
+    const out = generatePuzzle({ tier: "expert", rng: mulberry32(405), timeoutMs: 1 });
+    if (out !== null) {
+      expectValidPuzzleSpec(out);
+    }
+  });
+
+  it("hard tier: smoke under tight budget (no throw)", () => {
+    const rng = mulberry32(777_888);
+    const out = generatePuzzle({ tier: "hard", rng, timeoutMs: 5 });
+    if (out !== null) {
+      expectValidPuzzleSpec(out);
+    }
   });
 });
 

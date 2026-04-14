@@ -8,7 +8,7 @@
  * - **难度档**：{@link DifficultyTier}（入门 / 普通 / 困难 / 专家）。
  * - **题目元数据**：{@link PuzzleSpec}（提示盘面、难度分、可选分数区间、解题轨迹上涉及的技巧 id）。
  * - **技巧标识**：{@link TechniqueId} 与 {@link TechniqueIds} 与 `@/lib/solver`、教学大纲一致；勿自行发明异名字符串。
- * - **函数**：{@link generatePuzzle}（占位）、{@link verifyUniqueSolution}（完备回溯计数 + 早停）。
+ * - **函数**：{@link generatePuzzle}（完整盘 → 挖洞 → 唯一解 → tier 画像）、{@link verifyUniqueSolution}（完备回溯计数 + 早停）。
  *
  * `seed` 为可复现/可展示的题面标识（例如由 tier、尝试序号与 `rng` 派生的短摘要），**不要求密码学强度**。
  *
@@ -20,6 +20,17 @@ import type { TechniqueId } from "@/lib/solver";
 import { TechniqueIds } from "@/lib/solver";
 
 import type { DifficultyTier } from "./difficulty-tier";
+import {
+  DEFAULT_MAX_SOLVE_STEPS,
+  derivePuzzleSpecFieldsForTier,
+} from "./human-solve-trace";
+import {
+  DEFAULT_DIG_HOLES_TIMEOUT_MS,
+  digHolesFromCompleteSolution,
+} from "./dig-holes";
+import { cloneGrid9 } from "./grid-game-state";
+import { generateRandomCompleteGrid } from "./random-complete-grid";
+import { verifyUniqueSolution } from "./unique-solution";
 
 export type { DifficultyTier } from "./difficulty-tier";
 export {
@@ -37,6 +48,7 @@ export {
   classifyPuzzleMinimumTier,
   derivePuzzleDifficultyMetadata,
   derivePuzzleSpecDifficultyFields,
+  derivePuzzleSpecFieldsForTier,
   gatherApplicableStepsFromCandidates,
   puzzleMatchesTierProfile,
   runHumanSolveTrace,
@@ -56,6 +68,15 @@ export {
 } from "./dig-holes";
 export { generateRandomCompleteGrid } from "./random-complete-grid";
 export { verifyUniqueSolution } from "./unique-solution";
+
+/** 单次 {@link generatePuzzle} 默认总预算（毫秒）。 */
+const DEFAULT_GENERATE_PUZZLE_TIMEOUT_MS = 5000;
+
+/** 剩余时间低于此值则停止尝试，避免无意义碎片迭代。 */
+const MIN_REMAINING_MS_TO_ATTEMPT = 100;
+
+/** 防止异常超大 `timeoutMs` 导致极多长尝试。 */
+const MAX_GENERATION_ATTEMPTS = 50_000;
 
 // Re-export solver technique naming for callers that build or validate PuzzleSpec.requiredTechniques.
 export type { TechniqueId };
@@ -79,21 +100,89 @@ export interface PuzzleSpec {
 }
 
 /**
- * 生成一道符合难度档约束的题目（占位实现）。
+ * 生成一道符合难度档约束的题目。
  *
- * 后续任务将实现：完整盘 → 挖洞 → 唯一解校验 → 技巧/分数画像；并遵守 `timeoutMs` 等预算。
+ * **重试策略**（性能优先，不追求最少提示或最难终盘）：
+ * - 在总墙上时钟预算内循环：**随机完整有效解** → **随机顺序挖洞**（子预算）→ {@link verifyUniqueSolution} →
+ *   {@link derivePuzzleSpecFieldsForTier}（与 `puzzleMatchesTierProfile` 等价的人类式 tier 校验 + 元数据）。
+ * - 任一步失败则进入下一轮：每轮重新 `generateRandomCompleteGrid` 并换一批挖洞随机性（不在失败后长期固定同一终盘反复挖洞，以免卡死在难以命中 tier 的盘面族上）。
+ * - 循环条件使用 `Date.now()` 与单调截止时间，避免死循环；尝试次数另设硬上限。
  *
  * @param options.tier - 目标难度档。
  * @param options.rng - 与 `[0, 1)` 一致的伪随机源，用于打乱与重试；需可复现时由调用方固定种子实现。
- * @param options.timeoutMs - 单次调用建议总耗时上限（毫秒）；未传时由实现使用合理默认（如 5000）。
- * @returns 占位阶段固定为 `null`；实现完成后为符合档位的 {@link PuzzleSpec}，预算内无解则 `null`。
+ * @param options.timeoutMs - 单次调用建议总耗时上限（毫秒）；未传时默认 5000ms。
+ * @returns 符合档位的 {@link PuzzleSpec}；预算内无法命中则 `null`（不抛错）。
  */
 export function generatePuzzle(options: {
   tier: DifficultyTier;
   rng: () => number;
   timeoutMs?: number;
 }): PuzzleSpec | null {
-  void options;
+  const { tier, rng } = options;
+  const totalBudget =
+    typeof options.timeoutMs === "number" && Number.isFinite(options.timeoutMs)
+      ? Math.max(0, options.timeoutMs)
+      : DEFAULT_GENERATE_PUZZLE_TIMEOUT_MS;
+
+  const globalDeadline = Date.now() + totalBudget;
+
+  for (let attempt = 1; attempt <= MAX_GENERATION_ATTEMPTS; attempt++) {
+    const remaining = globalDeadline - Date.now();
+    if (remaining < MIN_REMAINING_MS_TO_ATTEMPT) {
+      return null;
+    }
+
+    // 时间切分：挖洞 + 唯一性验证通常快于 tier 人类式求解；为后者保留更大份额。
+    const digBudget = Math.max(
+      200,
+      Math.min(DEFAULT_DIG_HOLES_TIMEOUT_MS, Math.floor(remaining * 0.35)),
+    );
+    const tierBudget = remaining - digBudget - 40;
+    if (tierBudget < 250) {
+      continue;
+    }
+
+    const solution = generateRandomCompleteGrid(rng);
+    const givens = digHolesFromCompleteSolution({
+      solution,
+      rng,
+      timeoutMs: digBudget,
+    });
+    if (!givens) {
+      continue;
+    }
+
+    if (Date.now() >= globalDeadline) {
+      return null;
+    }
+    if (!verifyUniqueSolution(givens)) {
+      continue;
+    }
+
+    const tierOpts = {
+      maxWallClockMs: Math.min(tierBudget, globalDeadline - Date.now() - 10),
+      maxSteps: DEFAULT_MAX_SOLVE_STEPS,
+    };
+    if (tierOpts.maxWallClockMs < 80) {
+      continue;
+    }
+
+    const specFields = derivePuzzleSpecFieldsForTier(givens, tier, rng, tierOpts);
+    if (!specFields) {
+      continue;
+    }
+
+    const seed = `sudoku2|${tier}|try${attempt}|r${Math.floor(rng() * 1_000_000_000)}`;
+
+    return {
+      seed,
+      givens: cloneGrid9(givens),
+      difficultyScore: specFields.difficultyScore,
+      scoreBand: specFields.scoreBand,
+      requiredTechniques: specFields.requiredTechniques,
+    };
+  }
+
   return null;
 }
 
