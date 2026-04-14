@@ -2,9 +2,18 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { GameState } from "@/lib/core";
+
+vi.mock("@/lib/generator", () => ({
+  generatePuzzle: () => ({
+    seed: "mock",
+    givens: Array.from({ length: 9 }, () => Array.from({ length: 9 }, () => 0)),
+    difficultyScore: 11,
+    requiredTechniques: [] as string[],
+  }),
+}));
 import { InvalidTokenError } from "./errors";
 import { getUserIdFromToken } from "./login";
 import { userProgressPath } from "./progress";
@@ -46,8 +55,8 @@ describe("getProgress / saveProgress", () => {
 
     const initial = await getProgress(token);
     expect(initial.endless.entry.clearedLevel).toBe(0);
-    expect(initial.global.entry.maxPreparedLevel).toBe(0);
-    expect(initial.global.entry.puzzles).toEqual({});
+    expect(initial.global.entry.maxPreparedLevel).toBe(1);
+    expect(initial.global.entry.puzzles[1]?.seed).toBe("mock");
 
     await saveProgress(token, {
       techniques: { xwing: { unlocked: true } },

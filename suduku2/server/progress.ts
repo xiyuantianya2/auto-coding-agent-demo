@@ -22,25 +22,18 @@ import {
 } from "@/lib/core";
 
 import { getDataDir } from "./data-dir";
+import { refreshEndlessGlobalPool } from "./endless-pool";
 import { getUserIdFromToken } from "./login";
-import type { DifficultyTier, EndlessGlobalState, PuzzleSpec, UserId, UserProgress } from "./types";
+import type { DifficultyTier, EndlessGlobalState, UserId, UserProgress } from "./types";
 
 export const USERS_SUBDIR = "users";
 
 const DIFFICULTY_TIERS: DifficultyTier[] = ["entry", "normal", "hard", "expert"];
 
+export { emptyEndlessGlobalState } from "./endless-pool";
+
 export function userProgressPath(dataDir: string, userId: UserId): string {
   return path.join(dataDir, USERS_SUBDIR, `${userId}.json`);
-}
-
-export function emptyEndlessGlobalState(): EndlessGlobalState {
-  const emptyTier = { maxPreparedLevel: 0, puzzles: {} as Record<number, PuzzleSpec> };
-  return {
-    entry: { ...emptyTier },
-    normal: { ...emptyTier },
-    hard: { ...emptyTier },
-    expert: { ...emptyTier },
-  };
 }
 
 export function defaultUserProgress(): UserProgress {
@@ -215,7 +208,7 @@ export function mergeUserProgress(current: UserProgress, patch: Partial<UserProg
 }
 
 /**
- * 校验令牌后读取并返回用户进度；`global` 占位为空池（由后续任务填充或路由层合并）。
+ * 校验令牌后读取并返回用户进度；`global` 为共享无尽池（见 `endless-pool.ts` 刷新逻辑）。
  */
 export async function getProgress(
   token: string,
@@ -223,7 +216,8 @@ export async function getProgress(
   const userId = getUserIdFromToken(token);
   const dataDir = getDataDir();
   const progress = readUserProgressFile(dataDir, userId);
-  return { ...progress, global: emptyEndlessGlobalState() };
+  const global = refreshEndlessGlobalPool(dataDir);
+  return { ...progress, global };
 }
 
 export async function saveProgress(token: string, patch: Partial<UserProgress>): Promise<void> {
@@ -232,4 +226,5 @@ export async function saveProgress(token: string, patch: Partial<UserProgress>):
   const current = readUserProgressFile(dataDir, userId);
   const merged = mergeUserProgress(current, patch);
   writeUserProgressAtomic(dataDir, userId, merged);
+  refreshEndlessGlobalPool(dataDir);
 }
