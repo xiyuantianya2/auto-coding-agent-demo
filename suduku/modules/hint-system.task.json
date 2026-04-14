@@ -57,7 +57,7 @@
         "手动或测试验证：与 lib/solver/integration.test 风格一致的若干 fixture 上，getNextHint 返回的 technique 与 findTechniques 首步策略一致",
         "公开导出与 module-plan 中 getNextHint / HintResult 签名一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

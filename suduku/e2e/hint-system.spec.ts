@@ -9,14 +9,27 @@ import {
   selectNextSolveStep,
   solveStepHighlightsToHintFields,
 } from "@/lib/hint";
-import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
+import {
+  ALMOST_SOLVED_ONE_EMPTY,
+  SOLVED_GRID_SAMPLE,
+} from "@/lib/core/fixture";
 import { TECHNIQUE_IDS, type SolveStep } from "@/lib/solver";
 
-test.describe("Suduku hint system (stub)", () => {
-  test("getNextHint skeleton returns null without mutating state", () => {
+test.describe("Suduku hint system", () => {
+  test("getNextHint: full board returns null without mutating state", () => {
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     const before = serializeGameState(state);
     expect(getNextHint(state)).toBeNull();
+    expect(serializeGameState(state)).toBe(before);
+  });
+
+  test("getNextHint: almost-solved yields naked-single hint aligned with solver", () => {
+    const state = createGameStateFromGivens(ALMOST_SOLVED_ONE_EMPTY);
+    const before = serializeGameState(state);
+    const hint = getNextHint(state);
+    expect(hint).not.toBeNull();
+    expect(hint?.technique).toBe(TECHNIQUE_IDS.NAKED_SINGLE);
+    expect(hint?.messageKey).toBe("hint.technique.naked-single");
     expect(serializeGameState(state)).toBe(before);
   });
 

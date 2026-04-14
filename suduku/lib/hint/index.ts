@@ -12,7 +12,8 @@
  */
 
 import type { GameState } from "@/lib/core";
-import type { TechniqueId } from "@/lib/solver";
+import { getNextHintImpl } from "./get-next-hint";
+import type { HintResult } from "./types";
 
 export {
   solveStepHighlightsToHintFields,
@@ -28,21 +29,11 @@ export {
   hintMessageKeyToTechniqueId,
 } from "./message-keys";
 
-export type HintResult = {
-  /** 需要在棋盘上高亮的格子坐标（行/列，0–8）。 */
-  cells: Array<{ r: number; c: number }>;
-  /** 可选：在指定格子上额外高亮的候选数字（去重后的升序列表由后续映射保证）。 */
-  highlightCandidates?: Array<{ r: number; c: number; digits: number[] }>;
-  /** 本步提示所依据的技巧标识（与求解引擎一致）。 */
-  technique: TechniqueId;
-  /** 可选：供文案层查找说明的稳定 key。 */
-  messageKey?: string;
-};
+export type { HintResult } from "./types";
 
 /**
- * 计算「下一步」教学提示对应的高亮数据；当前为骨架实现，恒返回 `null`。
+ * 计算「下一步」教学提示对应的高亮数据：串联求解引擎、选步与几何映射；只读、不填数。
  */
 export function getNextHint(state: GameState): HintResult | null {
-  void state;
-  return null;
+  return getNextHintImpl(state);
 }
