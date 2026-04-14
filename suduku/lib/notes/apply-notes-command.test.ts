@@ -10,6 +10,16 @@ import { computeCandidates } from "@/lib/solver";
 
 import { applyNotesCommandImpl } from "./apply-notes-command";
 
+describe("applyNotesCommand (undo contract)", () => {
+  it("undo: throws; use createUndoStack instead", () => {
+    const state = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+    const candidates = computeCandidates(state);
+    expect(() =>
+      applyNotesCommandImpl(state, { type: "undo", payload: {} }, candidates),
+    ).toThrow(/applyNotesCommand does not handle/);
+  });
+});
+
 describe("applyNotesCommand (batchClear)", () => {
   it("batchClear: clears notes on multiple editable cells in list order", () => {
     const state = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);

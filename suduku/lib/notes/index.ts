@@ -12,8 +12,8 @@
  *
  * `syncNotesWithCandidates` 已实现：按候选收紧笔记、清理已解格笔记。
  * `getHighlightCells` / `cellsForRow|Col|Box`：一键筛选高亮坐标（见 `./highlight-filter`）。
- * `applyNotesCommand` 已实现 `toggle` / `clearCell` / `setMode` / `batchClear`；`undo` 分支保留至后续任务。
- * `createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
+ * `applyNotesCommand` 已实现 `toggle` / `clearCell` / `setMode` / `batchClear`。
+ * **`undo` 命令：** 不要传入 `{ type: 'undo' }`（会抛错）。在变更前对当前盘面 `createUndoStack().push(state)`，撤销时调用同一栈的 `undo()`（见 {@link createUndoStack} 注释）。
  */
 
 import type { GameState } from "@/lib/core";
@@ -39,6 +39,8 @@ export type {
   UndoNotesPayload,
 } from "./types";
 
+export { createUndoStack } from "./undo-stack";
+
 /**
  * 将一条笔记命令应用到盘面（不可变更新）。已实现 `toggle` / `clearCell` / `setMode` / `batchClear`（见 `./apply-notes-command`）。
  */
@@ -56,21 +58,4 @@ export function syncNotesWithCandidates(
   candidates: CandidatesGrid,
 ): GameState {
   return syncNotesWithCandidatesImpl(state, candidates);
-}
-
-/**
- * 创建基于 `GameState` 深快照的撤销栈。骨架阶段：`push` 为 no-op，`undo` 恒返回 `null`。
- */
-export function createUndoStack(): {
-  push(s: GameState): void;
-  undo(): GameState | null;
-} {
-  return {
-    push() {
-      /* 占位：后续任务使用 cloneGameState 入栈 */
-    },
-    undo() {
-      return null;
-    },
-  };
 }

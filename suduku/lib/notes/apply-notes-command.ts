@@ -1,5 +1,5 @@
 /**
- * `applyNotesCommand` 的实现分支（toggle / clearCell / setMode / batchClear；`undo` 见后续任务）。
+ * `applyNotesCommand` 的实现分支（toggle / clearCell / setMode / batchClear；`undo` 由撤销栈处理，见 `undo-stack.ts`）。
  *
  * **存档与 {@link GameState.inputMode}：** `inputMode` 为 core 模型上的可选字段；旧存档缺省该字段时与
  * `fill` 语义一致（见 `lib/core/types.ts` 注释）。序列化层在字段存在时写入 JSON，保证读回后行为一致。
@@ -130,7 +130,8 @@ function applyBatchClear(
 }
 
 /**
- * 将一条笔记命令应用到盘面（不可变更新）。已实现：`toggle`、`clearCell`、`setMode`、`batchClear`；`undo` 仍返回克隆快照。
+ * 将一条笔记命令应用到盘面（不可变更新）。已实现：`toggle`、`clearCell`、`setMode`、`batchClear`。
+ * `undo` 不支持：请使用 `createUndoStack()`（见 `undo-stack.ts`）。
  */
 export function applyNotesCommandImpl(
   state: GameState,
@@ -153,6 +154,8 @@ export function applyNotesCommandImpl(
       return applyBatchClear(state, cmd.payload, candidates);
     }
     case "undo":
-      return cloneGameState(state);
+      throw new Error(
+        'applyNotesCommand does not handle { type: "undo" }. Push snapshots with createUndoStack().push(state) before mutating, then call createUndoStack().undo() to restore.',
+      );
   }
 }

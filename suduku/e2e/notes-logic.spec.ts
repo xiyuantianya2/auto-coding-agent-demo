@@ -53,12 +53,16 @@ test.describe("Suduku notes logic (contract smoke)", () => {
     expect(syncedSparse.cells[r][c].notes).toEqual(allowed);
   });
 
-  test("createUndoStack stub: undo returns null until implemented", () => {
+  test("createUndoStack: push clones snapshot, undo pops LIFO", () => {
     const stack = createUndoStack();
     expect(stack.undo()).toBeNull();
 
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     stack.push(state);
+    const restored = stack.undo();
+    expect(restored).not.toBeNull();
+    expect(restored).toEqual(state);
+    expect(restored).not.toBe(state);
     expect(stack.undo()).toBeNull();
   });
 

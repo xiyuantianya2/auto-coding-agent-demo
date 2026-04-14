@@ -68,7 +68,7 @@
         "Vitest 覆盖 push/undo 多次、空栈 undo、克隆独立性（修改返回值不影响栈内快照）",
         "公开 API 与 module-plan 中 createUndoStack 返回类型一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,

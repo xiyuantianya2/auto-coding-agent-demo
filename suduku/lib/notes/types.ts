@@ -29,7 +29,10 @@ export type BatchClearNotesPayload =
   | { cells: Array<{ r: number; c: number }> }
   | { region: "row" | "col" | "box"; index: number };
 
-/** `applyNotesCommand` 中 `undo` 分支的占位 payload（推荐撤销走 {@link createUndoStack}）。 */
+/**
+ * `NotesCommand` 的 `undo` 分支占位 payload（空对象）。
+ * **不要**传给 `applyNotesCommand`：该分支会抛错；撤销请用 `createUndoStack()` 的 `push` / `undo`（见 `undo-stack.ts`）。
+ */
 export type UndoNotesPayload = Record<string, never>;
 
 /**
