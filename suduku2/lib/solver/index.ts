@@ -39,3 +39,9 @@ export type {
   HighlightKind,
   SolveStep,
 } from "./types";
+export {
+  DEFAULT_UNKNOWN_TECHNIQUE_WEIGHT,
+  scoreDifficulty,
+  techniqueWeight,
+} from "./score-difficulty";
+export type { DifficultyScoreResult } from "./score-difficulty";
