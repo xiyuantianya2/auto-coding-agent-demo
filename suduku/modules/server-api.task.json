@@ -1,0 +1,96 @@
+{
+  "project": "数独",
+  "module": "server-api",
+  "moduleTitle": "局域网服务、账号与 JSON 持久化",
+  "description": "提供 HTTP API：注册、登录（会话）、按用户读写本地 JSON 文件；持久化各难度无尽模式当前关卡与各关最快时间、各专项已解锁技巧/连续通关/最快时间、教学章节完成度。可内聚调用题目生成模块为新关卡供题。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "server 模块目录、对外类型与异步 API 骨架",
+      "description": "在 suduku/server 建立模块：定义并导出与 module-plan 一致的 UserId、ProgressPayload（endless/practice/tutorial 三段 Record 结构及各字段含义）；从 @/lib/generator 复用 DifficultyTier、PuzzleSpec、TechniqueId（经 generator 或 solver 的公开类型链）避免重复定义。声明并导出 registerUser(username, passwordHash)、login(username, password)、loadProgress(userId)、saveProgress(userId, data)、requestNextPuzzle(userId, tier) 的函数签名与简短 JSDoc，实现为返回明确占位值的 Promise 或抛「未实现」错误，便于后续任务替换。提供 server/index.ts（或等价入口）统一导出；说明本模块运行环境为 Node（fs、http、crypto），与 Next 页面代码解耦。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build，确保新增骨架不破坏工程",
+        "ProgressPayload 的键空间与产品一致：endless 按难度档或模式 id 字符串；practice 对齐 content/curriculum 的 modeId/技巧线；tutorial 对齐 ChapterId（字符串），并在注释中写明与客户端约定",
+        "不在此任务实现持久化与 HTTP，仅类型与导出路径稳定，供后续任务引用"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "本地数据目录布局与 JSON 原子读写层",
+      "description": "约定可配置的本地数据根目录（例如环境变量 SUDUKU_DATA_DIR，默认 suduku 下的专用子目录，且通过 .gitignore 忽略运行时数据）。设计用户级 JSON 文件路径规则（如 users/<userId>/profile.json、credentials.json、progress.json 或等价拆分），实现异步读写封装：创建目录、读取缺失文件时返回符合 ProgressPayload 的空默认结构（各 Record 为空对象或文档化的初始值）、写入时使用临时文件再 rename 实现原子替换，避免进程崩溃导致半写入。对 ProgressPayload 做轻量校验（必填字段类型、Record 值为预期形状），非法数据拒绝保存并返回明确错误。不实现注册登录逻辑，仅存储层单测可用。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：使用 os.tmpdir() 或项目内临时目录，覆盖「首次写入」「更新合并」「损坏/非法 JSON 拒绝」等路径",
+        "不在此任务引入 HTTP 或 token，仅 fs 封装与数据结构校验"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "注册与登录凭证：用户名唯一与密码验证策略",
+      "description": "实现 registerUser：生成唯一 UserId（uuid 或不可猜测的随机字符串），持久化用户名到 userId 的索引（独立 JSON 或索引文件）以保证用户名唯一；将 passwordHash 与 userId 关联存储（module-plan 中 registerUser 已接收 passwordHash，服务端应原样保存并与 login 侧验证策略一致）。实现 login(username, password)：按约定验证用户存在且凭证匹配（若客户端注册时上传的是哈希串，则约定 login 的 password 为同一格式的可比对串，并使用常量时间比较；禁止在日志中输出明文或哈希）。返回失败时使用通用错误信息，避免枚举有效用户名。完成 loadProgress/saveProgress 对 userId 的依赖前，本任务应保证同一用户多次注册失败、登录成功路径可测。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：覆盖注册成功、重复用户名失败、错误密码登录失败；凭证文件内容符合预期结构",
+        "说明文档或注释中固定「passwordHash / login.password」的产品语义，避免前后端理解不一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "会话 token：签发、存储或签名与请求侧校验",
+      "description": "为 login 成功返回的 token 定义格式与有效期策略：可选用服务端会话表（内存 Map + 定期清理）或 HMAC-Signed Payload（含 userId、签发时间、过期时间），密钥来自环境变量。提供 validateToken(token): UserId | null（或内部等价函数）供后续 HTTP 与业务 API 使用。登出为可选；若实现需使会话失效。确保 token 不可被客户端伪造 userId。不在此任务绑定具体 HTTP 头格式，但注释中约定 Authorization: Bearer <token>。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：有效 token 解析出正确 userId；过期/篡改/未知 token 返回 null 或统一失败",
+        "不在此任务实现完整 REST 路由，仅会话模块可单测"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "实现 loadProgress、saveProgress 与 ProgressPayload 合并策略",
+      "description": "基于任务 2 的存储层与任务 3 的 userId，实现 loadProgress(userId)：返回持久化 JSON，若不存在则返回空默认 ProgressPayload。实现 saveProgress(userId, data)：建议采用「读-合并-写」策略合并 endless.currentLevel、bestTimesMs（按关卡号取更小耗时）、practice.unlocked/streak/bestTimeMs、tutorial 布尔值，避免客户端 PATCH 不完整时覆盖其它字段；文档化合并规则与冲突处理。所有操作必须在已认证上下文中使用（由调用方传入已校验的 userId）。必要时对关卡号等键做合法性检查（非负整数等）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：模拟两次 save，验证 bestTimesMs 保留更优值、tutorial 与 practice 字段不被意外清空",
+        "函数签名与 module-plan 中 loadProgress、saveProgress 完全一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "requestNextPuzzle：内聚调用 lib/generator 的 generatePuzzle",
+      "description": "在 server 模块实现 requestNextPuzzle(userId, tier)：从 @/lib/generator 导入 generatePuzzle 与相关类型；使用 crypto 级随机或确定性种子派生 rng（例如 hash(userId + tier + crypto.randomUUID()) 再喂给与 generator 一致的 PRNG 构造器），保证每次请求返回新的 PuzzleSpec，且 seed 字段可记录于客户端/日志用于复现。可选：将最近一次生成的 seed 写入用户进度侧车数据以便调试（若做需开关）。不修改 lib/generator 内部算法，仅调用公开 API。若需验证唯一解，仅使用 generator 已导出的 verifyUniqueSolution（不在此重复实现）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest：对固定 mock rng 或固定种子，断言返回的 PuzzleSpec 与直接调用 generatePuzzle 一致；四档 DifficultyTier 各至少一次冒烟",
+        "确保 import 路径使用 @/lib/generator，与 suduku tsconfig paths 一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "HTTP 服务：注册、登录、进度、供题路由与局域网可用性",
+      "description": "在 suduku/server 提供可启动的 HTTP 服务（Node 内置 http 或轻量框架均可）：暴露 JSON API，例如 POST /api/register（body: username, passwordHash）、POST /api/login（body: username, password）返回 token；GET /api/progress、PUT /api/progress（Header 带 Bearer token，body 为 ProgressPayload）；POST /api/puzzle/next（body: tier）返回 PuzzleSpec。统一 JSON 错误码与 401/403/404/409 语义（用户名冲突等）。绑定 0.0.0.0 或可通过环境变量配置 host/port，便于局域网访问；对浏览器客户端可加必要 CORS 头。将路由处理委托给任务 3–6 已实现的函数，保持「对外 TypeScript API」与 HTTP 层分离以便测试。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "手动或用脚本验证：局域网内另一设备可访问健康检查或简单 GET（若实现）",
+        "README 或 server 内注释说明启动命令与环境变量，但不强制修改仓库根 README（除非任务需要）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "模块集成测试：HTTP 端到端与公开函数契约",
+      "description": "为 suduku/server 添加 Vitest 集成测试：在临时数据目录启动内存中的 HTTP 服务器（或监听随机端口），顺序执行注册 → 登录取 token → PUT 部分 progress → GET 校验合并 → POST puzzle/next 返回含 seed/givens 的 PuzzleSpec。覆盖 401 未授权访问 progress。可选：直接调用导出的 registerUser/login/saveProgress/requestNextPuzzle 做无 HTTP 的快速契约测试。测试结束后清理临时文件。确保与 lib/generator、lib/core 类型无循环依赖问题。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "在 suduku 目录下执行 npm test，全部通过",
+        "集成测试仅针对本模块；不要求 Playwright，除非项目已有对 server 的 E2E 约定"
+      ],
+      "passes": false
+    }
+  ]
+}
