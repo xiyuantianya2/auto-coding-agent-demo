@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import { isVictory, serializeGameState, type GameState } from "@/lib/core";
+import { isVictory, type GameState } from "@/lib/core";
 import { gameStateFromGivensGrid } from "@/lib/generator/grid-game-state";
 import {
   fetchProgress,
@@ -15,6 +15,7 @@ import {
 import { useSudoku2Auth } from "@/app/auth-context";
 import { useSudoku2ApiBase } from "@/app/sudoku2-app-providers";
 import { ENDLESS_TIER_LABEL_ZH } from "@/app/game/endless/endless-meta";
+import { useProgressDraftAutosave } from "@/app/game/use-progress-draft-autosave";
 import { SudokuPlaySurface } from "@/app/game/sudoku-play-surface";
 import type { DifficultyTier, PuzzleSpec } from "@/server/types";
 
@@ -50,13 +51,11 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
-  const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [justWon, setJustWon] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
 
   const winSavedRef = useRef(false);
-  const enterSavedRef = useRef(false);
 
   const tierLabel = tier ? ENDLESS_TIER_LABEL_ZH[tier] : "未知";
 
@@ -65,10 +64,8 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
       return;
     }
     winSavedRef.current = false;
-    enterSavedRef.current = false;
     setJustWon(false);
     setStatusHint(null);
-    setSelected(null);
     setGameState(null);
     setPhase({ kind: "loading" });
 
@@ -108,34 +105,22 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
     }
   }, [apiBase, tier, token]);
 
+  const draftAutosaveKey =
+    tier && phase.kind === "playing"
+      ? `${tier}-${phase.spec.seed}-${phase.nextLevel}`
+      : "idle";
+
+  const { flushNow: flushDraftNow } = useProgressDraftAutosave({
+    apiBaseUrl: apiBase,
+    token,
+    enabled: phase.kind === "playing" && !!gameState && !justWon,
+    gameState,
+    autosaveKey: draftAutosaveKey,
+  });
+
   useEffect(() => {
     void loadRun();
   }, [loadRun]);
-
-  useEffect(() => {
-    if (!tier || !token) {
-      return;
-    }
-    if (phase.kind !== "playing" || !gameState) {
-      return;
-    }
-    if (enterSavedRef.current) {
-      return;
-    }
-    enterSavedRef.current = true;
-    void (async () => {
-      try {
-        const wire = JSON.parse(serializeGameState(gameState)) as unknown;
-        setBusy(true);
-        await patchProgress(apiBase, token, { draft: wire });
-        setStatusHint("已进入关卡：进度已同步（草稿）。");
-      } catch (e) {
-        setStatusHint(e instanceof Error ? e.message : "保存草稿失败。");
-      } finally {
-        setBusy(false);
-      }
-    })();
-  }, [apiBase, gameState, phase.kind, tier, token]);
 
   useEffect(() => {
     if (!tier || !token) {
@@ -177,15 +162,14 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
     }
     try {
       setBusy(true);
-      const wire = JSON.parse(serializeGameState(gameState)) as unknown;
-      await patchProgress(apiBase, token, { draft: wire });
+      await flushDraftNow({ force: true });
       setStatusHint("草稿已保存。");
     } catch (e) {
       setStatusHint(e instanceof Error ? e.message : "保存失败。");
     } finally {
       setBusy(false);
     }
-  }, [apiBase, gameState, phase.kind, tier, token]);
+  }, [flushDraftNow, gameState, phase.kind, tier, token]);
 
   const onAbandon = useCallback(async () => {
     if (!tier || !token) {
@@ -321,14 +305,6 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
             key={`${tier}-${phase.nextLevel}-${phase.spec.seed}`}
             gameState={gameState}
             onGameStateChange={setGameState}
-            selected={selected}
-            onSelectCell={(cell) => {
-              setSelected(cell);
-              if (!cell) {
-                return;
-              }
-              setStatusHint(null);
-            }}
             onPlayRejected={() => setStatusHint("该操作在当前模式下不可用。")}
             onNeedCellSelection={() => setStatusHint("请先点击一个空格。")}
             disabled={busy || justWon}

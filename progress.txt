@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: suduku2 client-ui id=8 — `useSudoku2Game`、草稿 `draft` 与 Playwright 端到端回归
+
+### What was done:
+- `app/game/use-sudoku2-game.ts`：收口主棋盘与 `@/lib/core`、`@/lib/solver`、`@/lib/hint`、`@/lib/notes` 的编排，返回 `{ state, selected, paused, hint, canUndo, canRedo, elapsedSec, interactionLocked, actions }`；`SudokuPlaySurface` 改为基于该 hook，选中格由盘面内部管理。
+- `app/game/use-progress-draft-autosave.ts`：`serializeGameState` → JSON 与 `PATCH /api/progress` 的 `draft` 对齐；换题 `autosaveKey` 立即 `flush`、盘面变更防抖、离开页 `keepalive` PATCH；无尽/专项的「保存草稿」调用 `flushNow({ force: true })`。
+- `app/client-ui.ts`：导出 `useSudoku2Game`、`useProgressDraftAutosave` 及类型。
+- `e2e/client-ui-regression.spec.ts`：草稿防抖、专家档结构冒烟、多步导航；`e2e/board.spec.ts` 计时断言加固；`playwright.config.ts`：`workers: 1` 避免 Windows 下会话文件并发写入 EPERM。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`、`npx playwright test --headed` 全部通过（19 个 E2E）。
+
+### Notes:
+- 无尽选题仍仅依赖 `getProgress` 返回的 `global` + `endless`（未改业务路径）；草稿为 core 序列化 JSON，与 server `UserProgress.draft` 一致。
+
+---
+
 ## 2026-04-14 - Task: suduku2 client-ui id=7 — 主题、高对比、平板布局与进度导入/导出 UI
 
 ### What was done:

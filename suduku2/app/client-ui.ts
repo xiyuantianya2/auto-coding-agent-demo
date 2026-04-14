@@ -17,3 +17,15 @@ export {
   DEFAULT_SUDOKU2_API_BASE_URL,
   joinSudoku2ApiPath,
 } from "./sudoku2-api";
+
+export {
+  useSudoku2Game,
+  type Sudoku2GameActions,
+  type UseSudoku2GameParams,
+  type UseSudoku2GameResult,
+} from "./game/use-sudoku2-game";
+
+export {
+  useProgressDraftAutosave,
+  type UseProgressDraftAutosaveOptions,
+} from "./game/use-progress-draft-autosave";

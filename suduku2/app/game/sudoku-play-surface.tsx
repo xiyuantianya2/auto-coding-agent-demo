@@ -1,31 +1,16 @@
 "use client";
 
 import type { JSX, ReactNode } from "react";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
-import {
-  cloneGameState,
-  EMPTY_CELL,
-  getEffectiveDigitAt,
-  serializeGameState,
-  type GameState,
-} from "@/lib/core";
-import { getNextHint, type HintResult } from "@/lib/hint";
-import {
-  applyCommand,
-  createUndoRedo,
-  type NotesCommand,
-  type UndoRedoApi,
-} from "@/lib/notes";
-import { computeCandidates } from "@/lib/solver";
+import { EMPTY_CELL, getEffectiveDigitAt, type GameState } from "@/lib/core";
+import type { HintResult } from "@/lib/hint";
 
-import { useSudokuSessionTimer } from "@/app/game/use-sudoku-session-timer";
+import { useSudoku2Game } from "@/app/game/use-sudoku2-game";
 
 export type SudokuPlaySurfaceProps = {
   gameState: GameState;
   onGameStateChange: (next: GameState) => void;
-  selected: { r: number; c: number } | null;
-  onSelectCell: (cell: { r: number; c: number } | null) => void;
   disabled?: boolean;
   boardTestId?: string;
   clearCellTestId?: string;
@@ -69,8 +54,6 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
   const {
     gameState,
     onGameStateChange,
-    selected,
-    onSelectCell,
     disabled = false,
     boardTestId = "sudoku-board",
     clearCellTestId = "sudoku-clear-cell",
@@ -80,160 +63,23 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     onNeedCellSelection,
   } = props;
 
-  const [paused, setPaused] = useState(false);
-  const [hint, setHint] = useState<HintResult | null>(null);
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
-
-  const interactionLocked = disabled || paused;
-
-  const elapsedSec = useSudokuSessionTimer(showTimer ? paused : true);
-
-  const candidates = useMemo(() => computeCandidates(gameState), [gameState]);
-
-  const undoRedoRef = useRef<UndoRedoApi | null>(null);
-  const gameStateRef = useRef(gameState);
-
-  useLayoutEffect(() => {
-    gameStateRef.current = gameState;
-  }, [gameState]);
-
-  const refreshUndoUi = useCallback(() => {
-    const api = undoRedoRef.current;
-    setCanUndo(api?.canUndo() ?? false);
-    setCanRedo(api?.canRedo() ?? false);
-  }, []);
-
-  useEffect(() => {
-    const api = createUndoRedo();
-    undoRedoRef.current = api;
-    api.push(cloneGameState(gameStateRef.current));
-    queueMicrotask(() => {
-      refreshUndoUi();
-    });
-  }, [refreshUndoUi]);
-
-  const commit = useCallback(
-    (next: GameState) => {
-      const api = undoRedoRef.current;
-      if (api) {
-        api.push(cloneGameState(next));
-      }
-      onGameStateChange(next);
-      setHint(null);
-      refreshUndoUi();
-    },
-    [onGameStateChange, refreshUndoUi],
-  );
-
-  const apply = useCallback(
-    (cmd: NotesCommand) => {
-      if (interactionLocked) {
-        return;
-      }
-      const next = applyCommand(gameState, cmd, candidates);
-      if (serializeGameState(next) === serializeGameState(gameState)) {
-        if (cmd.type === "fill" || cmd.type === "toggle") {
-          onPlayRejected?.();
-        }
-        return;
-      }
-      commit(next);
-    },
-    [candidates, commit, gameState, interactionLocked, onPlayRejected],
-  );
-
-  const onToggleMode = useCallback(
-    (mode: "fill" | "notes") => {
-      if (interactionLocked || gameState.mode === mode) {
-        return;
-      }
-      apply({ type: "setMode", payload: { mode } });
-    },
-    [apply, gameState.mode, interactionLocked],
-  );
-
-  const onDigit = useCallback(
-    (digit: number) => {
-      if (interactionLocked) {
-        return;
-      }
-      if (!selected) {
-        onNeedCellSelection?.();
-        return;
-      }
-      const { r, c } = selected;
-      if (gameState.mode === "notes") {
-        apply({ type: "toggle", payload: { r, c, digit } });
-        return;
-      }
-      apply({ type: "fill", payload: { r, c, digit } });
-    },
-    [apply, gameState.mode, interactionLocked, onNeedCellSelection, selected],
-  );
-
-  const onClear = useCallback(() => {
-    if (interactionLocked || !selected) {
-      return;
-    }
-    const { r, c } = selected;
-    const cell = gameState.cells[r][c];
-    if (cell.value !== undefined) {
-      apply({ type: "clearCell", payload: { r, c } });
-      return;
-    }
-    if (cell.notes && cell.notes.size > 0) {
-      const next = cloneGameState(gameState);
-      const cleared = { ...next.cells[r][c] };
-      delete cleared.notes;
-      next.cells[r][c] = cleared;
-      next.grid[r][c] = getEffectiveDigitAt(next, r, c);
-      commit(next);
-    }
-  }, [apply, commit, gameState, interactionLocked, selected]);
-
-  const onUndo = useCallback(() => {
-    if (interactionLocked) {
-      return;
-    }
-    const api = undoRedoRef.current;
-    if (!api?.canUndo()) {
-      return;
-    }
-    const prev = applyCommand(
-      gameState,
-      { type: "undo", payload: api },
-      candidates,
-    );
-    onGameStateChange(prev);
-    setHint(null);
-    refreshUndoUi();
-  }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
-
-  const onRedo = useCallback(() => {
-    if (interactionLocked) {
-      return;
-    }
-    const api = undoRedoRef.current;
-    if (!api?.canRedo()) {
-      return;
-    }
-    const next = applyCommand(
-      gameState,
-      { type: "redo", payload: api },
-      candidates,
-    );
-    onGameStateChange(next);
-    setHint(null);
-    refreshUndoUi();
-  }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
-
-  const onHint = useCallback(() => {
-    if (interactionLocked) {
-      return;
-    }
-    setHint(getNextHint(gameState));
-  }, [gameState, interactionLocked]);
+  const {
+    selected,
+    paused,
+    hint,
+    canUndo,
+    canRedo,
+    elapsedSec,
+    interactionLocked,
+    actions,
+  } = useSudoku2Game({
+    gameState,
+    onGameStateChange,
+    disabled,
+    onPlayRejected,
+    onNeedCellSelection,
+    showTimer,
+  });
 
   const hintCells = useMemo(() => hintCellSet(hint), [hint]);
   const candHigh = useMemo(() => candidateHighlightMap(hint), [hint]);
@@ -255,7 +101,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             aria-pressed={paused}
             aria-label={paused ? "继续" : "暂停"}
             disabled={disabled}
-            onClick={() => setPaused((p) => !p)}
+            onClick={() => actions.togglePause()}
           >
             {paused ? "继续" : "暂停"}
           </button>
@@ -304,10 +150,10 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                     return;
                   }
                   if (isGiven) {
-                    onSelectCell(null);
+                    actions.selectCell(null);
                     return;
                   }
-                  onSelectCell({ r, c });
+                  actions.selectCell({ r, c });
                 }}
               >
                 {d === EMPTY_CELL ? (
@@ -356,7 +202,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               data-testid="sudoku-mode-fill"
               aria-pressed={gameState.mode === "fill"}
               disabled={interactionLocked}
-              onClick={() => onToggleMode("fill")}
+              onClick={() => actions.setMode("fill")}
             >
               填数
             </button>
@@ -366,7 +212,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               data-testid="sudoku-mode-notes"
               aria-pressed={gameState.mode === "notes"}
               disabled={interactionLocked}
-              onClick={() => onToggleMode("notes")}
+              onClick={() => actions.setMode("notes")}
             >
               笔记
             </button>
@@ -381,7 +227,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   type="button"
                   className="rounded-lg bg-[var(--s2-digit-pad-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40 min-h-[44px]"
                   data-testid={`digit-pad-${n}`}
-                  onClick={() => onDigit(n)}
+                  onClick={() => actions.digit(n)}
                   disabled={interactionLocked}
                 >
                   {n}
@@ -396,7 +242,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               className="rounded-lg px-3 py-2 text-sm font-semibold ring-1 min-h-[44px] bg-[var(--s2-hint-btn-bg)] text-[var(--s2-hint-btn-text)] ring-amber-700/40 hover:opacity-90 disabled:opacity-40"
               data-testid="sudoku-hint"
               disabled={interactionLocked}
-              onClick={() => onHint()}
+              onClick={() => actions.requestHint()}
             >
               提示
             </button>
@@ -405,7 +251,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
               data-testid="sudoku-undo"
               disabled={interactionLocked || !canUndo}
-              onClick={() => onUndo()}
+              onClick={() => actions.undo()}
             >
               撤销
             </button>
@@ -414,7 +260,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
               data-testid="sudoku-redo"
               disabled={interactionLocked || !canRedo}
-              onClick={() => onRedo()}
+              onClick={() => actions.redo()}
             >
               重做
             </button>
@@ -423,7 +269,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           <button
             type="button"
             className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
-            onClick={() => onClear()}
+            onClick={() => actions.clear()}
             disabled={interactionLocked || !selected}
             data-testid={clearCellTestId}
           >

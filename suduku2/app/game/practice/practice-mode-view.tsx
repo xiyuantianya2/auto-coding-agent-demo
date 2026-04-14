@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import { isVictory, serializeGameState, type GameState } from "@/lib/core";
+import { isVictory, type GameState } from "@/lib/core";
 import { gameStateFromGivensGrid } from "@/lib/generator/grid-game-state";
 import {
   fetchProgress,
   patchProgress,
   type ProgressPayload,
 } from "@/app/progress-api";
+import { useProgressDraftAutosave } from "@/app/game/use-progress-draft-autosave";
 import { SudokuPlaySurface } from "@/app/game/sudoku-play-surface";
 import { useSudoku2Auth } from "@/app/auth-context";
 import { joinSudoku2ApiPath } from "@/app/sudoku2-api";
@@ -53,13 +54,11 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
   const [phase, setPhase] = useState<Phase>({ kind: "loading" });
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [progress, setProgress] = useState<ProgressPayload | null>(null);
-  const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [busy, setBusy] = useState(false);
   const [justWon, setJustWon] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
 
   const winSavedRef = useRef(false);
-  const enterSavedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
 
   const title = moduleMeta ? techniqueTitleZh(moduleMeta.titleKey) : "专项练习";
@@ -69,10 +68,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       return;
     }
     winSavedRef.current = false;
-    enterSavedRef.current = false;
     setJustWon(false);
     setStatusHint(null);
-    setSelected(null);
     setGameState(null);
     startedAtRef.current = null;
 
@@ -134,6 +131,17 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     }
   }, [apiBase, modeId, moduleMeta, title, token]);
 
+  const practiceDraftKey =
+    phase.kind === "playing" ? `${modeId}-${phase.spec.seed}` : "idle";
+
+  const { flushNow: flushPracticeDraft } = useProgressDraftAutosave({
+    apiBaseUrl: apiBase,
+    token,
+    enabled: phase.kind === "playing" && !!gameState && !justWon,
+    gameState,
+    autosaveKey: practiceDraftKey,
+  });
+
   useEffect(() => {
     if (!modeId.trim()) {
       setPhase({ kind: "no-mode" });
@@ -145,31 +153,6 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     }
     void loadPuzzle();
   }, [loadPuzzle, modeId, moduleMeta]);
-
-  useEffect(() => {
-    if (!token || !moduleMeta) {
-      return;
-    }
-    if (phase.kind !== "playing" || !gameState) {
-      return;
-    }
-    if (enterSavedRef.current) {
-      return;
-    }
-    enterSavedRef.current = true;
-    void (async () => {
-      try {
-        const wire = JSON.parse(serializeGameState(gameState)) as unknown;
-        setBusy(true);
-        await patchProgress(apiBase, token, { draft: wire });
-        setStatusHint("已进入专项：进度已同步（草稿）。");
-      } catch (e) {
-        setStatusHint(e instanceof Error ? e.message : "保存草稿失败。");
-      } finally {
-        setBusy(false);
-      }
-    })();
-  }, [apiBase, gameState, moduleMeta, phase.kind, token]);
 
   useEffect(() => {
     if (!token || !moduleMeta || !modeId) {
@@ -221,15 +204,14 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     }
     try {
       setBusy(true);
-      const wire = JSON.parse(serializeGameState(gameState)) as unknown;
-      await patchProgress(apiBase, token, { draft: wire });
+      await flushPracticeDraft({ force: true });
       setStatusHint("草稿已保存。");
     } catch (e) {
       setStatusHint(e instanceof Error ? e.message : "保存失败。");
     } finally {
       setBusy(false);
     }
-  }, [apiBase, gameState, phase.kind, token]);
+  }, [flushPracticeDraft, gameState, phase.kind, token]);
 
   const onLeave = useCallback(async () => {
     if (!token) {
@@ -386,14 +368,6 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
             key={`${modeId}-${phase.spec.seed}`}
             gameState={gameState}
             onGameStateChange={setGameState}
-            selected={selected}
-            onSelectCell={(cell) => {
-              setSelected(cell);
-              if (!cell) {
-                return;
-              }
-              setStatusHint(null);
-            }}
             onPlayRejected={() => setStatusHint("该操作在当前模式下不可用。")}
             onNeedCellSelection={() => setStatusHint("请先点击一个空格。")}
             disabled={busy || justWon}

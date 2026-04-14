@@ -7,8 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 1,
-  /* 本地多 worker 并发易压垮单实例 `next dev`，导致偶发 net::ERR_CONNECTION_REFUSED */
-  workers: process.env.CI ? 1 : 4,
+  /* Windows 下并发登录/注册会争用 `data/sessions.json` 原子写入（EPERM），单 worker 更稳 */
+  workers: 1,
   use: {
     baseURL: "http://127.0.0.1:3003",
     trace: "on-first-retry",
