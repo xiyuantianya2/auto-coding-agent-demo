@@ -1,0 +1,106 @@
+{
+  "project": "数独2",
+  "module": "client-ui",
+  "moduleTitle": "前端应用与模式集成",
+  "description": "Next.js 应用（端口与仓库约定如 3003）：登录注册、教学浏览、四档无尽与每技巧专项入口、主棋盘交互（提示高亮、笔记模式、计时/暂停）、暗色主题与高对比候选色、平板布局。整合 curriculum、hint、notes 与 server-api；核心算法模块以 lib 调用为主，无尽供题以 API 返回的全局池与个人进度为准。文案仅简体中文。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "client-ui 对外边界：`Sudoku2AppProviders`、`apiBaseUrl` 与 `app` 布局/路由骨架",
+      "description": "在 `suduku2/app`（及约定子目录）建立模块边界：实现并导出 `Sudoku2AppProviders(props: { children; apiBaseUrl: string })`，在根 `layout` 中挂载（`apiBaseUrl` 来自环境变量如 `NEXT_PUBLIC_SUDUKU2_API_BASE` 或构建期注入，文档化默认值与内网联调方式）。约定客户端请求 API 的基址拼接规则，避免硬编码散落。补齐 `lang=\"zh-CN\"` 与基础可访问性（主内容 landmark）。新增基础路由占位（如首页聚合入口、后续登录/教学/游戏路径），暂不强制完整业务逻辑。在 `suduku2` 内建立 Playwright：`playwright.config.ts`（`testDir: \"./e2e\"`，`webServer` 使用 `npm run dev`，端口与 `package.json` 的 3003 一致）、`e2e/` 下至少一条「首页可达、关键标题或主区域渲染」的冒烟用例；文案为简体中文。涉及从 `@/lib/core` 等仅做类型或常量引用以验证路径别名无误即可。纯配置与首屏渲染路径应在远小于 5 秒内完成；不在本任务要求真实求解或生成。",
+      "steps": [
+        "实现 `Sudoku2AppProviders` 与根布局集成；可从 `@/app/...` 或项目约定路径导出，保证与 `module-plan.json` 中的对外接口名称一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "编写或更新 Playwright 冒烟用例并在 `suduku2` 目录执行 `npm run test:e2e`（或 `npm run test:e2e:headed`）通过。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "注册、登录与会话：简体中文表单与 HTTP API 对接",
+      "description": "实现注册/登录界面（用户名、密码、可选昵称；密码规则与后端一致如不少于 6 位），全部用户可见文案为简体中文。通过 `fetch` 或统一轻量客户端调用既有 `app/api/auth/register`、`app/api/auth/login`（或项目最终路径），成功后保存会话令牌（`localStorage`/`sessionStorage` 任选其一并在代码注释说明）。提供「退出登录」与未登录态下受限页面的引导。对网络错误、重复用户名、凭证错误给出可读中文提示。单次登录/注册请求以 I/O 为主，应在合理时间内完成（通常远小于 5 秒）；不在客户端执行重计算。",
+      "steps": [
+        "完成注册/登录流程与令牌持久化；与 `server-api` 返回的 `token` 形状对齐。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "补充 Playwright：覆盖成功注册、登录成功、错误密码或重复用户名的可见反馈，并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "教学大纲浏览：技巧目录、章节层级与解锁关系展示",
+      "description": "使用 `@/content/curriculum` 的 `getTechniqueCatalog` 与 `getUnlockGraph` 渲染教学列表：按低/中/高阶（`CurriculumTier`）分组与 `order` 排序；展示 `titleKey` 对应的中文标题映射（可在 `app` 侧维护 `titleKey -> 文案` 表，避免英文直接露出）。对每项显示解锁状态：结合已登录用户从 `getProgress` 取得的 `techniques` 记录（未登录时明确提示）。提供进入「专项练习」或后续关卡的入口占位（具体玩法路由在后续任务接 `practiceEndlessModeId`）。列表渲染与图遍历为轻量逻辑，应在远小于 5 秒内完成。",
+      "steps": [
+        "实现教学页/区，数据来自 curriculum，并与进度中的 `techniques.unlocked` 对齐展示。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "补充 Playwright：已登录用户下教学列表可见且解锁态与模拟进度一致（可用 API 或测试夹具准备数据），并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "四档无尽模式：从全局池选题、关卡进度与 `saveProgress` 同步",
+      "description": "实现四档难度（`entry`/`normal`/`hard`/`expert`）无尽入口：从 `getProgress(token)` 读取 `endless[ tier ].clearedLevel` 与 `global` 中对应难度的 `puzzles`/`maxPreparedLevel`，仅使用服务端返回的 `PuzzleSpec`（`seed`、`givens`、`difficultyScore`）实例化 `@/lib/core` 的 `GameState`（通过既有序列化工具或显式构造），**不在浏览器内调用 `generatePuzzle` 扩池**。进入关卡、放弃或通关时调用 `saveProgress` 更新个人进度；遇全局池尚未准备的关卡应展示中文说明并触发向后端拉取/刷新（依赖已有 API 行为），避免前端死循环重试。网络与 JSON 解析应通常在远小于 5 秒内完成；若某请求触发服务端补缺生成，以单次合理超时为限（通常 < 5 秒），前端展示超时/重试提示即可，不要求最优生成策略。",
+      "steps": [
+        "实现无尽模式选题与进度写回；确认题目来源仅为 API 返回的全局池数据。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "补充 Playwright：模拟登录后进入至少一档无尽并验证盘面由给定 `givens` 渲染（可断言非空格数量等），通关或调用保存后进度字段更新；在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "技巧专项练习：按 `practiceEndlessModeId` 进入与进度记录",
+      "description": "为 `TechniqueModule.practiceEndlessModeId` 提供路由或查询参数入口，从教学页跳转；校验该技巧是否已解锁（`getProgress.techniques`）。专项局内仍通过服务端进度中的 `practice[modeId]` 读写 `streak`、`bestTimeMs` 等（与 `UserProgress` 对齐），不在客户端捏造持久化。局内复用与无尽相同的棋盘容器组件。若某模式需单独出题策略，仍应通过服务端或既定 API 获取题目，浏览器侧只做展示与交互；本地 `@/lib/hint`、`computeCandidates` 等用于提示与候选计算时，单次调用应在合理时间内完成（通常 < 5 秒）。",
+      "steps": [
+        "实现专项入口、解锁 gating 与练习进度展示/更新。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "补充 Playwright：已解锁技巧可进入专项页；未解锁时可见中文拦截提示；在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "主棋盘：`GameState` 驱动渲染、笔记模式、提示高亮与撤销/重做",
+      "description": "实现 9×9 主棋盘与子网格样式（桌面优先、为平板预留触控尺寸）：填数与笔记模式切换对应 `GameState.mode`；数字输入使用 `@/lib/notes` 的 `NotesCommand` 与 `@/lib/solver` 的 `computeCandidates` 协同，填数后调用 `syncNotesAfterValue`。提示按钮调用 `@/lib/hint` 的 `getNextHint`，将返回的单元格与候选高亮映射到 `data-testid`/`aria-*` 可测属性；提示次数不限。集成 `@/lib/notes` 的 `createUndoRedo`：在关键操作前 `push` 快照，提供撤销/重做按钮状态。计时器向上计数，暂停时冻结时间与交互；恢复后继续。对典型局面的 `computeCandidates`、`getNextHint` 等应在合理时间内完成（通常单次 < 5 秒）；**性能优先于最优性**，不在 UI 层做无界深度搜索。",
+      "steps": [
+        "实现棋盘交互、提示、笔记、计时/暂停与撤销/重做，并与各 lib 模块正确对接。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "如有纯 hooks/纯函数可测逻辑，在 `suduku2` 目录执行 `npm test` 并确保全部通过（可选但推荐）。",
+        "补充 Playwright：覆盖笔记切换、提示高亮可见、暂停冻结计时、撤销一步等关键路径，并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "主题、高对比候选色、平板布局与进度导入/导出 UI",
+      "description": "实现暗色/亮色（或系统偏好）切换与高对比候选数配色，将用户偏好写入 `UserProgress.settings`（通过 `saveProgress` patch），首屏避免未同步的闪烁。使用 Tailwind 响应式断点优化平板横竖屏下列表与棋盘布局（含候选数换行/字号）。提供「导出进度 JSON」与「从文件导入」界面，调用既有 `exportProgress`/`importProgress` API，中文说明覆盖范围（是否含令牌等由实现文档化并在 UI 简要提示）。导入前确认操作与异常 JSON 的中文错误提示。纯导入导出与设置写入应在远小于 5 秒内完成。",
+      "steps": [
+        "完成主题、高对比、响应式布局与导入导出流程。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "补充 Playwright：主题切换或高对比开关生效（可检查 class 或 CSS 变量）、导入导出至少一轮冒烟，并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "集成收口：`useSudoku2Game`、草稿 `draft` 与 Playwright 端到端回归",
+      "description": "在 `app` 侧导出 `useSudoku2Game()`（或等效文件再导出），返回 `{ state: GameState; actions }`，`actions` 中收敛对局开始/重置、数字与笔记操作、提示、计时控制、模式切换等与各 lib 的编排；实现通过 `saveProgress` 对 `draft` 的防抖或页面离开保存，使用 `@/lib/core` 的序列化格式与后端 `draft` 字段一致。确保无尽供题 strictly 以 API `global` 与个人进度为准。全量 Playwright 回归：覆盖页面加载与棋盘渲染、计时器与暂停、提示与笔记及撤销、注册登录与进度读写、无尽关卡从全局池加载、导入导出、多步对局流程等；对齐仓库 Playwright 规范中的多类场景（以数独交互表述）。对已知慢路径（如专家档首次补缺若触发生成）仅做结构冒烟或设置合理 `test.timeout`，不要求全量随机压测。",
+      "steps": [
+        "导出并实现 `useSudoku2Game` 与 `draft` 持久化；确认对外接口与 `module-plan.json` 描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test`（若项目含 Vitest 用例）并确保全部通过。",
+        "整理并运行完整 Playwright 套件，在 `suduku2` 目录执行 `npm run test:e2e` 通过；对慢路径按任务描述采用冒烟或超时策略。"
+      ],
+      "passes": false
+    }
+  ]
+}
