@@ -52,7 +52,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

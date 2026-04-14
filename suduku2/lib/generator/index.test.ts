@@ -9,6 +9,7 @@ import {
 
 import {
   cloneGrid9,
+  digHolesFromCompleteSolution,
   gameStateFromGivensGrid,
   gameStateFromSolvedGrid,
   generatePuzzle,
@@ -167,4 +168,49 @@ describe("Grid9 ↔ GameState helpers & random complete solution (task 2)", () =
     c[0]![0] = 99;
     expect(g[0]![0]).not.toBe(99);
   });
+});
+
+/**
+ * 随机挖洞：用固定 `mulberry32` 种子做确定性断言。
+ * 不在此做大规模随机压测（验证器在稀疏盘面下可能较慢，易导致 CI 不稳定）。
+ */
+describe("dig holes keeping unique solution (task 4)", () => {
+  it("fixed rng: dug givens pass verifyUniqueSolution", () => {
+    const rng = mulberry32(2026_04_14);
+    const solution = generateRandomCompleteGrid(rng);
+    const dug = digHolesFromCompleteSolution({
+      solution,
+      rng: mulberry32(99_001),
+      timeoutMs: 8000,
+    });
+    expect(dug).not.toBeNull();
+    expect(verifyUniqueSolution(dug!)).toBe(true);
+  });
+
+  it("returns null for non-complete solution grid", () => {
+    const bad = generateRandomCompleteGrid(mulberry32(1));
+    bad[0]![0] = 0;
+    expect(
+      digHolesFromCompleteSolution({
+        solution: bad,
+        rng: mulberry32(2),
+        timeoutMs: 1000,
+      }),
+    ).toBeNull();
+  });
+
+  it(
+    "smoke: extremely tight timeout still returns a grid and does not throw (may keep many givens)",
+    { timeout: 15_000 },
+    () => {
+      const solution = generateRandomCompleteGrid(mulberry32(500));
+      const dug = digHolesFromCompleteSolution({
+        solution,
+        rng: mulberry32(500),
+        timeoutMs: 1,
+      });
+      expect(dug).not.toBeNull();
+      expect(verifyUniqueSolution(dug!)).toBe(true);
+    },
+  );
 });

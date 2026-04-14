@@ -24,6 +24,11 @@ export {
   gameStateFromGivensGrid,
   gameStateFromSolvedGrid,
 } from "./grid-game-state";
+export {
+  DEFAULT_DIG_HOLES_TIMEOUT_MS,
+  digHolesFromCompleteSolution,
+  type DigHolesFromCompleteSolutionOptions,
+} from "./dig-holes";
 export { generateRandomCompleteGrid } from "./random-complete-grid";
 export { verifyUniqueSolution } from "./unique-solution";
 
