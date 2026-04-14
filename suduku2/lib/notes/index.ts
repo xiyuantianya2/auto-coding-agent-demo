@@ -15,7 +15,14 @@
  * @module @/lib/notes
  */
 
-import type { GameState } from "@/lib/core";
+import {
+  BOX_HEIGHT,
+  BOX_WIDTH,
+  cloneGameState,
+  getEffectiveDigitAt,
+  isFilledDigit,
+  type GameState,
+} from "@/lib/core";
 import type { CandidatesGrid } from "@/lib/solver";
 
 /**
@@ -64,15 +71,121 @@ export function applyCommand(
 /**
  * 在已更新的填数前提下，将铅笔笔记与规则同步（同行/列/宫剔除等）。
  *
- * @throws {Error} 本任务为骨架阶段，始终抛出 `'not implemented'`。
+ * ### 行为
+ *
+ * 1. **深拷贝**：始终基于 {@link import("@/lib/core").cloneGameState `cloneGameState`} 返回新状态，不修改入参 `state`。
+ * 2. **已填格**：对生效数字为 `1`–`9` 的格子清除 `notes`（与常见应用一致）。
+ * 3. **同行 / 列 / 宫剔除**：对每个已填数字 `d`，在**其它仍为空的格子**中，若 `notes` 含 `d` 则移除。
+ * 4. **与 `candidates` 求交（已实现）**：对仍为空的格子，若存在 `notes`，则与 `candidates[r][c]` 求交；
+ *    `candidates` 为 `null`（已填语义）或缺失时跳过该格。这样可将玩家笔记修剪到与
+ *    {@link import("@/lib/solver").computeCandidates `computeCandidates`} 在当前盘面下给出的**基础排除候选**一致，
+ *    避免长期背离。本函数**不**调用 `computeCandidates` 或 `findApplicableSteps`，仅做集合与坐标遍历。
+ *
+ * @param candidates 通常由调用方对**当前**盘面执行 `computeCandidates` 得到；若未做交集修剪，可传入与 `state` 同形的占位网格（空格为 `Set` 或 `null`）。
  */
 export function syncNotesAfterValue(
   state: GameState,
   candidates: CandidatesGrid,
 ): GameState {
-  void state;
-  void candidates;
-  throw new Error("not implemented");
+  const next = cloneGameState(state);
+  const cells = next.cells;
+
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const d = getEffectiveDigitAt(next, r, c);
+      if (!isFilledDigit(d)) {
+        continue;
+      }
+
+      const filled = cells[r][c];
+      if (filled.notes !== undefined) {
+        delete filled.notes;
+      }
+
+      for (let cc = 0; cc < 9; cc++) {
+        if (cc === c) {
+          continue;
+        }
+        removeNoteDigitFromEmptyCell(next, r, cc, d);
+      }
+
+      for (let rr = 0; rr < 9; rr++) {
+        if (rr === r) {
+          continue;
+        }
+        removeNoteDigitFromEmptyCell(next, rr, c, d);
+      }
+
+      const br = Math.floor(r / BOX_HEIGHT) * BOX_HEIGHT;
+      const bc = Math.floor(c / BOX_WIDTH) * BOX_WIDTH;
+      for (let dr = 0; dr < BOX_HEIGHT; dr++) {
+        for (let dc = 0; dc < BOX_WIDTH; dc++) {
+          const rr = br + dr;
+          const cc = bc + dc;
+          if (rr === r && cc === c) {
+            continue;
+          }
+          removeNoteDigitFromEmptyCell(next, rr, cc, d);
+        }
+      }
+    }
+  }
+
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      if (isFilledDigit(getEffectiveDigitAt(next, r, c))) {
+        continue;
+      }
+
+      const candCell = candidates[r][c];
+      if (candCell === null) {
+        continue;
+      }
+
+      const cell = cells[r][c];
+      if (cell.notes === undefined || cell.notes.size === 0) {
+        continue;
+      }
+
+      const trimmed = new Set<number>();
+      for (const n of cell.notes) {
+        if (candCell.has(n)) {
+          trimmed.add(n);
+        }
+      }
+
+      if (trimmed.size === 0) {
+        delete cell.notes;
+      } else if (trimmed.size !== cell.notes.size) {
+        cell.notes = trimmed;
+      }
+    }
+  }
+
+  return next;
+}
+
+/** 仅从「当前视为空格」的格子中移除笔记数字；已填格不修改（剔除由对已填格遍历触发）。 */
+function removeNoteDigitFromEmptyCell(
+  state: GameState,
+  r: number,
+  c: number,
+  digit: number,
+): void {
+  if (isFilledDigit(getEffectiveDigitAt(state, r, c))) {
+    return;
+  }
+  const cell = state.cells[r][c];
+  if (cell.notes === undefined || !cell.notes.has(digit)) {
+    return;
+  }
+  const nextNotes = new Set(cell.notes);
+  nextNotes.delete(digit);
+  if (nextNotes.size === 0) {
+    delete cell.notes;
+  } else {
+    cell.notes = nextNotes;
+  }
 }
 
 /**
