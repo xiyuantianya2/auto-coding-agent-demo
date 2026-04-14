@@ -4,6 +4,8 @@
  * 推荐自 `@/app/client-ui` 引用 Provider 与 API 拼接工具，避免深路径耦合。
  */
 
+export { AuthProvider, useSudoku2Auth } from "./auth-context";
+
 export {
   Sudoku2AppProviders,
   useSudoku2ApiBase,

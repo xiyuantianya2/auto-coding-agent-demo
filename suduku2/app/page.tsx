@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { GRID_SIZE } from "@/lib/core";
+import { HomeSessionBar } from "@/app/home-session-bar";
 import { joinSudoku2ApiPath } from "@/app/sudoku2-api";
+import { GRID_SIZE } from "@/lib/core";
 
 export default function Home() {
   const sampleApiPath = joinSudoku2ApiPath("", "/api/auth/login");
@@ -20,6 +21,9 @@ export default function Home() {
         <p className="mt-2 text-sm text-zinc-500" data-testid="api-path-sample">
           API 路径示例（同源默认）：{sampleApiPath}
         </p>
+        <div className="mt-6">
+          <HomeSessionBar />
+        </div>
         <nav
           aria-label="主导航"
           className="mt-10 flex flex-wrap justify-center gap-3 text-sm"

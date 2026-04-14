@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AuthProvider } from "@/app/auth-context";
 import { Sudoku2AppProviders } from "@/app/sudoku2-app-providers";
 import "./globals.css";
 
@@ -23,13 +24,15 @@ export default function RootLayout({
     <html lang="zh-CN" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-zinc-950 font-sans text-zinc-100">
         <Sudoku2AppProviders apiBaseUrl={sudoku2ApiBaseUrl}>
-          <main
-            id="sudoku2-main"
-            role="main"
-            className="flex min-h-0 flex-1 flex-col"
-          >
-            {children}
-          </main>
+          <AuthProvider>
+            <main
+              id="sudoku2-main"
+              role="main"
+              className="flex min-h-0 flex-1 flex-col"
+            >
+              {children}
+            </main>
+          </AuthProvider>
         </Sudoku2AppProviders>
       </body>
     </html>
