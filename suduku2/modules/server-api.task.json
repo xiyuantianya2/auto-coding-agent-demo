@@ -1,0 +1,103 @@
+{
+  "project": "数独2",
+  "module": "server-api",
+  "moduleTitle": "局域网服务、账号与 JSON 持久化",
+  "description": "提供 HTTP API：注册/登录（会话令牌）、密码最少 6 位、可选昵称；数据目录默认项目下 data/ 或通过环境变量/配置覆盖。持久化：登录凭证索引、每用户技巧解锁与专项练习进度、四档无尽个人进度、最近一次对局草稿。全局规则：按难度维护「所有用户中已达最大关卡数 +1」的共享预生成关卡队列（关卡内容对所有用户一致，服务器存第 1…max+1 关的出题数据）；多设备并发以最后写入为准或简单合并策略待实现时选定。提供「导出进度 JSON」与「从文件导入」接口。内网 HTTP 即可。出题侧内聚调用 puzzle-generator。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "`server` 模块类型、`suduku2/server` 目录骨架与 `getDataDir`",
+      "description": "在 `suduku2/server` 建立模块骨架：用 TypeScript 对齐对外契约中的 `DifficultyTier`、`UserId`、`PuzzleSpec`（`seed`、`givens: number[][]`、`difficultyScore`）、`EndlessGlobalState`（四档各含 `maxPreparedLevel` 与按关卡号索引的 `puzzles`）、`UserProgress`（`techniques`、`practice`、`endless`、`draft?`、`settings?`）。实现 `getDataDir()`：默认返回项目根下可写的 `data/` 路径（或 Next 运行时等价基路径），并支持通过环境变量（如 `SUDUKU2_DATA_DIR`，具体名在实现中固定并文档化）覆盖；启动时确保目录存在。约定 JSON 文件布局（例如全局池、用户索引、按用户拆文件等）并在注释或 `README` 块注释中写清。对外导出占位函数签名（可先 `throw`/`reject`），但名称与 Promise 返回类型须与 `module-plan.json` 一致。纯解析与路径解析应在毫秒级完成。",
+      "steps": [
+        "新增 `suduku2/server` 目录与入口导出；可从 `@/server`（或项目既有别名）引用；类型与 `module-plan.json` 中本模块接口一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "用户注册与凭证索引：唯一用户名、密码≥6、可选昵称、密码哈希",
+      "description": "实现 `register(username, password, nickname?)`：校验密码长度不少于 6；用户名唯一（大小写规则在实现中固定并文档化）；昵称可选。使用 Node 内置 `crypto`（如 `scrypt`/`randomBytes`）或经评审的单一依赖完成密码哈希与盐存储，禁止明文存密码。将用户索引持久化到数据目录下的 JSON（或等价）文件中，并生成稳定 `userId`。单次注册流程以文件读写为主，应在远小于 5 秒内完成；不要求最优存储格式或最小文件大小。",
+      "steps": [
+        "实现 `register` 并落盘用户索引；对重复用户名返回可区分错误；编写 Vitest：临时数据目录、注册成功与冲突用例。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "登录与会话令牌：`login`、令牌存储与校验辅助",
+      "description": "实现 `login(username, password)`：校验凭证后签发不透明会话令牌（随机足够长度），在数据目录中持久化 `token -> userId`（及可选过期策略；内网首版可采用长期有效 + 重启仍有效或简单 TTL，任选其一并在代码注释说明）。提供供后续任务使用的同步或异步校验函数（如 `getUserIdFromToken(token)`），对无效令牌返回明确失败。注意并发下文件读写的基本一致性（例如简单文件级写入或顺序写入；不要求分布式级保证）。单次登录应在远小于 5 秒内完成。",
+      "steps": [
+        "实现 `login` 与令牌校验；Vitest 覆盖成功登录、错误密码、未知用户、无效 token。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "`UserProgress` 持久化、`saveProgress` patch 与 `draft`（`GameState`）边界",
+      "description": "实现每用户进度文件（或等价结构）：字段形状符合 `UserProgress`。`saveProgress(token, patch)` 对嵌套对象做**浅层或约定好的深层合并**（在注释中写明规则），多设备冲突采用**以最后一次成功写入为准**（last-write-wins），不引入模块未要求的复杂 CRDT。`draft` 使用 `@/lib/core` 的 `serializeGameState`/`deserializeGameState` 与 `GameState` 类型在 JSON 中往返；导入导出前须保持与现有 core 序列化格式兼容。`getProgress` 在验证令牌后返回该用户的 `UserProgress`（此任务可先不附带 `global`，由下一任务拼接或在下一路由层合并）。对单用户进度的读写应通常在远小于 5 秒内完成。",
+      "steps": [
+        "实现 `getProgress`/`saveProgress`（至少返回/保存用户部分）；Vitest：临时目录、注册后写入 patch、读出合并结果、`draft` 序列化往返。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "无尽全局关卡池：跨用户最大通关、`generatePuzzle` 预生成与 `EndlessGlobalState` 持久化",
+      "description": "实现按四档难度维护共享 `EndlessGlobalState`：对所有用户扫描（或维护增量）得到每档「已达最大通关关卡数」`maxCleared`，并确保服务器持久化池中包含第 `1` 关到 `maxCleared + 1` 关的题目（关卡内容对所有用户一致）。出题**仅通过** `@/lib/generator` 的 `generatePuzzle` 内聚调用，使用确定性 `rng`（由 `seed` 派生或文件记录）以便重启后可复现同一关卡内容。将存储中的 `PuzzleSpec` 裁剪/映射为对外契约所需的 `{ seed, givens, difficultyScore }`（若生成器返回额外字段，不得破坏已有客户端形状）。为每次 `generatePuzzle` 调用设置合理超时（如与生成器默认一致或明确传入 `timeoutMs`），单次调用目标在**通常小于 5 秒**内完成或放弃本轮并重试；**性能优先于最优性**，不追求最少提示或最难盘。对 `expert` 等已知慢路径，实现中可限制重试次数并记录日志级说明。Vitest 中对高难度档位仅做结构冒烟或 mock 生成器，并对慢路径使用合理 `test.timeout`，不要求全量随机压测。",
+      "steps": [
+        "实现全局池更新逻辑（读用户进度 → 计算每档所需关卡上界 → 补缺题目 → 写回全局状态）；配套单元/集成测试（可 mock `generatePuzzle` 以隔离耗时）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "聚合 `getProgress`（含 `global`）、`exportProgress` 与 `importProgress`",
+      "description": "将 `getProgress(token)` 补全为返回 `UserProgress & { global: EndlessGlobalState }`：在单次请求内组合用户进度与当前全局池视图。实现 `exportProgress(token)`：返回可保存的 JSON 字符串（内容边界在注释中说明：是否含令牌、是否仅用户进度等，须一致且稳定）。实现 `importProgress(token, json)`：校验 JSON 形状与版本字段（若需要），将数据写回该用户；与 `saveProgress` 的合并策略一致采用 last-write-wins 或文档化的简单规则。导入应对恶意超大 JSON 有基本防护（大小上限或解析异常处理）。不涉及 UI。",
+      "steps": [
+        "实现三个函数；Vitest：导出再导入 round-trip、非法 JSON/形状错误、越权 token。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "内网 HTTP API：Next.js Route Handlers 对接注册/登录/进度/导入导出",
+      "description": "在 `suduku2/app/api/...`（或项目约定位置）添加 Route Handlers，通过调用 `suduku2/server` 中已实现的方法暴露 REST 契约：注册、登录、获取进度、保存进度、导出、导入；请求体使用 JSON；响应状态码与错误体格式在模块内保持一致。说明内网 HTTP 与 `next dev`/`next start` 同一进程即可，不要求 HTTPS。处理器应保持轻量，重逻辑委托给 server 模块；对 `generatePuzzle` 触发的补缺逻辑若在请求路径上执行，须继承**单次合理超时（通常 < 5 秒）**策略，避免请求无限挂起。本任务不编写 Playwright E2E。",
+      "steps": [
+        "实现路由并与 `server` 模块 wired；Vitest 可用 `fetch` 指向本地路由或直接使用 `NextRequest` 工厂（按项目可行方式）做集成冒烟。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "模块集成验收：临时数据目录、HTTP 与契约的 Vitest 全覆盖（不含 E2E）",
+      "description": "补充/整理集成测试：使用临时数据目录隔离并行测试；覆盖「注册 → 登录 → getProgress 含 global → saveProgress → export/import」主路径；覆盖全局池在多名用户进度变化后关卡上界正确延伸（可对 `generatePuzzle` 使用 mock 以稳定且快速）。确认对外导出的函数与类型可被 `@/server`（或约定路径）引用，并与 `@/lib/core`、`@/lib/generator` 的导入无循环依赖问题。本模块不涉及 UI，验收**仅使用 Vitest**；**steps 中不得要求 Playwright E2E**。对已知慢路径（真实调用高难度 `generatePuzzle`）仅做可选冒烟或保持 mock，并设置合理 `test.timeout`。",
+      "steps": [
+        "集成测试与导出清单完整；无跳过的关键断言（除明确标注的慢路径可选用例）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
