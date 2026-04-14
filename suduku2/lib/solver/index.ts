@@ -8,6 +8,10 @@
 
 export { computeCandidates } from "./candidates";
 export { findLowTierApplicableSteps } from "./low-tier";
+export {
+  findMidTierApplicableSteps,
+  findMidTierStepsFromCandidates,
+} from "./mid-tier";
 export type { TechniqueId, KnownTechniqueId } from "./technique-ids";
 export { TechniqueIds } from "./technique-ids";
 export type {

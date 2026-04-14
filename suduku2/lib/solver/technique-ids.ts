@@ -7,8 +7,14 @@ export const TechniqueIds = {
   UniqueCandidate: "unique-candidate",
   /** 隐唯一（行/列/宫内） */
   HiddenSingle: "hidden-single",
-  /** 显性数对（占位） */
+  /** 显性数对 */
   NakedPair: "naked-pair",
+  /** 隐性数对 */
+  HiddenPair: "hidden-pair",
+  /** 显性三数组 */
+  NakedTriple: "naked-triple",
+  /** 隐性三数组 */
+  HiddenTriple: "hidden-triple",
   /** 宫内指向：同宫内某候选被限制在同一行或列，删该行/列在宫外的该候选 */
   Pointing: "pointing",
   /** 行列摒除：同行/列上某候选仅落在一个宫内，删该宫内行/列外的该候选 */
