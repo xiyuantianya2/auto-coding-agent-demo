@@ -4,15 +4,32 @@
  * 基于当前盘面与 {@link import("@/lib/solver").findApplicableSteps `findApplicableSteps`} 等求解输出，
  * 向 UI 返回可高亮展示的下一步推理（相关格、候选强调与删减方向）；**不自动填入答案**。
  *
- * ## 状态与次数
+ * ## 步序选择（「下一步」是哪一条）
+ *
+ * `getNextHint` 内部调用 `findApplicableSteps(state)`，对其返回数组 **默认取首个元素**
+ *（与 `find-applicable-steps` 文档一致：输出已按低→高阶批次与去重规则排序）。
+ * 这样 UI 与测试对同一盘面得到稳定、可复现的一条提示；本模块不追求全局最优或最少分支。
+ *
+ * ## `messageKey` 与 solver 的 `explanationKey`
+ *
+ * {@link HintResult.messageKey `messageKey`} 与 {@link import("@/lib/solver").SolveStep `SolveStep.explanationKey`}
+ * **同源对应**：映射阶段将求解步骤上的 `explanationKey` 原样写入提示的 `messageKey`，供 curriculum / i18n 使用；
+ * 仅在求解步骤未提供说明键时省略。
+ *
+ * ## 提示次数与冷却（引擎无状态）
  *
  * 本模块**不维护**每局提示次数、冷却、节流或任何会话计数；这些由 UI 或上层可选实现。
- * 引擎侧对提示调用**无限制**。
+ * 引擎侧对 `getNextHint` 的调用次数与频率**不设限**。
  *
  * ## 技巧标识符
  *
  * {@link TechniqueId} 与 {@link TechniqueIds} 与 `@/lib/solver` 及教学大纲共用同一套字符串 id，
  * 本模块不定义第二套平行命名。
+ *
+ * ## 类型再导出（与契约入口一致）
+ *
+ * 自本文件再导出 {@link GameState}、{@link SolveStep}、{@link TechniqueId}，便于消费者只从 `@/lib/hint`
+ * 拉齐提示 API 与核心/求解类型，而无需混用深路径；实现仍仅从 `@/lib/core` / `@/lib/solver` 引用。
  *
  * @module @/lib/hint
  */
@@ -22,8 +39,9 @@ import { findApplicableSteps, type TechniqueId } from "@/lib/solver";
 
 import { mapSolveStepToHintResult } from "./map-solve-step-to-hint-result";
 
-// --- 与 `@/lib/solver` 对齐的技巧 id（不重复定义平行常量表） ---
-export type { TechniqueId };
+// --- 与 `@/lib/core`、`@/lib/solver` 契约入口对齐的类型（便于 `@/lib/hint` 单点引用） ---
+export type { GameState } from "@/lib/core";
+export type { SolveStep, TechniqueId } from "@/lib/solver";
 export { TechniqueIds } from "@/lib/solver";
 
 export {
