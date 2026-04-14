@@ -1,5 +1,6 @@
 /**
- * 教学大纲与专项映射：章节树见 `./curriculum`，技巧 id 校验见 `./technique-validation`。
+ * 教学大纲与专项映射：章节树见 `./curriculum`，技巧 id 校验见 `./technique-validation`，
+ * 只读查询见 `./queries`。
  */
 
 export type { ChapterId, CurriculumNode, CurriculumTier } from "./types";
@@ -30,3 +31,9 @@ export {
   listPracticeModesByTier,
   listPracticeModesForChapter,
 } from "./practice-mode";
+
+export {
+  getChapterById,
+  getChaptersByTier,
+  getChaptersForTechnique,
+} from "./queries";

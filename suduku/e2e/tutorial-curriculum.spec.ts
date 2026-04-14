@@ -1,6 +1,9 @@
 import { test, expect } from "@playwright/test";
 import {
   UnknownTechniqueIdError,
+  getChapterById,
+  getChaptersByTier,
+  getChaptersForTechnique,
   getCurriculumTree,
   getPracticeModeForTechnique,
   isChapterUnlocked,
@@ -120,5 +123,21 @@ test.describe("Suduku tutorial curriculum (contract smoke)", () => {
     expect(isChapterUnlocked(node, new Set())).toBe(false);
     const done = new Set(node.unlockAfter!);
     expect(isChapterUnlocked(node, done)).toBe(true);
+  });
+
+  test("getChapterById / getChaptersForTechnique / getChaptersByTier", () => {
+    const tree = getCurriculumTree();
+    const first = tree[0]!;
+    expect(getChapterById(first.id)).toBe(first);
+    expect(getChapterById("__missing__")).toBeUndefined();
+
+    const t = TECHNIQUE_IDS.NAKED_SINGLE;
+    const forT = getChaptersForTechnique(t);
+    expect(forT.length).toBe(1);
+    expect(forT[0]!.techniqueIds).toContain(t);
+
+    const lows = getChaptersByTier("low");
+    expect(lows.length).toBeGreaterThan(0);
+    expect(lows.every((n) => n.tier === "low")).toBe(true);
   });
 });

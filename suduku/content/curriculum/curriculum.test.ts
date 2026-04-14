@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { TECHNIQUE_IDS } from "@/lib/solver";
 
 import { getCurriculumTree } from "./curriculum";
+import type { CurriculumNode } from "./types";
 import { validateCurriculumTechniqueIds } from "./technique-validation";
 
 describe("getCurriculumTree (task 3)", () => {

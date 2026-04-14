@@ -68,7 +68,7 @@
         "在 suduku 目录下执行 npm test，全部通过",
         "新增测试仅依赖 lib/core 与 lib/solver 的公开导出及本模块 API，不引用未完成的 server/client 包"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
