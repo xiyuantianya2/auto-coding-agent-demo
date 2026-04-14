@@ -24,6 +24,14 @@ import type { TechniqueId } from "@/lib/solver";
 export type { TechniqueId };
 export { TechniqueIds } from "@/lib/solver";
 
+export {
+  extractHighlightCandidateRefs,
+  mapHighlightsToCells,
+  normalizeSolveStepHighlights,
+  type HighlightCandidateCoord,
+  type HighlightCellCoord,
+} from "./map-highlights";
+
 /**
  * 单条提示的高亮与说明载荷，与 `module-plan.json` 中 `hint-system` 契约一致。
  *
