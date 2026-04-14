@@ -1,0 +1,85 @@
+{
+  "project": "数独",
+  "module": "hint-system",
+  "moduleTitle": "提示引擎（仅高亮）",
+  "description": "基于当前盘面与求解引擎，计算「下一步可推理」对应的高亮区域与候选数字，不自动填入答案。需与教学技巧命名对齐，便于与练习模式联动。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "提示模块目录、HintResult 契约与入口骨架",
+      "description": "在 suduku/lib/hint 建立本模块基础：定义并导出 HintResult（cells、可选 highlightCandidates、technique: TechniqueId、可选 messageKey）与 getNextHint(state: GameState): HintResult | null 的函数签名；从 @/lib/core 仅消费 GameState 等公开类型，从 @/lib/solver 复用 TechniqueId（与 TECHNIQUE_IDS 同一命名空间）。提供 index.ts 入口与最小存根实现（例如恒返回 null），并添加简短包级注释说明本模块职责为「只读高亮、不填数」。不实现映射与选步逻辑。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build，确保新增文件不破坏工程",
+        "HintResult 字段含义与 module-plan / 本任务文件声明的对外 interface 一致",
+        "不在本任务引入 UI 或 app 层依赖；目录路径为 lib/hint"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "将 SolveStep 高亮归一为 HintResult 的 cells 与 highlightCandidates",
+      "description": "实现纯函数（可置于 lib/hint 内单独文件）：输入一条 SolveStep（来自 lib/solver 的 SolveStepHighlight 联合类型），输出用于 UI 的 cells: Array<{r,c}> 与 highlightCandidates（将多条 kind 为 candidate 的 ref 按 (r,c) 聚合为 digits: number[]，去重并排序）。对 kind 为 cell 的 ref 直接并入 cells；对 kind 为 unit 的 ref（row/col/box）按固定规则展开为「该单位内全部 9 个坐标」或「仅空格」之一，并在代码注释与测试中锁定该行为，保证与后续棋盘高亮组件约定一致。不调用 findTechniques，仅做结构转换与去重（坐标可 Set 去重）。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest 覆盖至少：仅 cell、仅 unit、仅 candidate、混合三类高亮的样例，断言 cells 与 highlightCandidates 与预期一致",
+        "不修改 lib/solver 与 lib/core 源码"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "「下一步」单步选取策略（与 TECHNIQUE_RESOLUTION_ORDER 对齐）",
+      "description": "在 findTechniques(state) 返回的 SolveStep[] 中，选出唯一一条作为「下一步提示」：按 lib/solver 中 TECHNIQUE_RESOLUTION_ORDER 定义的技法优先级，选择**优先级最高（列表中最靠前）**且在当前结果集中出现的技法；在该技法对应的所有步骤实例中，再按 findTechniques 的稳定输出顺序取**第一条**（与引擎文档中裸单行优先、隐单次序、消除步合并顺序一致）。将选取策略实现为可单测的纯函数（例如 selectNextSolveStep(steps: SolveStep[]): SolveStep | null），并在注释中说明与教学/练习模式「先教低阶再教高阶」一致。若结果集为空则返回 null。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest 构造「同时存在裸单与隐单」「同时存在多种消除技法」等微型盘面或伪造 SolveStep 列表，断言选中技法的 TechniqueId 与次序符合 TECHNIQUE_RESOLUTION_ORDER",
+        "选取逻辑不依赖 UI，不修改入参数组（必要时先复制）"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "messageKey 与 TechniqueId 的命名对齐",
+      "description": "为 KnownTechniqueId / TECHNIQUE_IDS 中的各技法建立稳定的 messageKey 约定（例如 hint.technique.naked-single 或与未来 curriculum 共享的前缀），导出映射表或 getHintMessageKey(technique: TechniqueId): string | undefined。保证 messageKey 与 kebab-case 的 TechniqueId 可逆对应，避免魔法字符串散落在 UI；未收录的新 string 技巧 id 时可返回 undefined 或回退规则并在注释中说明。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "Vitest 断言每个 TECHNIQUE_IDS 常量均有非空 messageKey（或文档化例外）",
+        "messageKey 仅用于文案查找，不改变提示几何信息"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "实现 getNextHint：串联求解引擎、选步与高亮映射",
+      "description": "完成 getNextHint(state): 内部调用 findTechniques(state)（或等价地基于 computeCandidates + 引擎管线，但优先直接复用 findTechniques 以保持与难度/练习一致）；对 CandidatesComputationError（候选计算失败：模型不变式、明显冲突、空格无候选）捕获并返回 null；当盘面已填满无空格、或选取策略得到 null、或映射后无有效高亮时返回 null。将选中的 SolveStep 经任务 2 的映射转为 HintResult，并填入任务 4 的 messageKey。严格不修改传入的 GameState（只读分析）。不自动填入答案、不应用 eliminations 到盘面。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "手动或测试验证：与 lib/solver/integration.test 风格一致的若干 fixture 上，getNextHint 返回的 technique 与 findTechniques 首步策略一致",
+        "公开导出与 module-plan 中 getNextHint / HintResult 签名一致"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "单元测试：端到端覆盖 getNextHint 与边界情况",
+      "description": "在 lib/hint 下补充 Vitest：使用 lib/core 的工厂或 fixture 构造合法 GameState，覆盖至少「存在裸单」「仅隐单」「仅消除类技巧」「无效/冲突盘面返回 null」等场景；断言返回的 HintResult.cells / highlightCandidates / technique / messageKey 字段；验证对同一 state 多次调用不改变 state（可对序列化前后对比或浅层不变式检查）。可复用 lib/core/fixture 或 solver 测试中的最小样例。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "执行 npm test（Vitest）全部通过",
+        "不新增 E2E；本任务仅限 lib 层单元测试"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "集成测试与模块导出验收",
+      "description": "新增 lib/hint/integration.test.ts（命名与 lib/core、lib/solver、lib/generator 一致）：从 @/lib/hint 导入 getNextHint，从生成器或固定种子题目构造一整局中间状态，断言提示链中每一步的 TechniqueId 属于已知技法集合且 messageKey 可解析；确保 tsconfig 路径别名下 @/lib/hint 可被应用层后续引用。在 hint/index.ts 中补充必要 re-export，使对外「仅通过入口文件」消费 HintResult 与 getNextHint。",
+      "steps": [
+        "在 suduku 目录下执行 npm run lint 与 npm run build",
+        "执行 npm test，包含 integration.test.ts 新增用例通过",
+        "不修改 suduku 以外目录；不实现 app 页面或真实文案 JSON"
+      ],
+      "passes": false
+    }
+  ]
+}
