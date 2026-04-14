@@ -7,7 +7,15 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { initRegistry, listProjects, getProject, addProject, removeProject, getProjectTaskSummary } from "./lib/projects.mjs";
+import {
+  initRegistry,
+  reloadRegistry,
+  listProjects,
+  getProject,
+  addProject,
+  removeProject,
+  getProjectTaskSummary,
+} from "./lib/projects.mjs";
 import { ProjectRuntime } from "./lib/project-runtime.mjs";
 import { formatBeijingDateTime } from "./lib/beijing-time.mjs";
 
@@ -175,6 +183,15 @@ async function handleRequest(req, res) {
   // ── Project management API ────────────────────────────────────
 
   if (req.method === "GET" && url.pathname === "/api/projects") {
+    await reloadRegistry();
+    const validIds = new Set(listProjects().map((p) => p.id));
+    for (const id of runtimes.keys()) {
+      if (!validIds.has(id)) {
+        const old = runtimes.get(id);
+        old?.destroy();
+        runtimes.delete(id);
+      }
+    }
     const projects = listProjects().map((p) => ({
       id: p.id,
       name: p.name,

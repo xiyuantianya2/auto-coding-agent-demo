@@ -30,3 +30,40 @@ export function isTaskDone(repoRoot, taskId, taskJsonPath) {
   return !!(t && t.passes === true);
 }
 
+/**
+ * 与 loadIncompleteTasks 相同，但任务文件不存在或解析失败时返回空数组（供模块化路径使用）。
+ * @param {string} repoRoot
+ * @param {string} [taskJsonPath]
+ */
+export function loadIncompleteTasksSafe(repoRoot, taskJsonPath) {
+  try {
+    return loadIncompleteTasks(repoRoot, taskJsonPath);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 与 isTaskDone 相同，但任务文件不存在或解析失败时返回 false。
+ */
+export function isTaskDoneSafe(repoRoot, taskId, taskJsonPath) {
+  try {
+    return isTaskDone(repoRoot, taskId, taskJsonPath);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 加载未完成任务；文件不存在、不可读或 JSON 无效时返回 { ok:false, error }，不抛错。
+ * @returns {{ ok: true, tasks: object[] } | { ok: false, error: string, tasks: [] }}
+ */
+export function tryLoadIncompleteTasks(repoRoot, taskJsonPath) {
+  try {
+    const tasks = loadIncompleteTasks(repoRoot, taskJsonPath);
+    return { ok: true, tasks };
+  } catch (e) {
+    return { ok: false, tasks: [], error: String(e?.message || e) };
+  }
+}
+

@@ -8,9 +8,25 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { runCursorAgent } from "./agent-runner.mjs";
-import { loadIncompleteTasks, isTaskDone } from "./task-queue.mjs";
-import { performLinkGameProjectReset } from "./reset-link-game.mjs";
+import { loadIncompleteTasks, isTaskDoneSafe, tryLoadIncompleteTasks } from "./task-queue.mjs";
+import { performProjectCleanup } from "./project-cleanup.mjs";
 import { formatBeijingDateTime } from "./beijing-time.mjs";
+import {
+  loadModulePlan,
+  saveModulePlan,
+  hasModulePlan,
+  deriveModuleTaskJsonPath,
+  getNextPendingModule,
+  areDependenciesMet,
+  setModuleStatus,
+  getModulePlanSummary,
+  topologicalSort,
+} from "./module-scheduler.mjs";
+import {
+  buildProjectDecompositionPrompt,
+  buildModuleInitializerPrompt,
+  buildModuleTaskMessage,
+} from "./module-prompts.mjs";
 
 const MAX_LOG_LINES = 900;
 
@@ -36,8 +52,19 @@ const CUSTOM_AGENT_BUILDERS = {
       `- 实现完成后：必须修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
       `- 更新 progress.txt 记录本任务。`,
       `- 在 link-game 目录执行 npm run lint 与 npm run build，修复直至通过。`,
+      `- 单元/集成测试：若项目有 vitest / jest 测试，在 link-game 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E。`,
       `- 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
+      ``,
+      `实现策略原则：`,
+      `- **先跑通再优化**：优先选择简单、可靠、性能可控的实现，宁可牺牲理论最优性也要保证在合理时间内（单次调用通常 < 5 秒）产出合格结果。例如：随机生成类功能不必追求极限参数（最少给定数、最高压缩率等），保留适量冗余既能大幅加速生成又不影响功能正确性。`,
+      `- **不要自行添加极限约束**：若任务描述中没有明确要求「最少」「最小」「最优」等极限目标，实现时不要自行引入。生成/搜索/优化类算法应以「足够好且快速」为目标，而非「理论最优但可能超时」。`,
+      `- **耗时操作要有保底退出**：任何可能长时间运行的循环/递归（生成器重试、回溯搜索、迭代优化），必须设置合理的最大尝试次数和/或墙上时钟超时（如 maxAttempts、maxElapsedMs），超限时返回当前最优可用结果或抛出明确错误，绝不能无限循环。`,
+      ``,
+      `测试编写注意事项：`,
+      `- 性能敏感路径：若被测功能有已知的高耗时路径，测试应仅对快速路径做全量断言，对慢路径仅做结构冒烟或跳过，并设置充裕的 timeout。`,
+      `- Mock 可靠性：对 Node 内置模块做 spy/mock 时，ESM 具名导入绑定的是导入时引用，vi.spyOn 不会生效。应使用命名空间导入或 vi.mock 整体替换。`,
+      `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发，而非忽略。`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -45,6 +72,11 @@ const CUSTOM_AGENT_BUILDERS = {
 };
 
 // ── pure utility functions ──────────────────────────────────────────
+
+function shouldTrustZeroExit() {
+  const v = process.env.AUTOCODING_TRUST_ZERO_EXIT;
+  return v === "1" || v === "true";
+}
 
 function extractText(msg) {
   if (!msg?.content) return "";
@@ -276,6 +308,12 @@ export class ProjectRuntime {
     /** @type {import("node:stream").Writable | null} */
     this.agentStdinStream = null;
     this.lastAgentOutputAt = 0;
+    this.agentIdleTimeoutMs = Math.max(
+      0,
+      Number(process.env.AUTOCODING_AGENT_IDLE_TIMEOUT_MS) || 10 * 60 * 1000,
+    );
+    /** @type {ReturnType<typeof setInterval> | null} */
+    this.idleWatchdog = null;
     this.agentPhase = { phase: "idle", detail: "", updatedAt: formatBeijingDateTime() };
     this.autoAdvance = true;
     /** @type {string[]} */
@@ -469,6 +507,30 @@ export class ProjectRuntime {
     }
   }
 
+  startIdleWatchdog() {
+    this.stopIdleWatchdog();
+    if (this.agentIdleTimeoutMs <= 0) return;
+    const checkIntervalMs = Math.min(30_000, Math.max(5_000, this.agentIdleTimeoutMs / 4));
+    this.idleWatchdog = setInterval(() => {
+      if (this.state.status !== "running" || !this.lastAgentPid || this.lastAgentOutputAt === 0) return;
+      const silentMs = Date.now() - this.lastAgentOutputAt;
+      if (silentMs >= this.agentIdleTimeoutMs) {
+        const mins = (silentMs / 60_000).toFixed(1);
+        this.log(
+          `[idle-watchdog] Agent 已 ${mins} 分钟无输出（阈值 ${(this.agentIdleTimeoutMs / 60_000).toFixed(0)} 分钟），强制终止。`,
+        );
+        this.killAgentTreeBestEffort();
+      }
+    }, checkIntervalMs);
+  }
+
+  stopIdleWatchdog() {
+    if (this.idleWatchdog) {
+      clearInterval(this.idleWatchdog);
+      this.idleWatchdog = null;
+    }
+  }
+
   // ── Task JSON resolution ────────────────────────────────────────
 
   getTaskJsonPath() {
@@ -502,8 +564,19 @@ export class ProjectRuntime {
       `硬性要求：`,
       `- 实现完成后：修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
       `- 在 ${this.project.dir} 目录执行 npm run lint 与 npm run build，修复直至通过。`,
+      `- 单元/集成测试：若项目有 vitest / jest 测试（检查 package.json 的 test 脚本），在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
       `- 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
+      ``,
+      `实现策略原则：`,
+      `- **先跑通再优化**：优先选择简单、可靠、性能可控的实现，宁可牺牲理论最优性也要保证在合理时间内（单次调用通常 < 5 秒）产出合格结果。例如：随机生成类功能不必追求极限参数（最少给定数、最高压缩率等），保留适量冗余既能大幅加速生成又不影响功能正确性。`,
+      `- **不要自行添加极限约束**：若任务描述中没有明确要求「最少」「最小」「最优」等极限目标，实现时不要自行引入。生成/搜索/优化类算法应以「足够好且快速」为目标，而非「理论最优但可能超时」。`,
+      `- **耗时操作要有保底退出**：任何可能长时间运行的循环/递归（生成器重试、回溯搜索、迭代优化），必须设置合理的最大尝试次数和/或墙上时钟超时（如 maxAttempts、maxElapsedMs），超限时返回当前最优可用结果或抛出明确错误，绝不能无限循环。`,
+      ``,
+      `测试编写注意事项：`,
+      `- 性能敏感路径：若被测功能有已知的高耗时路径（如高难度档位的生成/求解，大量迭代的算法），测试应仅对快速路径做全量断言，对慢路径仅做结构冒烟或跳过，并设置充裕的 timeout。避免在一个 it() 中串行运行多个高耗时操作。`,
+      `- Mock 可靠性：对 Node 内置模块（如 crypto、fs）做 spy/mock 时，ESM 具名导入（\`import { randomUUID } from "node:crypto"\`）绑定的是导入时引用，\`vi.spyOn\` 不会生效。应在被测模块中使用命名空间导入（\`import crypto from "node:crypto"\`），或使用 \`vi.mock\` 整体替换。`,
+      `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发（\`--workers=1\`），而非忽略。`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -533,6 +606,11 @@ export class ProjectRuntime {
       `   - 新任务的 id 从现有最大 id + 1 开始递增`,
       `   - 每个新任务格式：{ "id": N, "title": "简短标题", "description": "说明", "steps": ["验收步骤1", "验收步骤2", ...], "passes": false }`,
       `   - 任务应按依赖顺序排列`,
+      ``,
+      `任务分解原则：`,
+      `- **先跑通再优化**：任务描述中的算法/生成策略应优先选择简单、可靠、性能可控的方案。例如：生成类任务应要求「单次调用 < 5 秒完成」，宁可保留冗余数据也不追求理论最优导致生成超时。`,
+      `- **禁止自行添加极限约束**：若用户需求中没有明确要求「最少」「最小」「最优」等极限目标，任务描述不要自行引入。例如数独出题无需追求最少提示数、图片压缩无需追求最小体积——「足够好且快速」优先于「理论最优但可能超时」。`,
+      `- **耗时操作必须有上限**：涉及循环/重试/搜索的任务，description 中应明确要求设置 maxAttempts 或超时保底，不能无限循环。`,
       ``,
       `硬性要求：`,
       `- 只修改 task.json（路径：${tjp}），不要修改任何应用代码或其他文件`,
@@ -598,10 +676,15 @@ export class ProjectRuntime {
     const delayMs = Math.max(50, Math.min(2000, Number(process.env.AUTOCODING_PASS_POLL_MS) || 250));
     const tjp = this.getTaskJsonPath();
     for (let i = 0; i < attempts; i++) {
-      if (isTaskDone(this.repoRoot, taskId, tjp)) return true;
+      if (isTaskDoneSafe(this.repoRoot, taskId, tjp)) return true;
       await new Promise((r) => setTimeout(r, delayMs));
     }
-    return isTaskDone(this.repoRoot, taskId, tjp);
+    if (isTaskDoneSafe(this.repoRoot, taskId, tjp)) return true;
+    if (shouldTrustZeroExit()) {
+      this.log(`[trust-zero-exit] Agent 退出码为 0 但 passes 未变，AUTOCODING_TRUST_ZERO_EXIT=1 视为成功。`);
+      return true;
+    }
+    return false;
   }
 
   async taskExecutionLoop() {
@@ -685,6 +768,7 @@ export class ProjectRuntime {
   async workerLoop() {
     if (this.workerRunning) return;
     this.workerRunning = true;
+    this.startIdleWatchdog();
     try {
       await this.taskExecutionLoop();
       if (this.state.status === "running") {
@@ -692,6 +776,7 @@ export class ProjectRuntime {
         await this.saveState();
       }
     } finally {
+      this.stopIdleWatchdog();
       this.workerRunning = false;
       this.lastAgentPid = undefined;
       this.agentStdinStream = null;
@@ -768,6 +853,7 @@ export class ProjectRuntime {
   async customTaskFlow(userPrompt) {
     if (this.workerRunning) return;
     this.workerRunning = true;
+    this.startIdleWatchdog();
     try {
       this.log(`[自定义任务] 开始需求分解…`);
       const ok = await this.runDecomposition(userPrompt);
@@ -788,6 +874,7 @@ export class ProjectRuntime {
         await this.saveState();
       }
     } finally {
+      this.stopIdleWatchdog();
       this.workerRunning = false;
       this.lastAgentPid = undefined;
       this.agentStdinStream = null;
@@ -825,13 +912,13 @@ export class ProjectRuntime {
       `    "id": "q1",`,
       `    "label": "问题文本（中文）",`,
       `    "type": "text",`,
-      `    "placeholder": "输入提示示例"`,
+      `    "placeholder": "单行示例草稿（将预填在输入框内，用户可直接改）"`,
       `  },`,
       `  {`,
       `    "id": "q2",`,
       `    "label": "问题文本",`,
       `    "type": "textarea",`,
-      `    "placeholder": "可列出多项，每行一个"`,
+      `    "placeholder": "多行示例草稿（将预填在文本框内，用户可直接改）"`,
       `  },`,
       `  {`,
       `    "id": "q3",`,
@@ -852,7 +939,7 @@ export class ProjectRuntime {
       `- 不要创建或修改任何代码文件`,
       `- 问题应该具体有针对性，根据项目类型智能选择要问的维度`,
       `- 避免过于笼统的问题（如"还有什么需求"）`,
-      `- placeholder 中应给出有帮助的示例值`,
+      `- placeholder 字段填写「建议答案草稿」：会作为输入框/文本框的默认文本展示，用户可直接在其上修改（不是鼠标悬停提示）`,
       `- 确保 JSON 格式正确`,
     ].join("\n");
   }
@@ -936,6 +1023,7 @@ export class ProjectRuntime {
   async wizardAnalyzeFlow(description) {
     if (this.workerRunning) return;
     this.workerRunning = true;
+    this.startIdleWatchdog();
     try {
       this.wizardDescription = description;
       this.wizardQuestions = null;
@@ -1010,6 +1098,7 @@ export class ProjectRuntime {
       this.state.status = "idle";
       await this.saveState();
     } finally {
+      this.stopIdleWatchdog();
       this.workerRunning = false;
       this.lastAgentPid = undefined;
       this.agentStdinStream = null;
@@ -1022,6 +1111,7 @@ export class ProjectRuntime {
   async initProjectFlow(wizardData) {
     if (this.workerRunning) return;
     this.workerRunning = true;
+    this.startIdleWatchdog();
     try {
       this.log(`[项目初始化] 开始…`);
       const message = this.buildInitMessage(wizardData);
@@ -1096,6 +1186,460 @@ export class ProjectRuntime {
       this.state.status = "idle";
       await this.saveState();
     } finally {
+      this.stopIdleWatchdog();
+      this.workerRunning = false;
+      this.lastAgentPid = undefined;
+      this.agentStdinStream = null;
+      this.lastAgentOutputAt = 0;
+      this.stdoutLineBuf = "";
+      this.setAgentPhase("idle", "");
+    }
+  }
+
+  // ── Module decomposition layer ─────────────────────────────────
+
+  getModulePlan() {
+    const tjp = this.project.taskJsonPath;
+    if (!tjp) return null;
+    return loadModulePlan(this.repoRoot, tjp);
+  }
+
+  hasModulePlan() {
+    const tjp = this.project.taskJsonPath;
+    if (!tjp) return false;
+    return hasModulePlan(this.repoRoot, tjp);
+  }
+
+  async runAgentSession(message, phaseLabel) {
+    this.agentPromptSnapshot = { text: message, taskId: null, updatedAt: formatBeijingDateTime() };
+    const header =
+      (this.agentCliSnapshot.text ? "\n\n" : "") +
+      `──────────────── ${phaseLabel} ────────────────\n`;
+    this.agentCliSnapshot.text = (this.agentCliSnapshot.text || "") + header;
+    this.agentCliSnapshot.taskId = null;
+    this.agentCliSnapshot.updatedAt = formatBeijingDateTime();
+    this.stdoutLineBuf = "";
+    this.setAgentPhase("init", phaseLabel);
+
+    this.lastAgentPid = undefined;
+    this.agentStdinStream = null;
+    this.lastAgentOutputAt = Date.now();
+    const hooks = {
+      onSpawn: (pid, stdin) => {
+        this.lastAgentPid = pid;
+        this.agentStdinStream = stdin;
+      },
+      onStdout: (chunk) => {
+        if (this.state.status !== "running") return;
+        this.lastAgentOutputAt = Date.now();
+        this.appendAgentCliChunk(chunk, "stdout");
+        const tail = String(chunk).slice(-2000);
+        if (tail.trim()) this.log(`[agent stdout] …${tail.slice(-400)}`);
+      },
+      onStderr: (chunk) => {
+        if (this.state.status !== "running") return;
+        this.lastAgentOutputAt = Date.now();
+        this.appendAgentCliChunk(chunk, "stderr");
+        if (isWebpackNoise(chunk)) return;
+        const tail = String(chunk).slice(-2000);
+        if (tail.trim()) this.log(`[agent stderr] …${tail.slice(-400)}`);
+      },
+    };
+
+    return runCursorAgent(this.repoRoot, message, undefined, this.agentTimeoutMs, hooks);
+  }
+
+  /**
+   * 将项目需求分解为模块（生成 module-plan.json）。
+   */
+  async runModuleDecomposition(userPrompt) {
+    const tjp = this.project.taskJsonPath;
+    if (!tjp) {
+      this.state.lastError = "项目未配置 taskJsonPath，无法进行模块分解。";
+      this.log(this.state.lastError);
+      this.state.status = "idle";
+      await this.saveState();
+      return false;
+    }
+
+    const message = buildProjectDecompositionPrompt(
+      this.repoRoot, this.project, tjp, userPrompt,
+    );
+
+    const result = await this.runAgentSession(message, "模块分解");
+
+    if (this.state.status === "paused" || this.resetRequested) return false;
+
+    if (result.code !== 0) {
+      this.state.lastError = `模块分解失败：Agent 退出码 ${result.code}。${result.stderr ? "\n" + result.stderr.slice(-2000) : ""}`;
+      this.log(this.state.lastError);
+      this.state.status = "idle";
+      await this.saveState();
+      return false;
+    }
+
+    const plan = loadModulePlan(this.repoRoot, tjp);
+    if (!plan || !plan.modules || plan.modules.length === 0) {
+      this.state.lastError =
+        "模块分解 Agent 已退出，但 module-plan.json 未正确创建或格式错误。请检查 CLI 输出。";
+      this.log(this.state.lastError);
+      this.state.status = "idle";
+      await this.saveState();
+      return false;
+    }
+
+    this.log(`[模块分解] 完成，生成了 ${plan.modules.length} 个模块。`);
+    return true;
+  }
+
+  /**
+   * 为单个模块生成 task.json（模块初始化）。
+   */
+  async runModuleInitializer(modulePlan, targetModule) {
+    const tjp = this.project.taskJsonPath;
+    const message = buildModuleInitializerPrompt(
+      this.repoRoot, this.project, tjp, modulePlan, targetModule,
+    );
+
+    const result = await this.runAgentSession(
+      message,
+      `模块初始化 · ${targetModule.title}`,
+    );
+
+    if (this.state.status === "paused" || this.resetRequested) return false;
+
+    if (result.code !== 0) {
+      this.state.lastError = `模块「${targetModule.title}」初始化失败：Agent 退出码 ${result.code}。`;
+      this.log(this.state.lastError);
+      return false;
+    }
+
+    const moduleTaskPath = path.join(
+      this.repoRoot,
+      deriveModuleTaskJsonPath(tjp, targetModule.id),
+    );
+    try {
+      const raw = fs.readFileSync(moduleTaskPath, "utf8");
+      const data = JSON.parse(raw);
+      const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+      if (tasks.length === 0) {
+        this.state.lastError = `模块「${targetModule.title}」的 task.json 任务列表为空。`;
+        this.log(this.state.lastError);
+        return false;
+      }
+      this.log(`[模块初始化] 「${targetModule.title}」完成，生成了 ${tasks.length} 个任务。`);
+      return true;
+    } catch (e) {
+      this.state.lastError = `模块「${targetModule.title}」的 task.json 格式错误：${e.message}`;
+      this.log(this.state.lastError);
+      return false;
+    }
+  }
+
+  /**
+   * 执行单个模块内的一个任务。
+   */
+  async runOneModuleTask(modulePlan, targetModule, task) {
+    const tjp = this.project.taskJsonPath;
+    const agentMessage = buildModuleTaskMessage(
+      this.repoRoot, this.project, tjp, modulePlan, targetModule, task,
+    );
+    this.agentPromptSnapshot = { text: agentMessage, taskId: task.id, updatedAt: formatBeijingDateTime() };
+    this.beginAgentCliSession(task);
+    this.lastAgentPid = undefined;
+    this.agentStdinStream = null;
+    this.lastAgentOutputAt = Date.now();
+
+    const hooks = {
+      onSpawn: (pid, stdin) => {
+        this.lastAgentPid = pid;
+        this.agentStdinStream = stdin;
+      },
+      onStdout: (chunk) => {
+        if (this.state.status !== "running") return;
+        this.lastAgentOutputAt = Date.now();
+        this.appendAgentCliChunk(chunk, "stdout");
+        const tail = String(chunk).slice(-2000);
+        if (tail.trim()) this.log(`[agent stdout] …${tail.slice(-400)}`);
+      },
+      onStderr: (chunk) => {
+        if (this.state.status !== "running") return;
+        this.lastAgentOutputAt = Date.now();
+        this.appendAgentCliChunk(chunk, "stderr");
+        if (isWebpackNoise(chunk)) return;
+        const tail = String(chunk).slice(-2000);
+        if (tail.trim()) this.log(`[agent stderr] …${tail.slice(-400)}`);
+      },
+    };
+
+    const result = await runCursorAgent(this.repoRoot, agentMessage, undefined, this.agentTimeoutMs, hooks);
+
+    if (result.code !== 0) {
+      return { ok: false, code: result.code, stderr: result.stderr };
+    }
+
+    const moduleTaskJsonPath = deriveModuleTaskJsonPath(tjp, targetModule.id);
+    const marked = await this.waitUntilModuleTaskDone(moduleTaskJsonPath, task.id);
+    if (!marked) {
+      return {
+        ok: false,
+        code: 2,
+        stderr:
+          `Agent 退出码为 0，但模块 task.json 中 id=${task.id} 的 passes 仍为 false。\n` +
+          "可能原因：agent 完成了实现但漏改标记。\n" +
+          "请检查 CLI 输出，必要时手动标记 passes: true 后继续。",
+      };
+    }
+    return { ok: true, code: 0 };
+  }
+
+  async waitUntilModuleTaskDone(moduleTaskJsonRelPath, taskId) {
+    const attempts = Math.max(1, Math.min(20, Number(process.env.AUTOCODING_PASS_POLL_ATTEMPTS) || 8));
+    const delayMs = Math.max(50, Math.min(2000, Number(process.env.AUTOCODING_PASS_POLL_MS) || 250));
+    const absPath = path.join(this.repoRoot, moduleTaskJsonRelPath);
+    for (let i = 0; i < attempts; i++) {
+      if (isTaskDoneSafe(this.repoRoot, taskId, absPath)) return true;
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    if (isTaskDoneSafe(this.repoRoot, taskId, absPath)) return true;
+    if (shouldTrustZeroExit()) {
+      this.log(`[trust-zero-exit] Agent 退出码为 0 但 passes 未变，AUTOCODING_TRUST_ZERO_EXIT=1 视为成功。`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 模块化执行主循环：按拓扑序依次初始化并执行每个模块的任务。
+   */
+  async moduleExecutionLoop() {
+    const tjp = this.project.taskJsonPath;
+    if (!tjp) {
+      this.state.lastError = "项目未配置 taskJsonPath。";
+      this.log(this.state.lastError);
+      return;
+    }
+
+    for (;;) {
+      if (this.state.status !== "running") break;
+      if (this.resetRequested) {
+        this.resetRequested = false;
+        this.state.lastError = null;
+        await this.saveState();
+        this.log("已应用重置请求，模块执行结束。");
+        break;
+      }
+
+      const plan = loadModulePlan(this.repoRoot, tjp);
+      if (!plan) {
+        this.state.lastError = "未找到 module-plan.json，无法继续模块化执行。";
+        this.log(this.state.lastError);
+        this.state.status = "idle";
+        await this.saveState();
+        break;
+      }
+
+      const next = getNextPendingModule(plan);
+      if (!next) {
+        this.state.status = "completed";
+        this.state.lastError = null;
+        await this.saveState();
+        this.log("所有模块已完成！");
+        break;
+      }
+
+      const mod = next.module;
+
+      if (!areDependenciesMet(plan, mod.id)) {
+        this.state.lastError = `模块「${mod.title}」的依赖未满足，请检查 module-plan.json。`;
+        this.log(this.state.lastError);
+        this.state.status = "idle";
+        await this.saveState();
+        break;
+      }
+
+      // Phase 1: Module initialization (generate task.json if needed)
+      const moduleTaskRelPath = deriveModuleTaskJsonPath(tjp, mod.id);
+      const moduleTaskAbsPath = path.join(this.repoRoot, moduleTaskRelPath);
+      let needsInit = false;
+      try {
+        fs.accessSync(moduleTaskAbsPath);
+        const raw = fs.readFileSync(moduleTaskAbsPath, "utf8");
+        const data = JSON.parse(raw);
+        if (!Array.isArray(data.tasks) || data.tasks.length === 0) needsInit = true;
+      } catch {
+        needsInit = true;
+      }
+
+      if (needsInit && mod.status !== "completed") {
+        this.log(`[模块] 开始初始化模块「${mod.title}」…`);
+        setModuleStatus(plan, mod.id, "initializing");
+        await saveModulePlan(this.repoRoot, tjp, plan);
+
+        const initOk = await this.runModuleInitializer(plan, mod);
+
+        if (this.resetRequested || this.state.status !== "running") break;
+
+        if (!initOk) {
+          setModuleStatus(plan, mod.id, "failed", this.state.lastError || "初始化失败");
+          await saveModulePlan(this.repoRoot, tjp, plan);
+          this.state.status = "idle";
+          await this.saveState();
+          break;
+        }
+      }
+
+      // Phase 2: Execute module tasks
+      this.log(`[模块] 开始执行模块「${mod.title}」的任务…`);
+      setModuleStatus(plan, mod.id, "running");
+      await saveModulePlan(this.repoRoot, tjp, plan);
+
+      const loadResult = tryLoadIncompleteTasks(this.repoRoot, moduleTaskAbsPath);
+      if (!loadResult.ok) {
+        this.state.lastError = `无法读取模块「${mod.title}」的任务文件：${loadResult.error}`;
+        this.log(this.state.lastError);
+        setModuleStatus(plan, mod.id, "failed", this.state.lastError);
+        await saveModulePlan(this.repoRoot, tjp, plan);
+        this.state.status = "idle";
+        await this.saveState();
+        break;
+      }
+      const moduleTaskQueue = loadResult.tasks;
+      if (moduleTaskQueue.length === 0) {
+        this.log(`[模块] 模块「${mod.title}」的所有任务已完成。`);
+        setModuleStatus(plan, mod.id, "completed");
+        await saveModulePlan(this.repoRoot, tjp, plan);
+        continue;
+      }
+
+      for (const task of moduleTaskQueue) {
+        if (this.state.status !== "running") break;
+        if (this.resetRequested) break;
+
+        this.state.lastTaskId = task.id;
+        this.state.lastError = null;
+        await this.saveState();
+        this.log(`[模块·${mod.id}] 开始任务 id=${task.id}：${task.title}`);
+
+        const outcome = await this.runOneModuleTask(plan, mod, task);
+
+        if (this.resetRequested || this.state.status === "paused") break;
+
+        if (!outcome.ok) {
+          this.state.lastError =
+            outcome.code === 2
+              ? outcome.stderr
+              : `Agent 失败：模块「${mod.title}」任务 id=${task.id}，退出码 ${outcome.code}。${outcome.stderr ? "\n" + outcome.stderr.slice(-2000) : ""}`;
+          this.log(this.state.lastError);
+          setModuleStatus(plan, mod.id, "failed", this.state.lastError);
+          await saveModulePlan(this.repoRoot, tjp, plan);
+          this.state.status = "idle";
+          await this.saveState();
+          break;
+        }
+
+        this.log(`[模块·${mod.id}] 任务 id=${task.id} 已完成。`);
+
+        if (!this.autoAdvance) {
+          const rem = tryLoadIncompleteTasks(this.repoRoot, moduleTaskAbsPath);
+          const remaining = rem.ok ? rem.tasks : [];
+          if (rem.ok && remaining.length > 0) {
+            this.state.status = "idle";
+            this.log(
+              `逐任务模式：任务 id=${task.id} 完成后已暂停。模块「${mod.title}」剩余 ${remaining.length} 个任务。`,
+            );
+            await this.saveState();
+            return;
+          }
+        }
+      }
+
+      if (this.resetRequested || this.state.status !== "running") break;
+
+      // Check if all tasks in the module are done
+      const remFinal = tryLoadIncompleteTasks(this.repoRoot, moduleTaskAbsPath);
+      if (!remFinal.ok) {
+        this.state.lastError = `无法读取模块「${mod.title}」的任务文件：${remFinal.error}`;
+        this.log(this.state.lastError);
+        setModuleStatus(plan, mod.id, "failed", this.state.lastError);
+        await saveModulePlan(this.repoRoot, tjp, plan);
+        this.state.status = "idle";
+        await this.saveState();
+        break;
+      }
+      const remaining = remFinal.tasks;
+      if (remaining.length === 0) {
+        this.log(`[模块] 模块「${mod.title}」全部任务已完成！`);
+        setModuleStatus(plan, mod.id, "completed");
+        await saveModulePlan(this.repoRoot, tjp, plan);
+      }
+    }
+  }
+
+  /**
+   * 模块化开发完整流程：分解 → 逐模块初始化 + 执行。
+   */
+  async moduleFlow(userPrompt) {
+    if (this.workerRunning) return;
+    this.workerRunning = true;
+    this.startIdleWatchdog();
+    try {
+      if (!this.hasModulePlan()) {
+        this.log(`[模块化开发] 开始项目模块分解…`);
+        const ok = await this.runModuleDecomposition(userPrompt);
+        if (!ok) {
+          if (this.resetRequested) {
+            this.resetRequested = false;
+            this.state.lastError = null;
+            await this.saveState();
+            this.log("已应用重置请求，worker 结束。");
+          } else if (this.state.status === "running") {
+            this.state.status = "idle";
+            await this.saveState();
+          }
+          return;
+        }
+        this.wizardDescription = null;
+        this.wizardQuestions = null;
+        try { fs.unlinkSync(this.getWizardFilePath()); } catch {}
+        if (this.state.status !== "running") return;
+      } else {
+        this.log(`[模块化开发] 检测到已有 module-plan.json，跳过模块分解，继续执行…`);
+      }
+
+      this.log(`[模块化开发] 进入模块执行阶段…`);
+      await this.moduleExecutionLoop();
+
+      if (this.state.status === "running") {
+        this.state.status = "idle";
+        await this.saveState();
+      }
+    } finally {
+      this.stopIdleWatchdog();
+      this.workerRunning = false;
+      this.lastAgentPid = undefined;
+      this.agentStdinStream = null;
+      this.lastAgentOutputAt = 0;
+      this.stdoutLineBuf = "";
+      this.setAgentPhase("idle", "");
+    }
+  }
+
+  /**
+   * 仅执行模块队列（module-plan.json 已存在时）。
+   */
+  async moduleResumeFlow() {
+    if (this.workerRunning) return;
+    this.workerRunning = true;
+    this.startIdleWatchdog();
+    try {
+      await this.moduleExecutionLoop();
+      if (this.state.status === "running") {
+        this.state.status = "idle";
+        await this.saveState();
+      }
+    } finally {
+      this.stopIdleWatchdog();
       this.workerRunning = false;
       this.lastAgentPid = undefined;
       this.agentStdinStream = null;
@@ -1241,29 +1785,35 @@ export class ProjectRuntime {
       return { ok: true };
     }
 
-    if (action === "reset-link-game") {
-      if (this.project.id !== "link-game") return { ok: false, error: "此操作仅适用于连连看项目" };
+    if (action === "cleanup-project" || action === "reset-link-game") {
+      if (action === "reset-link-game" && this.project.id !== "link-game") {
+        return { ok: false, error: "reset-link-game 仅兼容连连看；请使用 cleanup-project。" };
+      }
+      if (!this.project.taskJsonPath) {
+        return { ok: false, error: "该项目未配置 task.json，无法清理代码目录。请使用「重置状态」仅清空面板。" };
+      }
       const running = this.state.status === "running";
       this.resetRequested = running;
       this.killAgentTreeBestEffort();
       this.agentStdinStream = null;
       this.lastAgentOutputAt = 0;
-      this.setAgentPhase("idle", "已清理连连看项目");
+      const projLabel = this.project.name || this.project.id;
+      this.setAgentPhase("idle", `已清理 ${projLabel}`);
       this.state.lastError = null;
       this.state.lastTaskId = null;
       this.state.status = "idle";
       this.agentPromptSnapshot = { text: "", taskId: null, updatedAt: null };
       this.agentCliSnapshot = { text: "", taskId: null, updatedAt: null };
       try {
-        await performLinkGameProjectReset(this.repoRoot);
+        await performProjectCleanup(this.repoRoot, this.project);
       } catch (e) {
         const msg = String(e?.message || e);
-        this.log(`连连看项目清理失败: ${msg}`);
+        this.log(`项目清理失败（${projLabel}）: ${msg}`);
         await this.saveState();
         return { ok: false, error: msg };
       }
       await this.saveState();
-      this.log("已清理连连看项目并重置面板。");
+      this.log(`已清理 ${projLabel} 并重置面板。`);
       return { ok: true };
     }
 
@@ -1343,6 +1893,100 @@ export class ProjectRuntime {
       return { ok: true };
     }
 
+    if (action === "module-decompose") {
+      if (this.state.status === "running") return { ok: false, error: "已在运行中" };
+      const prompt = body?.prompt;
+      if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+        return { ok: false, error: "请提供项目描述（prompt 字段）" };
+      }
+      this.state.status = "running";
+      this.state.lastError = null;
+      this.agentPromptSnapshot = { text: "", taskId: null, updatedAt: null };
+      this.agentCliSnapshot = { text: "", taskId: null, updatedAt: null };
+      await this.saveState();
+      this.moduleFlow(prompt.trim()).catch(async (e) => {
+        this.log(`模块化开发流程异常: ${e?.message || e}`);
+        this.state.status = "idle";
+        this.state.lastError = String(e?.message || e);
+        try { await this.saveState(); } catch (err) { this.log(`保存状态失败: ${err.message}`); }
+      });
+      return { ok: true };
+    }
+
+    if (action === "module-start") {
+      if (this.state.status === "running") return { ok: false, error: "已在运行中" };
+      if (!this.hasModulePlan()) {
+        return { ok: false, error: "未找到 module-plan.json，请先进行模块分解。" };
+      }
+      this.state.status = "running";
+      this.state.lastError = null;
+      await this.saveState();
+      this.moduleResumeFlow().catch(async (e) => {
+        this.log(`模块执行流程异常: ${e?.message || e}`);
+        this.state.status = "idle";
+        this.state.lastError = String(e?.message || e);
+        try { await this.saveState(); } catch (err) { this.log(`保存状态失败: ${err.message}`); }
+      });
+      return { ok: true };
+    }
+
+    if (action === "module-reset") {
+      const tjp = this.project.taskJsonPath;
+      if (tjp) {
+        const plan = loadModulePlan(this.repoRoot, tjp);
+        if (plan) {
+          for (const mod of plan.modules) {
+            mod.status = "pending";
+            delete mod.error;
+          }
+          await saveModulePlan(this.repoRoot, tjp, plan);
+          this.log("所有模块状态已重置为 pending。");
+        }
+      }
+      return { ok: true };
+    }
+
+    if (action === "module-reset-one") {
+      const moduleId = body?.moduleId;
+      if (!moduleId || typeof moduleId !== "string") {
+        return { ok: false, error: "请提供 moduleId 字段" };
+      }
+      const tjp = this.project.taskJsonPath;
+      if (!tjp) return { ok: false, error: "项目未配置 taskJsonPath。" };
+      const plan = loadModulePlan(this.repoRoot, tjp);
+      if (!plan) return { ok: false, error: "未找到 module-plan.json。" };
+      const mod = plan.modules.find((m) => m.id === moduleId);
+      if (!mod) return { ok: false, error: `未找到模块 "${moduleId}"。` };
+
+      mod.status = "pending";
+      delete mod.error;
+      await saveModulePlan(this.repoRoot, tjp, plan);
+
+      const resetTasks = body?.resetTasks !== false;
+      if (resetTasks) {
+        const moduleTaskPath = path.join(
+          this.repoRoot,
+          deriveModuleTaskJsonPath(tjp, moduleId),
+        );
+        try {
+          const raw = fs.readFileSync(moduleTaskPath, "utf8");
+          const data = JSON.parse(raw);
+          if (Array.isArray(data.tasks)) {
+            for (const t of data.tasks) {
+              if (t && typeof t === "object") t.passes = false;
+            }
+            fs.writeFileSync(moduleTaskPath, JSON.stringify(data, null, 2) + "\n", "utf8");
+            this.log(`模块「${mod.title}」的所有任务 passes 已重置为 false。`);
+          }
+        } catch {
+          this.log(`模块「${mod.title}」的任务文件不存在或无法读取，跳过 passes 重置。`);
+        }
+      }
+
+      this.log(`模块「${mod.title}」状态已重置为 pending。`);
+      return { ok: true };
+    }
+
     if (action === "set-auto-advance") {
       this.autoAdvance = !!body?.value;
       this.log(`自动推进模式已${this.autoAdvance ? "开启" : "关闭"}。`);
@@ -1405,6 +2049,63 @@ export class ProjectRuntime {
     } catch {
       /* ok */
     }
+    // ── Module plan info ──
+    let modulePlanInfo = null;
+    const tjp2 = this.project.taskJsonPath;
+    if (tjp2) {
+      const plan = loadModulePlan(this.repoRoot, tjp2);
+      if (plan) {
+        let sorted;
+        try { sorted = topologicalSort(plan.modules); } catch { sorted = plan.modules; }
+        const modulesWithTasks = sorted.map((m) => {
+          const mtPath = path.join(this.repoRoot, deriveModuleTaskJsonPath(tjp2, m.id));
+          let taskStats = { total: 0, done: 0, pending: 0 };
+          try {
+            const raw = fs.readFileSync(mtPath, "utf8");
+            const data = JSON.parse(raw);
+            const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            const done = tasks.filter((t) => t.passes === true).length;
+            taskStats = { total: tasks.length, done, pending: tasks.length - done };
+          } catch { /* no task file yet */ }
+          return { ...m, tasks: taskStats };
+        });
+        modulePlanInfo = {
+          project: plan.project,
+          description: plan.description,
+          summary: getModulePlanSummary(plan),
+          modules: modulesWithTasks,
+        };
+      }
+    }
+
+    // Aggregate pending tasks from module task files so that
+    // "待办任务数" reflects the real workload for modular projects.
+    let modulePendingCount = 0;
+    /** @type {{ id: string|number; title: string } | null} */
+    let firstModuleTask = null;
+    if (modulePlanInfo) {
+      for (const m of modulePlanInfo.modules) {
+        totalTaskCount += m.tasks.total;
+        modulePendingCount += m.tasks.pending;
+        if (!firstModuleTask && m.tasks.pending > 0) {
+          const mtPath = path.join(this.repoRoot, deriveModuleTaskJsonPath(this.project.taskJsonPath, m.id));
+          try {
+            const raw = fs.readFileSync(mtPath, "utf8");
+            const data = JSON.parse(raw);
+            const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+            const first = tasks.find((t) => t && t.passes === false);
+            if (first) {
+              firstModuleTask = { id: `${m.id}/${first.id}`, title: `[${m.id}] ${first.title}` };
+            }
+          } catch { /* ok */ }
+        }
+      }
+    }
+    const totalPendingCount = pending.length + modulePendingCount;
+    const nextTask = pending.length > 0
+      ? { id: pending[0].id, title: pending[0].title }
+      : firstModuleTask;
+
     const projectDirForDev = path.join(this.repoRoot, this.project.dir);
     const devServerUrl = this.devServerRunning
       ? `http://127.0.0.1:${inferDevServerPort(projectDirForDev)}/`
@@ -1412,10 +2113,11 @@ export class ProjectRuntime {
     return {
       ok: true,
       projectId: this.project.id,
+      cleanupAvailable: !!this.project.taskJsonPath,
       repoRoot: this.repoRoot,
       totalTaskCount,
-      pendingCount: pending.length,
-      nextTask: pending[0] ? { id: pending[0].id, title: pending[0].title } : null,
+      pendingCount: totalPendingCount,
+      nextTask: nextTask || null,
       status: this.state.status,
       lastError: this.state.lastError,
       lastTaskId: this.state.lastTaskId,
@@ -1441,12 +2143,14 @@ export class ProjectRuntime {
       devServerPid: this.devServerProc?.pid ?? null,
       devServerUrl,
       devServerLog: this.devServerLog.slice(-50),
+      modulePlan: modulePlanInfo,
     };
   }
 
   // ── Destroy ─────────────────────────────────────────────────────
 
   destroy() {
+    this.stopIdleWatchdog();
     this.killAgentTreeBestEffort();
     this.agentStdinStream = null;
     this.stopDevServer();

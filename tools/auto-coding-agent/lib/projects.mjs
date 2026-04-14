@@ -5,6 +5,7 @@
 import fs from "node:fs";
 import fsp from "node:fs/promises";
 import path from "node:path";
+import { loadModulePlan, deriveModuleTaskJsonPath } from "./module-scheduler.mjs";
 import { formatBeijingDateTime } from "./beijing-time.mjs";
 
 /**
@@ -29,6 +30,26 @@ const DEFAULT_PROJECTS = [
     framework: "Next.js + Tailwind CSS",
     icon: "🀄",
     taskJsonPath: "task.json",
+    createdAt: "2025-01-01T00:00:00+08:00",
+  },
+  {
+    id: "duiduipeng",
+    name: "对对碰",
+    description: "单机网页三消类对对碰（相邻交换、连锁消除）",
+    dir: "duiduipeng",
+    framework: "Next.js + Tailwind CSS",
+    icon: "🎮",
+    taskJsonPath: "duiduipeng/task.json",
+    createdAt: "2025-01-01T00:00:00+08:00",
+  },
+  {
+    id: "suduku",
+    name: "数独",
+    description: "局域网浏览器端数独（教学、练习、持久化）",
+    dir: "suduku",
+    framework: "Next.js + Tailwind CSS",
+    icon: "🔢",
+    taskJsonPath: "suduku/task.json",
     createdAt: "2025-01-01T00:00:00+08:00",
   },
   {
@@ -62,6 +83,21 @@ export async function initRegistry(dataDir, repoRoot) {
   } catch {
     _projects = DEFAULT_PROJECTS.map((p) => ({ ...p }));
     await _saveRegistry();
+  }
+}
+
+/**
+ * 从磁盘重新读取 projects.json（供面板刷新列表，无需重启服务）。
+ * 若文件缺失或解析失败则保留内存中的当前列表。
+ */
+export async function reloadRegistry() {
+  if (!_filePath) return;
+  try {
+    const raw = await fsp.readFile(_filePath, "utf8");
+    const next = JSON.parse(raw).projects;
+    if (Array.isArray(next)) _projects = next;
+  } catch {
+    /* keep _projects */
   }
 }
 
@@ -145,13 +181,29 @@ export async function removeProject(id, opts = {}) {
  */
 export function getProjectTaskSummary(repoRoot, project) {
   if (!project.taskJsonPath) return { total: 0, done: 0, pending: 0, configured: false };
+  let total = 0, done = 0;
   try {
     const raw = fs.readFileSync(path.join(repoRoot, project.taskJsonPath), "utf8");
     const data = JSON.parse(raw);
     const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-    const done = tasks.filter((t) => t.passes === true).length;
-    return { total: tasks.length, done, pending: tasks.length - done, configured: true };
-  } catch {
-    return { total: 0, done: 0, pending: 0, configured: false };
+    done = tasks.filter((t) => t.passes === true).length;
+    total = tasks.length;
+  } catch { /* ok */ }
+
+  // Aggregate tasks from module task files
+  const plan = loadModulePlan(repoRoot, project.taskJsonPath);
+  if (plan) {
+    for (const m of plan.modules) {
+      const mtPath = path.join(repoRoot, deriveModuleTaskJsonPath(project.taskJsonPath, m.id));
+      try {
+        const raw = fs.readFileSync(mtPath, "utf8");
+        const data = JSON.parse(raw);
+        const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+        total += tasks.length;
+        done += tasks.filter((t) => t.passes === true).length;
+      } catch { /* no task file yet */ }
+    }
   }
+
+  return { total, done, pending: total - done, configured: true };
 }

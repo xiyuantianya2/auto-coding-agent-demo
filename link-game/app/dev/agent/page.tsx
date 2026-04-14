@@ -16,6 +16,8 @@ function getAgentBase(): string {
   );
 }
 
+const LINK_GAME_PROJECT_ID = "link-game";
+
 type StatusPayload = {
   ok?: boolean;
   pendingCount?: number;
@@ -49,7 +51,10 @@ export default function AgentPanelPage() {
 
   const load = useCallback(async () => {
     try {
-      const r = await fetch(`${base}/api/status`, { cache: "no-store" });
+      const r = await fetch(
+        `${base}/api/status?project=${encodeURIComponent(LINK_GAME_PROJECT_ID)}`,
+        { cache: "no-store" },
+      );
       const d = (await r.json()) as StatusPayload;
       if (!d.ok) throw new Error(d.error || "status failed");
       setData(d);
@@ -78,7 +83,7 @@ export default function AgentPanelPage() {
       const r = await fetch(`${base}/api/control`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action, ...extra }),
+        body: JSON.stringify({ action, project: LINK_GAME_PROJECT_ID, ...extra }),
       });
       const d = (await r.json()) as { ok?: boolean; error?: string };
       if (!d.ok) {
@@ -223,11 +228,11 @@ export default function AgentPanelPage() {
                 "将执行：task.json 全部 passes 置为 false；删除 link-game/lib/game（若存在）；首页恢复为占位；progress.txt 追加记录；并终止 agent、清空面板（与「重置状态」相同）。已实现的连连看代码将丢失。确定？",
               )
             )
-              void postControl("reset-link-game");
+              void postControl("cleanup-project");
           }}
           className="rounded-lg border border-amber-800/70 bg-amber-950/50 px-4 py-2 text-sm text-amber-100 hover:border-amber-600 disabled:cursor-not-allowed disabled:opacity-40"
         >
-          清理连连看项目
+          清理本项目
         </button>
         <label className="ml-2 flex items-center gap-1.5 text-xs text-zinc-500 select-none cursor-pointer">
           <input

@@ -15,14 +15,17 @@
 
 本仓库包含多个游戏子项目，每个子项目独立运行：
 
-| 子项目 | 目录 | 端口 | task.json 位置 |
-|--------|------|------|----------------|
-| 连连看 | `link-game/` | 3000 | 仓库根 `task.json` |
-| 对对碰 | `duiduipeng/` | 3001 | `duiduipeng/task.json` |
+| 子项目 | 目录 | 端口 | task.json 位置 | 开发模式 |
+|--------|------|------|----------------|----------|
+| 连连看 | `link-game/` | 3000 | 仓库根 `task.json` | 普通 task 模式 |
+| 对对碰 | `duiduipeng/` | 3001 | `duiduipeng/task.json` | 普通 task 模式 |
+| 数独 | `suduku/` | 3002 | `suduku/task.json` | 模块化（`module-plan.json` + `modules/*.task.json`） |
 
 技术栈统一：Next.js + TypeScript + Tailwind。
 所有子项目均配置 Playwright E2E 测试（`e2e/` 目录 + `playwright.config.ts`）。
 需求在各自的 **`task.json`**；进度在 **`progress.txt`**。
+
+> **数独项目说明**：数独采用模块化开发模式，由 `module-plan.json` 定义 9 个模块的依赖拓扑，每个模块有独立的 `modules/<module-id>.task.json`。非 UI 模块（如 `core-model`、`solver-engine`）仅需 Vitest 单元测试验收，无需 Playwright E2E。
 
 ---
 
@@ -122,12 +125,22 @@ git commit -m "[task description] - completed"
 │   ├── lib/           # 工具函数、游戏逻辑
 │   ├── e2e/           # Playwright E2E 测试
 │   └── playwright.config.ts
-└── duiduipeng/        # 对对碰（端口 3001）
-    ├── app/           # App Router 页面
-    ├── lib/           # 纯逻辑与类型
-    ├── components/    # UI 组件
+├── duiduipeng/        # 对对碰（端口 3001）
+│   ├── app/           # App Router 页面
+│   ├── lib/           # 纯逻辑与类型
+│   ├── components/    # UI 组件
+│   ├── e2e/           # Playwright E2E 测试
+│   ├── task.json      # 对对碰任务定义
+│   └── playwright.config.ts
+└── suduku/            # 数独（端口 3002，模块化开发）
+    ├── app/           # App Router 页面（client-ui 模块）
+    ├── lib/           # 核心逻辑模块（core, solver, generator, hint, notes）
+    ├── content/       # 教学大纲数据（curriculum 模块）
+    ├── server/        # 局域网 API 与持久化（server-api 模块）
     ├── e2e/           # Playwright E2E 测试
-    ├── task.json      # 对对碰任务定义
+    ├── modules/       # 各模块独立 task.json
+    ├── module-plan.json  # 模块拓扑定义
+    ├── task.json      # 项目级任务（模块化模式下为空）
     └── playwright.config.ts
 ```
 

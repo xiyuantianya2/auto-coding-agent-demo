@@ -6,80 +6,97 @@
   "tasks": [
     {
       "id": 1,
-      "title": "核心类型、常量与 GameState 骨架",
-      "description": "在 suduku/lib/core 下建立类型定义：Grid9、CellState（given/value/notes）、游戏模式与无尽/教学等存档所需字段的 GameState；导出盘面尺寸等常量；提供创建空盘面或从给定数初始化盘面的纯函数（不涉及求解）。为后续规则与序列化提供单一数据源。",
+      "title": "核心类型、常量与目录骨架",
+      "description": "在 `suduku/lib/core` 建立模块骨架：定义对外契约中的 `Grid9`、`CellState`（`given`/`value`/`notes` 语义说明）、`GameState`（盘面、当前模式/元数据等纯数据字段，便于后续 solver、存档与 UI 消费）、以及行/列/宫尺寸等常量。提供 `index.ts` 或分文件导出占位，确保与 `module-plan.json` 中本模块接口及下游 `solver-engine` 所需输入形状对齐（仅类型层面，不实现算法）。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build，确保类型文件无报错且工程可构建",
-        "TypeScript 严格模式下 Grid9、CellState、GameState 定义完整，无 any 滥用；CellState 中 given 与玩家填入 value 的语义在注释或类型上可区分",
-        "至少包含一种「从仅含给定数的 Grid9 生成初始 GameState」的工厂函数，供后续任务与测试复用"
+        "新增或更新 `suduku/lib/core` 下类型与常量文件，并完成对外类型导出。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。"
       ],
       "passes": true
     },
     {
       "id": 2,
-      "title": "行/列/宫工具与 isValidPlacement",
-      "description": "实现数独规则下的放置校验：给定盘面 grid、行列与候选数字 n，判断在 (r,c) 填入 n 是否与同行、同列、同宫已有非零冲突（约定 0 表示空）。不包含任何回溯或唯一解推理，仅规则层 isValidPlacement(grid, r, c, n)。可拆分内部 peer 索引辅助函数以便单测。",
+      "title": "盘面规则：`isValidPlacement` 与单元格有效数字",
+      "description": "实现 `isValidPlacement(grid, r, c, n)`：在标准 9×9 规则下检查将数字 `n` 置于 `(r,c)` 是否与同行、同列、同宫已有非零数字冲突；不包含求解，仅规则判断。补充从 `Grid9` 读取「单元格当前显示数字」的辅助（给定数优先于玩家填数），供后续任务与 UI 复用。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "对边界行列（0-8）与 n∈1..9 行为符合标准数独规则；与 module-plan 中声明的函数签名一致",
-        "补充针对同行/同列/同宫冲突与空格的单元测试用例（若项目已配置 Vitest；否则在本任务中一并添加最小测试配置以可运行）"
+        "为 `isValidPlacement` 编写 Vitest 用例：含合法放置、行/列/宫冲突、边界坐标与数字 1–9 范围。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": 3,
-      "title": "合法移动语义与胜负/完成判定",
-      "description": "在不引入求解器的前提下，用纯函数描述「可否对某格操作」：给定格不可改；填数与笔记的业务约定（例如有 value 时笔记清空或互斥规则）在代码中固定并实现校验辅助函数。实现完成态与胜利判定（例如全盘填满且每格与整体满足规则），以及可选的「存在明显冲突」检测供 UI 提示（若纳入 GameState 或独立函数需文档化）。",
+      "title": "单元格不变式与「合法移动」组合校验",
+      "description": "在规则层明确 `CellState` 约束：例如给定格不可改、`value` 与 `notes` 的互斥或优先级、笔记集合仅含 1–9。实现组合 API（如 `canPlaceValue` / `isLegalMove` 等命名由实现定）：综合「非给定格、数字范围、`isValidPlacement`、与单元格状态一致」判断一次填数或清除是否合法；不涉及求解与自动填数。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "胜负/完成判定与给定格不可修改规则有对应测试用例覆盖典型与边界情况",
-        "对外行为与 module-plan 中「合法移动与胜负判定」描述一致，且不依赖 lib/solver"
+        "为不变式与合法移动 API 编写 Vitest：覆盖给定格拒绝、冲突放置、清除/改填等场景。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": 4,
-      "title": "cloneGameState 深拷贝",
-      "description": "实现 cloneGameState(state)，对嵌套数组与 CellState.notes（Set<number>）等引用类型做深拷贝，保证克隆后与原始状态互不影响。不包含业务逻辑变更，仅拷贝语义正确。",
+      "title": "胜负与完成态：全盘填满与冲突检测",
+      "description": "实现胜负相关纯函数：判断盘面是否「已填满」、是否存在「规则冲突」（任意两格违反数独约束）、以及「胜利」条件（通常等价于填满且无冲突）。不实现提示或求解；输出可供 UI/存档使用的简单结论或首个冲突位置（若项目需要调试/高亮）。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "修改克隆副本的某一格 notes 或 value 不改变原 state 的单元测试",
-        "函数签名与 module-plan 中声明一致"
+        "为完成态/冲突/胜利编写 Vitest：含已完成合法盘、含冲突盘、未填满盘等。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": 5,
-      "title": "serializeGameState 与 deserializeGameState",
-      "description": "实现 JSON 序列化与反序列化：将 GameState 转为字符串及还原；Set<number> 在 JSON 中映射为有序数字数组（或项目内统一约定）并在反序列化时恢复为 Set；对非法 JSON、版本/字段缺失、数字越界等输入给出可预测的失败行为（抛错 or Result 类型，需在模块内统一）。可考虑可选的 formatVersion 字段以便后续扩展。",
+      "title": "深拷贝：`cloneGameState`",
+      "description": "实现 `cloneGameState(state)`：对 `GameState` 做深拷贝，特别注意 `CellState.notes` 为 `Set<number>` 时需复制为新 `Set`，避免共享引用导致后续 UI/撤销/序列化串扰。不引入求解逻辑。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "round-trip：serialize → deserialize 后与 clone 等价（结构相等、Set 内容一致）的测试",
-        "非法输入测试至少覆盖非 JSON 字符串与结构不符两类"
+        "编写 Vitest：修改克隆副本不影响原状态，且嵌套结构独立。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": 6,
-      "title": "对外 API 汇总与 lib/core 导出面",
-      "description": "在 suduku/lib/core 提供统一入口（如 index.ts），导出 Grid9、CellState、GameState 类型及 isValidPlacement、cloneGameState、serializeGameState、deserializeGameState 与本模块实现的其它公开规则函数；避免循环依赖；与 module-plan.json 中本模块 interface 字符串对齐。",
+      "title": "存档序列化：`serializeGameState` / `deserializeGameState`",
+      "description": "实现 `serializeGameState` → JSON 字符串与 `deserializeGameState` → `GameState`：将 `Set<number>` 转为可 JSON 的结构（如排序后的数字数组）并约定版本字段或 `schemaVersion` 以便演进。`deserialize` 需校验必填字段、数字范围与结构，对非法输入给出明确错误（抛错或 Result，由实现选定并在测试中覆盖）。不进行求解验证。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "从包外路径仅通过约定入口即可引用本模块公共 API（路径以项目 tsconfig 为准）",
-        "在 lib/core 入口文件或各导出处用简短注释或 TSDoc 标明对外公共 API，与 module-plan 中 interface 一致"
+        "编写 Vitest：典型状态往返一致、缺字段/类型错误/越界数字被拒绝或按约定降级。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
       ],
-      "passes": true
+      "passes": false
     },
     {
       "id": 7,
-      "title": "core-model 模块集成测试与回归",
-      "description": "在 suduku 测试框架下编写覆盖本模块的集成级用例：组合「初始盘面 → 若干合法操作 → 胜负判断 → 序列化往返 → 克隆修改」流程；固定若干小型棋盘 fixture。确保本模块交付可作为 solver-engine 等下游模块的稳定契约。",
+      "title": "公开 API 聚合与文档注释",
+      "description": "在 `suduku/lib/core/index.ts` 统一导出模块对外接口：`Grid9`、`CellState`、`GameState`、`isValidPlacement`、`cloneGameState`、`serializeGameState`、`deserializeGameState` 及本模块新增的必要类型/函数。为关键类型与序列化格式添加简短 JSDoc，便于 `solver-engine` 与 `server-api` 对接。",
       "steps": [
-        "在 suduku 目录下执行 npm run lint 与 npm run build",
-        "执行 suduku 下全部单元测试命令（如 npm test 或项目约定脚本）且全部通过",
-        "测试文件位于 suduku 约定目录（如 lib/core 旁或 tests/），且不引用 lib/solver"
+        "确认从仓库其他路径 `import` 本模块仅依赖 `lib/core` 公开入口即可使用核心能力。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。"
       ],
-      "passes": true
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "模块集成测试与回归清单",
+      "description": "新增 `suduku/lib/core` 级集成测试（如 `integration.test.ts`）：串联「合法移动 → 克隆 → 序列化往返 → 胜负判定」流程；覆盖与下游相关的边界（空笔记、满盘、含给定数）。确保本模块单独验收即可阻断明显契约破坏。",
+      "steps": [
+        "运行并维护与本模块相关的 Vitest 集成用例全部通过。",
+        "在 `suduku` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku` 目录执行 `npm run build` 成功。",
+        "在 `suduku` 目录执行 `npm test` 通过。"
+      ],
+      "passes": false
     }
   ]
 }

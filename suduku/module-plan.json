@@ -19,13 +19,13 @@
       "dependencies": [
         "core-model"
       ],
-      "interface": "type TechniqueId = string; type CandidatesGrid = Set<number>[][]; type CandidateElimination = { r: number; c: number; digits: number[] }; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: CandidateElimination[] }; const TECHNIQUE_IDS: Record<string, TechniqueId>; function computeCandidates(state: GameState): CandidatesGrid; function findTechniques(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): number;",
-      "status": "running"
+      "interface": "type TechniqueId = string; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: unknown[] }; function computeCandidates(state: GameState): CandidatesGrid; function findTechniques(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): number;",
+      "status": "pending"
     },
     {
       "id": "puzzle-generator",
       "title": "唯一解题目生成与难度分档",
-      "description": "生成满足唯一解且符合最少提示（给定数）约束的题目，按目标难度档（简单/普通/困难/地狱）约束所依赖技巧层级与难度分数区间，并产出可复现的随机种子与元数据。",
+      "description": "生成满足唯一解的题目，按目标难度档（简单/普通/困难/地狱）约束所依赖技巧层级与难度分数区间，并产出可复现的随机种子与元数据。不追求最少提示数（17 个），保留适量冗余提示即可保证唯一解且加速生成。单次生成应在 5 秒内完成。",
       "dir": "lib/generator",
       "dependencies": [
         "core-model",

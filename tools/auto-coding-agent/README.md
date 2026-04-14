@@ -40,8 +40,71 @@ npm start
 | `AUTOCODING_PASS_POLL_ATTEMPTS` / `AUTOCODING_PASS_POLL_MS` | Agent 返回 0 后，轮询根目录 `task.json` 是否已把当前任务标为 `passes: true`（默认约 8 次 × 250ms）。 |
 | `AUTOCODING_AGENT_CLI_MAX_CHARS` | 单任务 CLI 输出在内存中保留的最大字符数（默认约 90 万），超出会截断尾部保留。 |
 | `AUTOCODING_TRUST_ZERO_EXIT` | 设为 `1` 时：若 Agent 退出码为 0 但 `passes` 仍未变，**仍视为本步成功**（仅当你确认实现已完成、仅漏改 JSON 时使用）。 |
+| `AUTOCODING_AGENT_IDLE_TIMEOUT_MS` | Agent 无输出超时（毫秒），默认 10 分钟。若 Agent 连续无新输出超过此阈值，自动终止进程。设为 `0` 禁用。 |
 | `CURSOR_CLI` | 自定义 `agent` 可执行文件路径。 |
 | `AUTOCODING_USE_CURSOR_EXE_FALLBACK` | Windows 下 `agent` 失败后再试 `Cursor.exe`（会启动图形界面）。 |
+
+## 模块化开发（大型项目）
+
+对于预计超过 30 个任务的大型项目（如功能完善的数独游戏），建议使用**模块化开发**模式。该模式在现有的「INITIALIZER → CLAUDE 循环」之间增加了一个**模块分解层**：
+
+```
+第 0 层：项目规划（人工 + AI）   →  architecture.md
+第 1 层：模块分解（新增）         →  module-plan.json（模块列表 + 依赖 + 接口）
+第 2 层：任务执行（现有）         →  每个模块独立的 task.json → 逐任务 CLAUDE 循环
+```
+
+### 使用方式
+
+1. 在面板的「新增/重构功能」输入框中**描述项目全貌**
+2. 点击 **「模块化开发（大型项目）」** 按钮
+3. 系统自动：
+   - 调用 Agent 将项目分解为 4-10 个独立模块（生成 `module-plan.json`）
+   - 按依赖拓扑序，为每个模块生成独立的 task.json
+   - 逐模块、逐任务自动执行开发
+
+### 模块计划文件
+
+`module-plan.json` 与项目的 `task.json` 同目录，结构如下：
+
+```json
+{
+  "project": "项目名",
+  "description": "项目描述",
+  "modules": [
+    {
+      "id": "solver",
+      "title": "求解器",
+      "description": "模块职责描述",
+      "dir": "lib/solver",
+      "dependencies": [],
+      "interface": "solve(puzzle) -> solution | null",
+      "status": "pending"
+    }
+  ]
+}
+```
+
+每个模块的任务文件存储在 `modules/{moduleId}.task.json`（相对于 task.json 所在目录）。
+
+### 模块相关 API
+
+| action（POST /api/control） | 说明 |
+|-----|------|
+| `module-decompose` | 分解项目为模块（需 `prompt` 字段） |
+| `module-start` | 继续模块化执行（module-plan.json 已存在时） |
+| `module-reset` | 将所有模块状态重置为 pending |
+| `module-reset-one` | 重置单个模块（需 `moduleId` 字段）；默认同时重置该模块 task.json 中所有任务的 passes 为 false，传 `resetTasks: false` 仅重置模块状态 |
+
+### 与常规开发的区别
+
+| | 常规开发 | 模块化开发 |
+|---|---------|----------|
+| 适用规模 | < 30 任务 | 30+ 任务 |
+| 任务文件 | 单个 task.json | 每模块独立 task.json |
+| 规划时机 | 一次性全量规划 | 按需延迟规划（每个模块开始前） |
+| 上下文负担 | 全部任务在一个文件 | 每次只关注一个模块的 3-10 个任务 |
+| 模块边界 | 无 | 通过 interface 定义模块间接口 |
 
 ## 浏览器 MCP（自动化验收）
 

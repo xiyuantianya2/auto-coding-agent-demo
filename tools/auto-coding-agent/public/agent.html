@@ -281,6 +281,42 @@
         font-weight: 600; font-size: 0.95rem; padding: 0.6rem 1.5rem;
       }
       .btn-init:hover:not(:disabled) { background: #4f46e5; }
+
+      .module-card {
+        background: #0c0c0e; border: 1px solid #27272a; border-radius: 10px;
+        padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem;
+      }
+      .module-card.mod-completed { border-color: #166534; }
+      .module-card.mod-running { border-color: #7c3aed; }
+      .module-card.mod-initializing { border-color: #b45309; }
+      .module-card.mod-failed { border-color: #991b1b; }
+      .module-idx {
+        width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 0.78rem; font-weight: 700;
+      }
+      .module-idx.pending { background: #27272a; color: var(--muted); }
+      .module-idx.initializing { background: #422006; color: #fde68a; }
+      .module-idx.running { background: #4c1d95; color: #ddd6fe; }
+      .module-idx.completed { background: #14532d; color: #bbf7d0; }
+      .module-idx.failed { background: #7f1d1d; color: #fecaca; }
+      .module-info { flex: 1; min-width: 0; }
+      .module-title { font-size: 0.9rem; font-weight: 600; margin: 0; }
+      .module-desc { font-size: 0.78rem; color: var(--muted); margin: 0.15rem 0 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .module-meta { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.25rem; }
+      .module-badge {
+        font-size: 0.72rem; padding: 0.1rem 0.4rem; border-radius: 4px; font-weight: 600;
+      }
+      .module-badge.dep { background: #1e3a5f; color: #93c5fd; }
+      .module-badge.iface { background: #27272a; color: #d4d4d8; }
+      .module-progress {
+        width: 80px; flex-shrink: 0; text-align: right;
+      }
+      .module-progress-bar {
+        height: 4px; background: #27272a; border-radius: 2px; overflow: hidden; margin-top: 0.2rem;
+      }
+      .module-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+      .module-progress-text { font-size: 0.72rem; color: var(--muted); }
     </style>
   </head>
   <body>
@@ -333,7 +369,13 @@
         <div id="wizardQuestionsContainer"></div>
         <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap">
           <button type="button" class="btn-init" id="btnInitProject">开始初始化项目</button>
+          <button type="button" id="btnWizardModuleDecompose" style="background:#4c1d95;border-color:#7c3aed;color:#ddd6fe;font-weight:600;border-radius:8px;padding:0.5rem 1rem;cursor:pointer;font-size:0.95rem;border-width:1px;border-style:solid">
+            模块化开发（大型项目）
+          </button>
           <button type="button" class="btn" id="btnWizardBack" style="background:#27272a;border-color:#3f3f46;color:var(--muted)">&larr; 重新描述</button>
+        </div>
+        <div style="margin-top:0.5rem;font-size:0.78rem;color:var(--muted)">
+          「开始初始化」适用于常规项目 · 「模块化开发」适用于 30+ 任务的大型项目，会先分解为独立模块再逐模块开发
         </div>
       </div>
 
@@ -341,8 +383,8 @@
         <button type="button" class="primary" id="btnStart">开始下一任务</button>
         <button type="button" id="btnPause">暂停</button>
         <button type="button" class="danger" id="btnReset">重置状态</button>
-        <button type="button" class="warn" id="btnResetLinkGame" title="task.json 全 false、删 lib/game、恢复首页、写 progress，并清空面板" style="display:none">
-          清理连连看项目
+        <button type="button" class="warn" id="btnCleanupProject" title="重置 task 完成标记、按项目规则删除生成代码并恢复占位页；写入 progress.txt；终止 agent 并清空面板" style="display:none">
+          清理本项目
         </button>
         <label style="display:inline-flex;align-items:center;gap:0.4rem;font-size:0.85rem;color:var(--muted);cursor:pointer;user-select:none;margin-left:0.5rem">
           <input type="checkbox" id="chkAutoAdvance" checked style="accent-color:var(--accent)">
@@ -374,10 +416,32 @@
           <button type="button" id="btnCustomTask" style="background:#1e3a5f;border-color:#3b82f6;color:#bfdbfe;font-weight:600">
             新增 / 重构
           </button>
+          <button type="button" id="btnModuleDecompose" style="background:#4c1d95;border-color:#7c3aed;color:#ddd6fe;font-weight:600">
+            模块化开发（大型项目）
+          </button>
           <span id="customTaskHint" style="font-size:0.78rem;color:var(--muted)">
-            将调用 Agent 分解需求 → 更新 task.json → 逐任务自动开发
+            「新增/重构」用于常规开发 · 「模块化开发」先将大项目分解为多个独立模块再逐模块开发
           </span>
         </div>
+      </div>
+
+      <!-- ── Module Plan View ── -->
+      <div class="panel" id="modulePlanPanel" style="display:none;border-color:#7c3aed;box-shadow:inset 0 0 0 1px rgba(124,58,237,0.3)">
+        <div class="panel-head" style="margin-bottom:0.75rem">
+          <div>
+            <span style="font-size:1rem;font-weight:600;color:#c4b5fd">模块化开发进度</span>
+            <span id="moduleSummary" style="font-size:0.82rem;color:var(--muted);margin-left:0.75rem"></span>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button type="button" id="btnModuleStart" style="font-size:0.85rem;padding:0.35rem 0.75rem;background:#4c1d95;border-color:#7c3aed;color:#ddd6fe;font-weight:600">
+              继续模块开发
+            </button>
+            <button type="button" id="btnModuleReset" style="font-size:0.85rem;padding:0.35rem 0.75rem;border-color:#7f1d1d;color:#fca5a5">
+              重置模块状态
+            </button>
+          </div>
+        </div>
+        <div id="moduleList" style="display:flex;flex-direction:column;gap:0.5rem"></div>
       </div>
 
       <div class="panel">
@@ -559,9 +623,10 @@
           const st = d.status;
           const isRunning = st === "running";
           const isNewProject = d.totalTaskCount === 0;
+          const hasModulePlan = !!d.modulePlan;
           const hasQuestions = d.wizardQuestions && d.wizardQuestions.length > 0;
-          const showDescribe = isNewProject && !isRunning && !hasQuestions;
-          const showAnswers = isNewProject && !isRunning && hasQuestions;
+          const showDescribe = isNewProject && !isRunning && !hasQuestions && !hasModulePlan;
+          const showAnswers = isNewProject && !isRunning && hasQuestions && !hasModulePlan;
 
           $("wizardDescribe").style.display = showDescribe ? "block" : "none";
           $("wizardAnswers").style.display = showAnswers ? "block" : "none";
@@ -570,7 +635,7 @@
           const tr = $("toolbarRow");
           const ctp = $("customTaskPanel");
           if (tr) tr.style.display = (showDescribe || showAnswers) ? "none" : "flex";
-          if (ctp) ctp.style.display = isNewProject ? "none" : "block";
+          if (ctp) ctp.style.display = (isNewProject && !hasModulePlan) ? "none" : "block";
 
           const badge = $("badgeStatus");
           badge.className =
@@ -652,6 +717,19 @@
           if (btnCt && txtCt) {
             btnCt.disabled = st === "running" || !txtCt.value.trim();
           }
+          const btnMd = $("btnModuleDecompose");
+          if (btnMd && txtCt) {
+            btnMd.disabled = st === "running" || !txtCt.value.trim();
+          }
+
+          renderModulePlan(d.modulePlan);
+          const btnMs = $("btnModuleStart");
+          const btnMr = $("btnModuleReset");
+          if (btnMs) btnMs.disabled = isRunning || !d.modulePlan;
+          if (btnMr) btnMr.disabled = isRunning;
+
+          const btnCp = $("btnCleanupProject");
+          if (btnCp) btnCp.style.display = d.cleanupAvailable ? "" : "none";
 
           const pm = $("agentPromptMeta");
           const pt = $("agentPromptText");
@@ -775,16 +853,13 @@
       $("btnReset").onclick = () => {
         if (confirm("确定重置面板状态？不会撤销已写代码。")) postControl("reset");
       };
-      if (PROJECT_ID === "link-game") {
-        $("btnResetLinkGame").style.display = "";
-      }
-      $("btnResetLinkGame").onclick = () => {
+      $("btnCleanupProject").onclick = () => {
         if (
           confirm(
-            "将执行：task.json 全部 passes 置为 false；删除 link-game/lib/game（若存在）；首页恢复为占位；progress.txt 追加记录；并终止 agent、清空面板（与「重置状态」相同）。已实现的连连看代码将丢失。确定？",
+            "将执行：本项目 task.json 中全部 passes 置为 false；按项目类型删除已生成的实现目录并恢复首页占位；progress.txt 追加记录；并终止 agent、清空面板（与「重置状态」相同）。未列入清理规则的项目仅重置任务标记。已实现的业务代码可能丢失。确定？",
           )
         )
-          postControl("reset-link-game");
+          postControl("cleanup-project");
       };
       $("chkAutoAdvance").addEventListener("change", function () {
         this._userChanged = true;
@@ -802,10 +877,80 @@
         if (!confirm("将根据你的描述自动分解需求并逐步开发。确定开始？")) return;
         postControl("custom-task", { prompt });
       };
+      $("btnModuleDecompose").onclick = () => {
+        const prompt = $("txtCustomPrompt").value.trim();
+        if (!prompt) {
+          alert("请先输入项目描述（在上方输入框中描述你想要构建的大型项目）。");
+          return;
+        }
+        if (!confirm(
+          "模块化开发流程：\n" +
+          "1. 将项目需求分解为多个独立模块（生成 module-plan.json）\n" +
+          "2. 按依赖顺序，为每个模块生成任务列表\n" +
+          "3. 逐模块、逐任务自动开发\n\n" +
+          "适用于大型项目（预计 30+ 个任务）。确定开始？"
+        )) return;
+        postControl("module-decompose", { prompt });
+      };
       $("txtCustomPrompt").addEventListener("input", function () {
         const st = $("badgeStatus").textContent;
-        $("btnCustomTask").disabled = st === "运行中" || !this.value.trim();
+        const disabled = st === "运行中" || !this.value.trim();
+        $("btnCustomTask").disabled = disabled;
+        $("btnModuleDecompose").disabled = disabled;
       });
+
+      // ── Module plan UI ──────────────────────────────────────────
+      function renderModulePlan(mp) {
+        const panel = $("modulePlanPanel");
+        if (!mp) { panel.style.display = "none"; return; }
+        panel.style.display = "block";
+
+        const s = mp.summary;
+        $("moduleSummary").textContent =
+          `共 ${s.total} 个模块 · 已完成 ${s.completed} · 待办 ${s.pending}` +
+          (s.failed > 0 ? ` · 失败 ${s.failed}` : "") +
+          (s.running > 0 ? ` · 进行中 ${s.running}` : "");
+
+        const list = $("moduleList");
+        let html = "";
+        for (let i = 0; i < mp.modules.length; i++) {
+          const m = mp.modules[i];
+          const st = m.status || "pending";
+          const statusIcon = { pending: "○", initializing: "◐", running: "●", completed: "✓", failed: "✗" }[st] || "?";
+          const pct = m.tasks.total > 0 ? Math.round((m.tasks.done / m.tasks.total) * 100) : 0;
+          const taskText = m.tasks.total > 0 ? `${m.tasks.done}/${m.tasks.total}` : "未初始化";
+
+          const deps = (m.dependencies || []).map(d =>
+            `<span class="module-badge dep">← ${escapeHtml(d)}</span>`
+          ).join("");
+
+          html += `
+            <div class="module-card mod-${st}">
+              <div class="module-idx ${st}" title="${st}">${statusIcon}</div>
+              <div class="module-info">
+                <p class="module-title">${escapeHtml(m.title)}</p>
+                <p class="module-desc">${escapeHtml(m.description || "")}</p>
+                <div class="module-meta">
+                  ${deps}
+                  <span class="module-badge iface">${escapeHtml(m.interface || "")}</span>
+                </div>
+                ${m.error ? `<p style="font-size:0.75rem;color:#fca5a5;margin:0.25rem 0 0">${escapeHtml(m.error)}</p>` : ""}
+              </div>
+              <div class="module-progress">
+                <span class="module-progress-text">${taskText}</span>
+                ${m.tasks.total > 0 ? `<div class="module-progress-bar"><div class="module-progress-fill" style="width:${pct}%"></div></div>` : ""}
+              </div>
+            </div>`;
+        }
+        list.innerHTML = html;
+      }
+
+      $("btnModuleStart").onclick = () => postControl("module-start");
+      $("btnModuleReset").onclick = () => {
+        if (confirm("将所有模块状态重置为 pending。已完成的任务标记不受影响。确定？")) {
+          postControl("module-reset");
+        }
+      };
 
       // ── Dev server controls ──────────────────────────────────
       let _devServerRunning = false;
@@ -837,10 +982,13 @@
         let html = "";
         for (const q of questions) {
           const reqMark = q.required !== false ? ' <span class="req">*</span>' : "";
+          const draft = q.placeholder != null ? String(q.placeholder) : "";
           html += '<div class="wiz-group">';
           html += `<label>${escapeHtml(q.label)}${reqMark}</label>`;
           if (q.type === "textarea") {
-            html += `<textarea id="wiz_${q.id}" rows="3" placeholder="${escapeAttr(q.placeholder || "")}"></textarea>`;
+            const lines = draft ? draft.split(/\r?\n/).length : 1;
+            const rows = Math.min(16, Math.max(4, lines + 2));
+            html += `<textarea id="wiz_${q.id}" rows="${rows}">${escapeHtml(draft)}</textarea>`;
           } else if (q.type === "select" && q.options && q.options.length) {
             html += `<select id="wiz_${q.id}">`;
             html += `<option value="">${escapeHtml(q.placeholder || "请选择")}</option>`;
@@ -849,7 +997,7 @@
             }
             html += `</select>`;
           } else {
-            html += `<input id="wiz_${q.id}" placeholder="${escapeAttr(q.placeholder || "")}" />`;
+            html += `<input id="wiz_${q.id}" type="text" value="${escapeAttr(draft)}" />`;
           }
           html += "</div>";
         }
@@ -860,6 +1008,34 @@
         const desc = $("wizDesc").value.trim();
         if (!desc) { alert("请描述你想要构建的项目。"); $("wizDesc").focus(); return; }
         postControl("wizard-analyze", { description: desc });
+      };
+
+      $("btnWizardModuleDecompose").onclick = () => {
+        const answers = [];
+        for (const q of _currentWizardQuestions) {
+          const el = $("wiz_" + q.id);
+          const val = el ? (el.value || "").trim() : "";
+          if (q.required !== false && !val) {
+            alert("请回答：" + q.label);
+            if (el) el.focus();
+            return;
+          }
+          answers.push({ question: q.label, answer: val });
+        }
+        if (!confirm(
+          "模块化开发流程：\n" +
+          "1. 将项目需求分解为多个独立模块（生成 module-plan.json）\n" +
+          "2. 按依赖顺序，为每个模块生成任务列表\n" +
+          "3. 逐模块、逐任务自动开发\n\n" +
+          "适用于大型项目（预计 30+ 个任务）。确定开始？"
+        )) return;
+        const descEl = $("wizOrigDesc");
+        const desc = descEl ? descEl.textContent.trim() : "";
+        let prompt = desc;
+        if (answers.length > 0) {
+          prompt += "\n\n补充信息：\n" + answers.map(a => "Q: " + a.question + "\nA: " + a.answer).join("\n\n");
+        }
+        postControl("module-decompose", { prompt });
       };
 
       $("btnWizardBack").onclick = () => {

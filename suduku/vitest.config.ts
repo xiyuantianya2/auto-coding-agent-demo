@@ -14,6 +14,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["lib/**/*.test.ts", "content/**/*.test.ts", "server/**/*.test.ts"],
+    passWithNoTests: true,
     /** `generatePuzzle` + `verifyUniqueSolution` 在部分环境下可略超 5s；避免误杀。 */
     testTimeout: 15_000,
   },

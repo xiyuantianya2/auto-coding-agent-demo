@@ -1,78 +1,57 @@
 /**
- * 9×9 matrix of digits. Each entry is {@link EMPTY_CELL} or a digit 1–9.
- * This is the compact “numbers only” view (e.g. puzzle givens).
+ * 9×9 盘面，行优先索引。`0` 表示空位，`1`–`9` 为数字。
+ * 常用于题目 givens、生成器输出或与 {@link CellState} 并存的纯数字视图。
  */
-export type Grid9 = number[][] & { length: 9 };
+export type Grid9 = number[][];
 
 /**
- * One playable cell. **Semantics (do not mix incorrectly):**
+ * 单个单元格的纯数据状态（逻辑层）。
  *
- * - **`given`** — Original puzzle clue (1–9). Immutable for the session when present.
- *   Cells with a given are not player-authored.
- * - **`value`** — Digit the **player** placed in an empty cell (1–9). Mutually exclusive
- *   with `given`: a clue cell uses `given` only; a blank cell may gain `value` and/or `notes`.
- * - **`notes`** — Pencil marks (candidates); only meaningful when the cell is not solved
- *   by a single digit (`given` or `value`).
+ * - **`given`**：题目提示数（1–9）。存在时表示该格为题面锁定格，后续规则层应禁止玩家清除或改填（除非产品明确允许「擦除题目」，本模块默认不可改）。
+ * - **`value`**：玩家填入的解答（1–9）。空表示未填。与 `given` 同时存在时，显示与校验应以 `given` 为准（`value` 可视为冗余或用于回放，具体由后续任务统一）。
+ * - **`notes`**：铅笔候选集合，元素为 1–9 的子集。填数模式下通常与「当前显示数字」互斥：有确定填数时应清空笔记；仅笔记模式下可无 `given`/`value` 仅有 `notes`。
  */
-export type CellState = {
-  /** Puzzle clue digit (1–9). If set, the cell is fixed for this game. */
+export interface CellState {
   given?: number;
-  /** Player-entered digit (1–9) for a non-clue cell. */
   value?: number;
-  /** Pencil marks; typically empty when `given` or `value` is set. */
   notes?: Set<number>;
-};
+}
 
-/** Difficulty tier for generated / endless puzzles (see `ProgressPayload` in server module). */
+/** 棋盘输入：填数字或记笔记。 */
+export type InputMode = "value" | "notes";
+
+/** 与 `module-plan` 中无尽难度档一致。 */
 export type DifficultyTier = "easy" | "normal" | "hard" | "hell";
 
 /**
- * High-level play mode. Used for routing, UI, and what gets persisted in {@link GameArchiveSlice}.
+ * 高层游戏模式（纯数据，供存档 / UI / server 路由）。
+ * `solver-engine` 仅依赖其中的盘面 {@link GameState.cells}，此处为扩展预留。
  */
 export type GameMode =
-  | { kind: "classic" }
+  | { kind: "free" }
   | { kind: "endless"; tier: DifficultyTier; levelIndex: number }
-  | { kind: "tutorial"; chapterId: string; stepIndex: number }
-  | { kind: "practice"; techniqueId: string };
+  | { kind: "practice"; techniqueId: string }
+  | { kind: "tutorial"; chapterId: string };
 
 /**
- * Subset of long-term progress that the core model carries for save/load and mode switching.
- * Mirrors the shape used by persistence APIs without importing server code.
+ * 一局游戏的完整快照：盘面 + 输入与计时等元数据。
+ * `cells` 为 9×9，与 {@link BOARD_SIZE} 一致；行 `r`、列 `c` 为 0 起始。
  */
-export type GameArchiveSlice = {
-  /** Endless mode: keyed by difficulty tier string. */
-  endlessProgress: Record<
-    string,
-    { currentLevel: number; bestTimesMs: Record<number, number> }
-  >;
-  /** Technique / practice drills. */
-  practiceProgress: Record<
-    string,
-    { unlocked: boolean; streak: number; bestTimeMs?: number }
-  >;
-  /** Tutorial chapter completion flags. */
-  tutorialProgress: Record<string, boolean>;
-};
-
-/**
- * Full in-memory game snapshot: board + mode + archival fields + optional timing metadata.
- */
-export type GameState = {
-  formatVersion: number;
-  /** Row-major 9×9 playable cells (with notes as `Set`s). */
+export interface GameState {
+  /** 与序列化格式一致，用于向后兼容演进。 */
+  schemaVersion: number;
+  /** 9×9；类型上长度由调用方保证，规则函数将校验索引与尺寸。 */
   cells: CellState[][];
+  /** 当前主输入模式（填数 / 笔记）。 */
+  inputMode: InputMode;
+  /** 是否暂停（仅标志；累计时间在 `elapsedMs`）。 */
+  paused: boolean;
+  /** 已累计的游玩毫秒（暂停策略由 UI 层解释）。 */
+  elapsedMs: number;
+  /** 当前模式（无尽 / 专项 / 教学等）。 */
   mode: GameMode;
-  archive: GameArchiveSlice;
-  /** Seed for the active generated puzzle (endless / practice), if any. */
-  puzzleSeed?: string;
-  /** Monotonic session clock anchors (optional until UI wires timer). */
-  startedAtMs?: number;
-  elapsedMs?: number;
-  /**
-   * 主输入模式：填数字 vs 铅笔笔记（由笔记模块 `setMode` 写入）。
-   *
-   * **与存档兼容：** 旧版快照无此字段时，行为上等价于 `fill`；反序列化时缺省 `undefined`。
-   * 新增持久化字段不改变 `formatVersion`（仍为版本 1），仅扩展可选键。
-   */
-  inputMode?: "fill" | "notes";
-};
+  /** 题目或存档标识（可选）。 */
+  puzzleId?: string;
+  /** 当前选中格（可选，供 UI 与提示高亮）。 */
+  selection?: { r: number; c: number } | null;
+}

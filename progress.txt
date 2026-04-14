@@ -1,5 +1,18 @@
 # Progress Log
 
+## 2026-04-14 - 面板：数独项目清理（一键重置）
+
+### What was done:
+- `suduku/task.json`：全部任务 `passes` 已设为 `false`、`suduku\module-plan.json` 模块状态已重置为 pending。
+- `suduku/modules/`：若存在则已删除。
+- 按 `module-plan.json` 中各模块目录清理实现代码（`app/` 仅恢复 `page.tsx` 占位）；`components/` 若存在则已删除。
+- 面板：与「重置状态」一致处理。
+
+### Notes:
+- 请从模块化任务或 `suduku/task.json` 重新推进。
+
+---
+
 ## 2026-04-14 - Task: 测试与整体验收（duiduipeng id=31）
 
 ### What was done:

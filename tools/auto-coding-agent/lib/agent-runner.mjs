@@ -4,6 +4,7 @@
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 
 /**
  * @param {string} command
@@ -164,6 +165,30 @@ function shouldApproveMcps() {
  * @param {string} workspaceRoot
  * @param {string} agentMessage
  */
+/**
+ * Agent 子进程在连接 Cursor 后端时常见的瞬时网络 / TLS 失败（可重试）。
+ * @param {string} stderr
+ */
+function isLikelyTransientNetworkFailure(stderr) {
+  const s = String(stderr || "");
+  if (!s.trim()) return false;
+  return /before secure TLS|TLS connection|socket disconnected|ECONNRESET|ECONNREFUSED|ETIMEDOUT|socket hang up|\[aborted\]|Failed to fetch|fetch failed|UND_ERR_(CONNECT|SOCKET|RESPONSE)|ENOTFOUND|EAI_AGAIN/i.test(
+    s,
+  );
+}
+
+function networkRetryConfig() {
+  const raw = process.env.AUTOCODING_AGENT_NETWORK_RETRIES;
+  const extra = raw === undefined || raw === ""
+    ? 3
+    : Math.max(0, parseInt(String(raw), 10) || 0);
+  const baseMs = Math.max(
+    200,
+    parseInt(process.env.AUTOCODING_AGENT_NETWORK_RETRY_MS ?? "2000", 10) || 2000,
+  );
+  return { extraRetries: extra, baseDelayMs: baseMs };
+}
+
 function buildStandaloneArgs(modelRaw, workspaceRoot, agentMessage) {
   const args = ["-p", "-f", "--trust"];
   if (shouldApproveMcps()) {
@@ -228,9 +253,27 @@ export async function runCursorAgent(workspaceRoot, agentMessage, modelOverride,
     }
   }
 
+  const { extraRetries, baseDelayMs } = networkRetryConfig();
+
   let lastStderr = "";
   for (const { cmd, args } of attempts) {
-    const result = await runChild(cmd, args, root, timeoutMs, hooks);
+    let result = await runChild(cmd, args, root, timeoutMs, hooks);
+
+    for (let r = 0; r < extraRetries; r++) {
+      if (result.code === 0) break;
+      if (!isLikelyTransientNetworkFailure(result.stderr)) break;
+      const waitMs = baseDelayMs * 2 ** r;
+      const note =
+        `\n[auto-coding-agent] 检测到瞬时网络/TLS 错误，${r + 1}/${extraRetries} 次重试（${waitMs}ms 后）…\n`;
+      hooks?.onStderr?.(note);
+      await sleep(waitMs);
+      const next = await runChild(cmd, args, root, timeoutMs, hooks);
+      result = {
+        ...next,
+        stderr: (result.stderr || "") + note + (next.stderr || ""),
+      };
+    }
+
     if (result.code === 0) {
       return result;
     }
