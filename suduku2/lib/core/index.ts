@@ -40,3 +40,13 @@ export {
   getEffectiveDigitAt,
   isValidPlacement,
 } from "./placement";
+
+export {
+  findFirstRuleConflictPair,
+  hasRuleConflict,
+  isBoardFilled,
+  isVictory,
+  listRuleConflictPairs,
+} from "./game-outcome";
+
+export type { RuleConflictPair } from "./game-outcome";
