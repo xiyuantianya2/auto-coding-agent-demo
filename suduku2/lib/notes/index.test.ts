@@ -134,18 +134,80 @@ describe("applyCommand (setMode / toggle / clearCell)", () => {
     expect(serializeGameState(out)).toBe(serializeGameState(state));
   });
 
-  it("fill / undo / redo branches are still not implemented", () => {
+  it("undo / redo branches are still not implemented", () => {
     const state = makeMinimalState();
     const candidates = computeCandidates(state);
-    expect(() =>
-      applyCommand(state, { type: "fill", payload: { r: 0, c: 0, digit: 1 } }, candidates),
-    ).toThrow("not implemented");
     expect(() => applyCommand(state, { type: "undo", payload: {} }, candidates)).toThrow(
       "not implemented",
     );
     expect(() => applyCommand(state, { type: "redo", payload: {} }, candidates)).toThrow(
       "not implemented",
     );
+  });
+});
+
+describe("applyCommand (fill) + syncNotesAfterValue", () => {
+  it("legal fill updates grid/cells and syncs notes like syncNotesAfterValue alone", () => {
+    const base = makeMinimalState();
+    base.cells[0][1] = { notes: new Set([5, 6]) };
+    base.cells[1][0] = { notes: new Set([4, 5]) };
+    base.cells[1][1] = { notes: new Set([5]) };
+
+    const state = cloneGameState(base);
+    state.grid[0][0] = 5;
+    state.cells[0][0] = { value: 5 };
+
+    const candidatesAfter = computeCandidates(state);
+    const expected = syncNotesAfterValue(state, candidatesAfter);
+
+    const beforeFill = computeCandidates(base);
+    const out = applyCommand(
+      base,
+      { type: "fill", payload: { r: 0, c: 0, digit: 5 } },
+      beforeFill,
+    );
+
+    expect(serializeGameState(out)).toBe(serializeGameState(expected));
+    expect(base.grid[0][0]).toBe(EMPTY_CELL);
+  });
+
+  it("legal fill matches manual fill then syncNotesAfterValue (solver candidates)", () => {
+    const base = makeMinimalState();
+    const candidates = computeCandidates(base);
+
+    const manual = cloneGameState(base);
+    manual.grid[0][0] = 1;
+    manual.cells[0][0] = { value: 1 };
+    const afterSync = syncNotesAfterValue(manual, candidates);
+
+    const viaCmd = applyCommand(base, { type: "fill", payload: { r: 0, c: 0, digit: 1 } }, candidates);
+    expect(serializeGameState(viaCmd)).toBe(serializeGameState(afterSync));
+  });
+
+  it("illegal fill leaves state unchanged (clone of prior)", () => {
+    const state = makeMinimalState();
+    state.mode = "notes";
+    const candidates = computeCandidates(state);
+    const out = applyCommand(state, { type: "fill", payload: { r: 0, c: 0, digit: 1 } }, candidates);
+    expect(serializeGameState(out)).toBe(serializeGameState(state));
+    expect(out).not.toBe(state);
+  });
+
+  it("illegal fill: conflicting digit returns unchanged logical state", () => {
+    const state = makeMinimalState();
+    state.grid[0][1] = 1;
+    state.cells[0][1] = { value: 1 };
+    const candidates = computeCandidates(state);
+
+    const out = applyCommand(state, { type: "fill", payload: { r: 0, c: 0, digit: 1 } }, candidates);
+    expect(serializeGameState(out)).toBe(serializeGameState(state));
+  });
+
+  it("illegal fill: bad payload returns unchanged logical state", () => {
+    const state = makeMinimalState();
+    const candidates = computeCandidates(state);
+    const out = applyCommand(state, { type: "fill", payload: { r: "x", c: 0, digit: 1 } }, candidates);
+    expect(serializeGameState(out)).toBe(serializeGameState(state));
   });
 });
 

@@ -22,6 +22,7 @@ import {
   getEffectiveDigitAt,
   isFilledDigit,
   isLegalClearCell,
+  isLegalFill,
   isLegalToggleNote,
   type GameState,
 } from "@/lib/core";
@@ -78,10 +79,17 @@ export type UndoRedoApi = {
  *
  * ### 非法命令与未实现分支
  *
- * - **`setMode` / `toggle` / `clearCell`**：若 `payload` 形状不符推荐约定，或经 `@/lib/core` 规则判定为非法操作
- *   （例如 `fill` 模式下切换笔记、清除给定格），**不修改逻辑状态**，返回 {@link cloneGameState}`(state)` 的**新克隆**
- *   （与输入盘面快照等价，不抛出异常）。
- * - **`fill` / `undo` / `redo`**：后续任务实现；当前调用仍抛出 `Error`，`message` 为 `'not implemented'`。
+ * - **`setMode` / `toggle` / `clearCell` / `fill`**：若 `payload` 形状不符推荐约定，或经 `@/lib/core` 规则判定为非法操作
+ *   （例如 `notes` 模式下填数、违反 {@link import("@/lib/core").isLegalFill `isLegalFill`}），**不修改逻辑状态**，返回
+ *   {@link cloneGameState}`(state)` 的**新克隆**（与输入盘面快照等价，不抛出异常）。
+ * - **`undo` / `redo`**：后续任务实现；当前调用仍抛出 `Error`，`message` 为 `'not implemented'`。
+ *
+ * ### `fill` 与 `candidates`（避免双份候选实现）
+ *
+ * 合法 `fill` 先在克隆上写入 `grid` / `cells`（与 `@/lib/core` 不变式一致），再对**更新后**的盘面调用
+ * {@link syncNotesAfterValue}`(next, candidates)`。`candidates` 应由调用方用 `@/lib/solver` 的
+ * {@link import("@/lib/solver").computeCandidates `computeCandidates`} 生成。推荐与典型 UI 一致：**在调用
+ * `applyCommand` 之前**对**当前**（填数前）盘面执行一次 `computeCandidates` 并传入 —— 与上一帧用于渲染笔记/高亮的候选网格相同，避免在命令路径内重复计算。若希望与填数后盘面严格对齐（例如仅做交集修剪），可改为传入 `computeCandidates(填数后的中间状态)`，但需自行在 UI 层保持与显示一致。
  *
  * 合法分支均在内部 `clone` 上变更，**从不**就地修改入参 `state`。
  */
@@ -90,8 +98,6 @@ export function applyCommand(
   cmd: NotesCommand,
   candidates: CandidatesGrid,
 ): GameState {
-  void candidates;
-
   switch (cmd.type) {
     case "setMode": {
       const p = cmd.payload as { mode?: unknown };
@@ -159,7 +165,28 @@ export function applyCommand(
       next.grid[r][c] = getEffectiveDigitAt(next, r, c);
       return next;
     }
-    case "fill":
+    case "fill": {
+      const p = cmd.payload as { r?: unknown; c?: unknown; digit?: unknown };
+      if (
+        typeof p.r !== "number" ||
+        typeof p.c !== "number" ||
+        typeof p.digit !== "number" ||
+        !Number.isInteger(p.r) ||
+        !Number.isInteger(p.c) ||
+        !Number.isInteger(p.digit)
+      ) {
+        return cloneGameState(state);
+      }
+      const { r, c, digit } = p;
+      if (!isLegalFill(state, r, c, digit)) {
+        return cloneGameState(state);
+      }
+      const next = cloneGameState(state);
+      next.grid[r][c] = digit;
+      const prev = next.cells[r][c];
+      next.cells[r][c] = { given: prev.given, value: digit };
+      return syncNotesAfterValue(next, candidates);
+    }
     case "undo":
     case "redo":
       throw new Error("not implemented");
