@@ -1,8 +1,7 @@
 /**
  * **局域网服务、账号与 JSON 持久化（`module-plan.json` → `server-api`）**
  *
- * 本目录为 **Node.js** 侧逻辑（`fs` / `http` / `crypto`），与 Next.js 页面代码解耦；后续任务在此实现
- * HTTP 与本地 JSON 存储，本文件仅提供**稳定类型与异步 API 骨架**。
+ * 本目录为 **Node.js** 侧逻辑（`fs` / `http` / `crypto`），与 Next.js 页面代码解耦；已实现本地 JSON 存储层与注册/登录（任务 2–3），后续任务补充会话校验、进度合并与 HTTP。
  *
  * @packageDocumentation
  */
@@ -51,34 +50,26 @@ export {
 } from "./storage/progress-payload";
 
 /**
- * 注册新用户：写入用户名索引与凭证（后续任务）。
+ * 注册与登录（任务 3）。`passwordHash` / `login.password` 的产品语义见 {@link "./register-login"} 文件头注释。
  *
- * @param username 显示名 / 登录名，唯一性由后续存储层保证。
- * @param passwordHash 客户端或服务端约定格式的密码摘要；本骨架不校验。
- * @returns 新用户的 {@link UserId}
+ * @param username 登录名；经 `trim` 后非空；唯一性由 `username-index.json` 保证。
+ * @param passwordHash 与 `module-plan` 一致：服务端**原样**持久化，供登录时与 `password` 常量时间比对。
  */
-export async function registerUser(
-  username: string,
-  passwordHash: string,
-): Promise<UserId> {
-  void username;
-  void passwordHash;
-  throw new Error(SERVER_API_NOT_IMPLEMENTED);
-}
+export { registerUser } from "./register-login";
 
 /**
- * 登录并获取会话 token（后续任务：凭证校验与会话签发）。
- *
- * @param password 与注册时 `passwordHash` 约定一致的比对材料（产品语义由任务 3 固定）。
+ * @param password 与注册时写入 `credentials.json` 的 `passwordHash` **同一约定**下的比对串（字段名不同，字节序列应一致）。
+ * @returns 成功时返回不透明 `token`（任务 4 将定义校验策略）；当前为随机串占位。
  */
-export async function login(
-  username: string,
-  password: string,
-): Promise<{ token: string }> {
-  void username;
-  void password;
-  throw new Error(SERVER_API_NOT_IMPLEMENTED);
-}
+export { login } from "./register-login";
+
+export {
+  LOGIN_FAILED_MESSAGE,
+  LoginFailedError,
+  RegistrationInputError,
+  UsernameTakenError,
+  constantTimeEqualCredentialStrings,
+} from "./register-login";
 
 /**
  * 加载用户进度；无存档时应等价于 {@link createEmptyProgressPayload}（本骨架直接返回空对象）。

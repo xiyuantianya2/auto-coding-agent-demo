@@ -35,7 +35,7 @@
         "Vitest：覆盖注册成功、重复用户名失败、错误密码登录失败；凭证文件内容符合预期结构",
         "说明文档或注释中固定「passwordHash / login.password」的产品语义，避免前后端理解不一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,

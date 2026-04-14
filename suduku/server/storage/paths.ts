@@ -9,6 +9,17 @@ export const USER_FILES = {
   progress: "progress.json",
 } as const;
 
+/** 数据根下全局用户名 → userId 索引（JSON 单文件）。 */
+export const USERNAME_INDEX_FILE = "username-index.json";
+
+export function getUsernameIndexPath(dataRoot: string): string {
+  return path.join(dataRoot, USERNAME_INDEX_FILE);
+}
+
+export function getUserCredentialsPath(dataRoot: string, userId: string): string {
+  return path.join(getUserDir(dataRoot, userId), USER_FILES.credentials);
+}
+
 const USER_ID_FORBIDDEN = /[/\\]|\.\./;
 
 export class InvalidUserIdError extends Error {
