@@ -5,7 +5,7 @@
  * `Grid9`、`CellState`、`GameState`，以及后续任务将实现的
  * `isValidPlacement`、`cloneGameState`、`serializeGameState`、`deserializeGameState`。
  *
- * 任务 2 起导出规则校验与读盘辅助；任务 3 起导出单元格不变式与组合合法落子判定；其余序列化/克隆等见后续任务。
+ * 任务 2 起导出规则校验与读盘辅助；任务 3 起导出单元格不变式与组合合法落子判定；任务 5 起导出 `cloneGameState`；其余序列化等见后续任务。
  *
  * @see {@link Grid9} {@link CellState} {@link GameState}
  */
@@ -40,6 +40,8 @@ export {
   getEffectiveDigitAt,
   isValidPlacement,
 } from "./placement";
+
+export { cloneGameState } from "./clone";
 
 export {
   findFirstRuleConflictPair,
