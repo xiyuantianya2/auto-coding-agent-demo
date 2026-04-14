@@ -42,13 +42,32 @@ export type NotesCommand = {
 };
 
 /**
- * 撤销/重做栈 API；快照须与 `@/lib/core` 的 {@link import("@/lib/core").cloneGameState `cloneGameState`} 深拷贝语义一致（见后续任务实现说明）。
+ * 撤销/重做栈 API。
+ *
+ * 实现为**线性历史 + 游标**：每次 {@link UndoRedoApi.push} 将传入盘面用
+ * {@link import("@/lib/core").cloneGameState `cloneGameState`} 深拷贝后接到历史末尾，并丢弃当前游标之后的「重做分支」。
+ * 存储与返回的 `GameState` 均不共享 `Set` 等可变引用，避免后续修改污染历史。
+ *
+ * 极端长会话下栈深会随 `push` 次数增长；本模块不对历史做压缩或「最小内存」优化，调用方可自行限制步数或定期清空实例。
  */
 export type UndoRedoApi = {
+  /**
+   * 将当前盘面快照压入撤销历史：内部使用 `cloneGameState(snapshot)`，随后清空重做分支（与标准编辑器行为一致）。
+   */
   push(snapshot: GameState): void;
+  /**
+   * 将游标移向上一快照并返回该状态；若已在最早快照（含尚无历史）则返回 `null`。
+   * 返回值为新克隆，可安全修改而不影响栈内存储。
+   */
   undo(): GameState | null;
+  /**
+   * 将游标移向下一快照并返回该状态；若无可用重做则返回 `null`。
+   * 返回值为新克隆，可安全修改而不影响栈内存储。
+   */
   redo(): GameState | null;
+  /** 当且仅当 `undo()` 会返回非 `null` 时为 `true`。 */
   canUndo(): boolean;
+  /** 当且仅当 `redo()` 会返回非 `null` 时为 `true`。 */
   canRedo(): boolean;
 };
 
@@ -189,24 +208,40 @@ function removeNoteDigitFromEmptyCell(
 }
 
 /**
- * 创建撤销/重做栈实例。
- *
- * @returns 占位实现：栈空、`undo`/`redo` 返回 `null`；后续任务将改为基于 `cloneGameState` 的完整语义。
+ * 创建撤销/重做栈实例（线性历史 + 游标；`push` / `undo` / `redo` 均为 O(1) 摊销栈操作加单次 `cloneGameState` 成本）。
  */
 export function createUndoRedo(): UndoRedoApi {
+  /** 深拷贝后的快照序列；下标 `0` 为最旧。 */
+  const history: GameState[] = [];
+  /** 指向当前历史位置；`-1` 表示尚未有任何 `push`。 */
+  let cursor = -1;
+
   return {
-    push() {},
+    push(snapshot) {
+      const next = history.slice(0, cursor + 1);
+      history.length = 0;
+      history.push(...next, cloneGameState(snapshot));
+      cursor = history.length - 1;
+    },
     undo() {
-      return null;
+      if (cursor <= 0) {
+        return null;
+      }
+      cursor -= 1;
+      return cloneGameState(history[cursor]!);
     },
     redo() {
-      return null;
+      if (cursor < 0 || cursor >= history.length - 1) {
+        return null;
+      }
+      cursor += 1;
+      return cloneGameState(history[cursor]!);
     },
     canUndo() {
-      return false;
+      return cursor > 0;
     },
     canRedo() {
-      return false;
+      return cursor >= 0 && cursor < history.length - 1;
     },
   };
 }

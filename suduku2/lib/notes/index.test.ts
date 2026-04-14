@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  cloneGameState,
   EMPTY_CELL,
   serializeGameState,
   type CellState,
@@ -26,7 +27,7 @@ function makeMinimalState(): GameState {
 }
 
 describe("@/lib/notes skeleton (task 1)", () => {
-  it("createUndoRedo returns a consistent empty-stack placeholder", () => {
+  it("createUndoRedo starts with no undo/redo until history exists", () => {
     const api = createUndoRedo();
     expect(api.canUndo()).toBe(false);
     expect(api.canRedo()).toBe(false);
@@ -41,6 +42,79 @@ describe("@/lib/notes skeleton (task 1)", () => {
     expect(() =>
       applyCommand(state, { type: "setMode", payload: { mode: "notes" } }, candidates),
     ).toThrow("not implemented");
+  });
+});
+
+describe("createUndoRedo", () => {
+  it("supports consecutive push and canUndo after the first checkpoint", () => {
+    const api = createUndoRedo();
+    const a = makeMinimalState();
+    const b = cloneGameState(a);
+    b.grid[0][0] = 3;
+    b.cells[0][0] = { value: 3 };
+
+    api.push(a);
+    expect(api.canUndo()).toBe(false);
+    expect(api.canRedo()).toBe(false);
+
+    api.push(b);
+    expect(api.canUndo()).toBe(true);
+    expect(api.canRedo()).toBe(false);
+  });
+
+  it("undo/redo round-trip restores snapshots", () => {
+    const api = createUndoRedo();
+    const first = makeMinimalState();
+    const second = cloneGameState(first);
+    second.mode = "notes";
+
+    api.push(first);
+    api.push(second);
+
+    const u = api.undo();
+    expect(u).not.toBeNull();
+    expect(u!.mode).toBe("fill");
+
+    const r = api.redo();
+    expect(r).not.toBeNull();
+    expect(r!.mode).toBe("notes");
+  });
+
+  it("push after undo clears the redo branch (canRedo becomes false)", () => {
+    const api = createUndoRedo();
+    const s0 = makeMinimalState();
+    const s1 = cloneGameState(s0);
+    s1.mode = "notes";
+
+    api.push(s0);
+    api.push(s1);
+    expect(api.undo()!.mode).toBe("fill");
+    expect(api.canRedo()).toBe(true);
+
+    api.push(cloneGameState(s0));
+    expect(api.canRedo()).toBe(false);
+    expect(api.redo()).toBeNull();
+  });
+
+  it("does not let mutations to saved or returned states corrupt the stack (reference isolation)", () => {
+    const api = createUndoRedo();
+    const older = makeMinimalState();
+    older.cells[4][4] = { notes: new Set([1, 2]) };
+    const newer = cloneGameState(older);
+    newer.cells[4][4] = { notes: new Set([7, 8]) };
+
+    api.push(older);
+    api.push(newer);
+
+    older.cells[4][4] = { notes: new Set([99]) };
+
+    const undone = api.undo()!;
+    expect([...(undone.cells[4][4].notes ?? [])].sort((a, b) => a - b)).toEqual([1, 2]);
+
+    undone.cells[4][4] = { notes: new Set([5, 6]) };
+
+    const redone = api.redo()!;
+    expect([...(redone.cells[4][4].notes ?? [])].sort((a, b) => a - b)).toEqual([7, 8]);
   });
 });
 
