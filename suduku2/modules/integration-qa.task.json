@@ -99,7 +99,7 @@
         "在 `suduku2` 目录执行 `npm test` 并确保全部通过。",
         "在 `suduku2` 目录执行 `npm run test:e2e` 通过；确认 `runAcceptanceSuite` 在本地返回 `passed: true` 且 `report` 含本次摘要。"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
