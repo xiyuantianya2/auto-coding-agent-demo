@@ -2,8 +2,10 @@ import { test, expect } from "@playwright/test";
 import {
   getCurriculumTree,
   getPracticeModeForTechnique,
+  isChapterUnlocked,
   listKnownTechniqueIds,
   validateCurriculumTechniqueIds,
+  validateUnlockGraph,
   type CurriculumNode,
 } from "@/content/curriculum";
 import { TECHNIQUE_IDS } from "@/lib/solver";
@@ -85,5 +87,28 @@ test.describe("Suduku tutorial curriculum (contract smoke)", () => {
     expect(listKnownTechniqueIds().length).toBe(
       Object.keys(TECHNIQUE_IDS).length,
     );
+  });
+
+  test("validateUnlockGraph: production tree is a valid DAG", () => {
+    expect(validateUnlockGraph(getCurriculumTree())).toEqual({ ok: true });
+  });
+
+  test("isChapterUnlocked: first chapter with no prerequisites", () => {
+    const tree = getCurriculumTree();
+    const root = tree.find((n) => n.unlockAfter === undefined);
+    expect(root).toBeDefined();
+    if (root) {
+      expect(isChapterUnlocked(root, new Set())).toBe(true);
+    }
+  });
+
+  test("isChapterUnlocked: linear chain requires prior ids", () => {
+    const tree = getCurriculumTree();
+    const withDeps = tree.filter((n) => (n.unlockAfter?.length ?? 0) > 0);
+    expect(withDeps.length).toBeGreaterThan(0);
+    const node = withDeps[0]!;
+    expect(isChapterUnlocked(node, new Set())).toBe(false);
+    const done = new Set(node.unlockAfter!);
+    expect(isChapterUnlocked(node, done)).toBe(true);
   });
 });

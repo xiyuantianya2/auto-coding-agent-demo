@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { TECHNIQUE_IDS } from "@/lib/solver";
 
-import type { CurriculumNode } from "./index";
+import type { CurriculumNode } from "./types";
 import {
   listKnownTechniqueIds,
   validateCurriculumTechniqueIds,

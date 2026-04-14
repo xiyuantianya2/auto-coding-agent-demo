@@ -46,7 +46,7 @@
         "Vitest：构造含环、缺失 id、合法 DAG 的样本，断言校验与 isChapterUnlocked 行为符合预期",
         "不在此任务实现网络或 JSON 存档，仅纯数据与纯函数"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

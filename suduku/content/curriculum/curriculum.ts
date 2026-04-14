@@ -8,8 +8,9 @@
 
 import { TECHNIQUE_IDS } from "@/lib/solver";
 
-import type { CurriculumNode } from "./index";
+import type { CurriculumNode } from "./types";
 import { validateCurriculumTechniqueIds } from "./technique-validation";
+import { validateUnlockGraph } from "./unlock-graph";
 
 /**
  * 与 {@link TECHNIQUE_RESOLUTION_ORDER} 一致的教学递进：每章一至多个技巧，全书覆盖引擎已知技巧。
@@ -95,6 +96,13 @@ const validation = validateCurriculumTechniqueIds(CURRICULUM_NODES_RAW);
 if (!validation.ok) {
   throw new Error(
     `curriculum: technique id validation failed: ${JSON.stringify(validation.errors)}`,
+  );
+}
+
+const unlockValidation = validateUnlockGraph(CURRICULUM_NODES_RAW);
+if (!unlockValidation.ok) {
+  throw new Error(
+    `curriculum: unlock graph validation failed: ${JSON.stringify(unlockValidation.errors)}`,
   );
 }
 
