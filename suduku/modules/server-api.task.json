@@ -68,7 +68,7 @@
         "Vitest：对固定 mock rng 或固定种子，断言返回的 PuzzleSpec 与直接调用 generatePuzzle 一致；四档 DifficultyTier 各至少一次冒烟",
         "确保 import 路径使用 @/lib/generator，与 suduku tsconfig paths 一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,

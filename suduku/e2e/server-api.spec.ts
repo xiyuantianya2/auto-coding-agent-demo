@@ -3,10 +3,10 @@ import os from "node:os";
 import path from "node:path";
 
 import { test, expect } from "@playwright/test";
+import { verifyUniqueSolution } from "@/lib/generator";
 import {
   LOGIN_FAILED_MESSAGE,
   LoginFailedError,
-  SERVER_API_NOT_IMPLEMENTED,
   SUDUKU_SESSION_SECRET_ENV,
   UsernameTakenError,
   createEmptyProgressPayload,
@@ -127,9 +127,22 @@ test.describe("Suduku server-api (Node-side)", () => {
     });
   });
 
-  test("requestNextPuzzle is not implemented yet", async () => {
-    await expect(requestNextPuzzle("u", "easy")).rejects.toThrow(
-      SERVER_API_NOT_IMPLEMENTED,
-    );
+  test("requestNextPuzzle returns canonical seed, givens, and a uniquely solvable grid", async () => {
+    const spec = await requestNextPuzzle("e2e-puzzle-user", "easy");
+    expect(spec.seed).toMatch(/^[0-9a-f]{32}$/);
+    expect(spec.givens).toHaveLength(9);
+    expect(spec.givens.every((row) => row.length === 9)).toBe(true);
+    expect(typeof spec.difficultyScore).toBe("number");
+    expect(Array.isArray(spec.requiredTechniques)).toBe(true);
+    expect(verifyUniqueSolution(spec.givens)).toBe(true);
+  });
+
+  test("requestNextPuzzle smoke: easy and normal tiers (full generator pipeline)", async () => {
+    const userId = "e2e-tier-smoke";
+    for (const tier of ["easy", "normal"] as const) {
+      const spec = await requestNextPuzzle(userId, tier);
+      expect(spec.seed).toMatch(/^[0-9a-f]{32}$/);
+      expect(verifyUniqueSolution(spec.givens)).toBe(true);
+    }
   });
 });

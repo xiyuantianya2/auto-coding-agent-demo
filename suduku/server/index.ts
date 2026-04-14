@@ -112,15 +112,8 @@ export async function saveProgress(
 }
 
 /**
- * 按难度档请求下一题（后续任务：调用 `generatePuzzle` 等）。
+ * 按难度档请求下一题：内聚调用 `@/lib/generator` 的 `generatePuzzle`（见 `request-next-puzzle.ts`）。
  *
  * @param tier 难度分档，与 `@/lib/generator` 一致。
  */
-export async function requestNextPuzzle(
-  userId: UserId,
-  tier: DifficultyTier,
-): Promise<PuzzleSpec> {
-  void userId;
-  void tier;
-  throw new Error(SERVER_API_NOT_IMPLEMENTED);
-}
+export { requestNextPuzzle } from "./request-next-puzzle";
