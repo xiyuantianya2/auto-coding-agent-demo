@@ -7,6 +7,7 @@ export type { ChapterId, CurriculumNode, CurriculumTier } from "./types";
 export { getCurriculumTree } from "./curriculum";
 
 export {
+  isKnownTechniqueId,
   listKnownTechniqueIds,
   validateCurriculumTechniqueIds,
   type CurriculumTechniqueValidationError,
@@ -21,15 +22,11 @@ export {
   type UnlockGraphValidationResult,
 } from "./unlock-graph";
 
-const PRACTICE_MODE_PREFIX = "endless-practice:";
-
-/** 占位：与 techniqueId 绑定的稳定 modeId；完整规范见任务 5。 */
-export function getPracticeModeForTechnique(techniqueId: string): {
-  modeId: string;
-  endless: true;
-} {
-  return {
-    modeId: `${PRACTICE_MODE_PREFIX}${techniqueId}`,
-    endless: true,
-  };
-}
+export {
+  PRACTICE_MODE_ID_PREFIX,
+  UnknownTechniqueIdError,
+  getPracticeModeForTechnique,
+  isValidPracticeModeId,
+  listPracticeModesByTier,
+  listPracticeModesForChapter,
+} from "./practice-mode";

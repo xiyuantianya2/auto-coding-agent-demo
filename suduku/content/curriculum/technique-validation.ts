@@ -14,6 +14,15 @@ import {
 
 const KNOWN_TECHNIQUE_ID_SET = new Set<string>(Object.values(TECHNIQUE_IDS));
 
+/**
+ * 是否为引擎 {@link TECHNIQUE_IDS} 登记的技巧 id（与 {@link validateCurriculumTechniqueIds} 使用同一集合）。
+ */
+export function isKnownTechniqueId(
+  techniqueId: string,
+): techniqueId is KnownTechniqueId {
+  return KNOWN_TECHNIQUE_ID_SET.has(techniqueId);
+}
+
 export type CurriculumTechniqueValidationError = {
   chapterId: string;
   techniqueId: string;

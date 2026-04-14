@@ -57,7 +57,7 @@
         "Vitest：对每个 TECHNIQUE_IDS 成员调用一次，断言 endless 为 true 且 modeId 格式符合文档化规范",
         "与 module-plan 中对外接口 function getPracticeModeForTechnique(...) 签名一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

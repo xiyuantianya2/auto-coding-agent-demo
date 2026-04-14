@@ -4,6 +4,7 @@ import { TECHNIQUE_IDS } from "@/lib/solver";
 
 import type { CurriculumNode } from "./types";
 import {
+  isKnownTechniqueId,
   listKnownTechniqueIds,
   validateCurriculumTechniqueIds,
 } from "./technique-validation";
@@ -50,6 +51,15 @@ describe("validateCurriculumTechniqueIds", () => {
 
   it("accepts an empty curriculum tree", () => {
     expect(validateCurriculumTechniqueIds([])).toEqual({ ok: true });
+  });
+});
+
+describe("isKnownTechniqueId", () => {
+  it("is true for every TECHNIQUE_IDS value and false for arbitrary strings", () => {
+    for (const id of Object.values(TECHNIQUE_IDS)) {
+      expect(isKnownTechniqueId(id)).toBe(true);
+    }
+    expect(isKnownTechniqueId("not-in-registry")).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import {
+  UnknownTechniqueIdError,
   getCurriculumTree,
   getPracticeModeForTechnique,
   isChapterUnlocked,
@@ -12,8 +13,11 @@ import { TECHNIQUE_IDS } from "@/lib/solver";
 
 test.describe("Suduku tutorial curriculum (contract smoke)", () => {
   test("loads home", async ({ page }) => {
-    await page.goto("/");
-    await expect(page.getByRole("heading", { name: "数独" })).toBeVisible();
+    // Cold dev compile on first navigation can exceed default timeouts under parallel load.
+    await page.goto("/", { timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "数独" })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 
   test("getCurriculumTree returns a stable array shape", () => {
@@ -34,10 +38,16 @@ test.describe("Suduku tutorial curriculum (contract smoke)", () => {
   });
 
   test("getPracticeModeForTechnique: endless true and modeId tied to technique id", () => {
-    const t = "naked-single";
+    const t = TECHNIQUE_IDS.NAKED_SINGLE;
     const pm = getPracticeModeForTechnique(t);
     expect(pm.endless).toBe(true);
     expect(pm.modeId).toBe(`endless-practice:${t}`);
+  });
+
+  test("getPracticeModeForTechnique: unknown technique throws", () => {
+    expect(() => getPracticeModeForTechnique("__unknown__")).toThrow(
+      UnknownTechniqueIdError,
+    );
   });
 
   test("validateCurriculumTechniqueIds: production tree passes", () => {
