@@ -90,7 +90,7 @@
         "在 suduku 目录下执行 npm test（或项目对 lib 测试的等价命令），全部通过",
         "如有 e2e 或项目级测试要求，在 steps 中说明本模块以单元测试为主且不破坏现有 suduku 测试套件"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

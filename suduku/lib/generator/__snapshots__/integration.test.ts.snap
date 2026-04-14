@@ -1,0 +1,12 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`puzzle-generator barrel (@/lib/generator) > matches regression snapshot (easy tier, fixed mulberry seed) 1`] = `
+{
+  "difficultyScore": 735,
+  "givensLine": "6.25..8.48513..9..794.6153.2......8.46..58.7..1..76495.2.7..35818.62.7.9.4.98..26",
+  "requiredTechniques": [
+    "naked-single",
+  ],
+  "seed": "8be48b9e75a57b263f3e1feb84f0d738",
+}
+`;

@@ -51,6 +51,9 @@ export {
 
 export type { PuzzleSpec } from "./puzzle-spec";
 
+/** 与 `PuzzleSpec.requiredTechniques` 一致；便于下游模块（如 server-api）在不直接依赖 solver 路径时标注类型。 */
+export type { TechniqueId } from "../solver";
+
 export {
   GENERATE_PUZZLE_MAX_ATTEMPTS,
   generatePuzzle,
