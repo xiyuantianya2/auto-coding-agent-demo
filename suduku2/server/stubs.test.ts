@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { getProgress } from "./stubs";
+import { exportProgress, importProgress } from "./stubs";
 
-describe("server stubs", () => {
-  it("getProgress rejects until implemented", async () => {
-    await expect(getProgress("any-token")).rejects.toThrow(/not implemented/);
+describe("server stubs (export/import — task 6)", () => {
+  it("exportProgress rejects until implemented", async () => {
+    await expect(exportProgress("any-token")).rejects.toThrow(/not implemented/);
+  });
+
+  it("importProgress rejects until implemented", async () => {
+    await expect(importProgress("any-token", "{}")).rejects.toThrow(/not implemented/);
   });
 });

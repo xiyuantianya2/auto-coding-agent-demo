@@ -1,5 +1,20 @@
 # Progress Log
 
+## 2026-04-14 - Task: suduku2 server-api id=4 — UserProgress 持久化与 saveProgress
+
+### What was done:
+- `suduku2/server/progress.ts`：`getProgress` / `saveProgress`，每用户 `users/<userId>.json` 原子写入；约定合并规则与 last-write-wins；`draft` 经 `@/lib/core` 序列化落盘与读出还原。
+- `suduku2/server/index.ts`、`stubs.ts`：导出调整；`suduku2/server/progress.test.ts`、`stubs.test.ts`：Vitest 覆盖。
+- `suduku2/modules/server-api.task.json`：id=4 `passes: true`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test` 全部通过。
+
+### Notes:
+- `getProgress` 返回的 `global` 暂为空的 `EndlessGlobalState`（任务 5/6 补全）。
+
+---
+
 ## 2026-04-14 - 面板：数独项目清理（一键重置）
 
 ### What was done:
