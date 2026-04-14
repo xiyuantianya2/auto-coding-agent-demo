@@ -74,7 +74,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
