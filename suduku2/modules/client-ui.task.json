@@ -38,7 +38,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "补充 Playwright：已登录用户下教学列表可见且解锁态与模拟进度一致（可用 API 或测试夹具准备数据），并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
