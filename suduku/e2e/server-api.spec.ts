@@ -7,22 +7,27 @@ import {
   LOGIN_FAILED_MESSAGE,
   LoginFailedError,
   SERVER_API_NOT_IMPLEMENTED,
+  SUDUKU_SESSION_SECRET_ENV,
   UsernameTakenError,
   createEmptyProgressPayload,
   loadProgress,
   login,
   registerUser,
   saveProgress,
+  validateToken,
 } from "@/server";
 import { USERNAME_INDEX_FILE } from "@/server/storage/paths";
 
 let e2eDataRoot: string;
 let prevDataDir: string | undefined;
+let prevSessionSecret: string | undefined;
 
 test.beforeAll(() => {
   prevDataDir = process.env.SUDUKU_DATA_DIR;
+  prevSessionSecret = process.env[SUDUKU_SESSION_SECRET_ENV];
   e2eDataRoot = fs.mkdtempSync(path.join(os.tmpdir(), "suduku-e2e-server-"));
   process.env.SUDUKU_DATA_DIR = e2eDataRoot;
+  process.env[SUDUKU_SESSION_SECRET_ENV] = "e2e-playwright-session-secret-key";
 });
 
 test.afterAll(() => {
@@ -30,6 +35,11 @@ test.afterAll(() => {
     delete process.env.SUDUKU_DATA_DIR;
   } else {
     process.env.SUDUKU_DATA_DIR = prevDataDir;
+  }
+  if (prevSessionSecret === undefined) {
+    delete process.env[SUDUKU_SESSION_SECRET_ENV];
+  } else {
+    process.env[SUDUKU_SESSION_SECRET_ENV] = prevSessionSecret;
   }
   fs.rmSync(e2eDataRoot, { recursive: true, force: true });
 });
@@ -66,9 +76,10 @@ test.describe("Suduku server-api (Node-side)", () => {
 
   test("login succeeds with matching material and rejects wrong password", async () => {
     const secret = "matching-credential-string";
-    await registerUser("login-user", secret);
+    const userId = await registerUser("login-user", secret);
     const { token } = await login("login-user", secret);
-    expect(token.length).toBeGreaterThan(8);
+    expect(token.startsWith("suduku-session-v1.")).toBe(true);
+    expect(validateToken(token)).toBe(userId);
 
     await expect(login("login-user", "nope")).rejects.toBeInstanceOf(LoginFailedError);
     await expect(login("login-user", "nope")).rejects.toMatchObject({

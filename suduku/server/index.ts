@@ -59,9 +59,20 @@ export { registerUser } from "./register-login";
 
 /**
  * @param password 与注册时写入 `credentials.json` 的 `passwordHash` **同一约定**下的比对串（字段名不同，字节序列应一致）。
- * @returns 成功时返回不透明 `token`（任务 4 将定义校验策略）；当前为随机串占位。
+ * @returns 成功时返回 HMAC 签名的会话 `token`；后续 HTTP 侧使用 `Authorization: Bearer <token>`，并用 {@link validateToken} 校验。
  */
 export { login } from "./register-login";
+
+/**
+ * 校验登录返回的 Bearer token（不含 `Bearer ` 前缀）；无效或过期返回 `null`。
+ *
+ * 需配置环境变量 `SUDUKU_SESSION_SECRET`（与签发时一致）。
+ */
+export {
+  SUDUKU_SESSION_SECRET_ENV,
+  SUDUKU_SESSION_TTL_MS_ENV,
+  validateToken,
+} from "./session-token";
 
 export {
   LOGIN_FAILED_MESSAGE,

@@ -46,7 +46,7 @@
         "Vitest：有效 token 解析出正确 userId；过期/篡改/未知 token 返回 null 或统一失败",
         "不在此任务实现完整 REST 路由，仅会话模块可单测"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

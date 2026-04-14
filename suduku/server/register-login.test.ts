@@ -13,6 +13,7 @@ import {
 } from "./register-login";
 import { SUDUKU_DATA_DIR_ENV } from "./storage/data-root";
 import { USERNAME_INDEX_FILE, getUserCredentialsPath, getUserDir } from "./storage/paths";
+import { SUDUKU_SESSION_SECRET_ENV, validateToken } from "./session-token";
 
 function tmpDataRoot(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "suduku-auth-"));
@@ -20,12 +21,15 @@ function tmpDataRoot(): string {
 
 describe("registerUser / login", () => {
   let prevDataDir: string | undefined;
+  let prevSessionSecret: string | undefined;
   let dataRoot: string;
 
   beforeEach(() => {
     prevDataDir = process.env[SUDUKU_DATA_DIR_ENV];
+    prevSessionSecret = process.env[SUDUKU_SESSION_SECRET_ENV];
     dataRoot = tmpDataRoot();
     process.env[SUDUKU_DATA_DIR_ENV] = dataRoot;
+    process.env[SUDUKU_SESSION_SECRET_ENV] = "register-login-test-session-secret";
   });
 
   afterEach(() => {
@@ -33,6 +37,11 @@ describe("registerUser / login", () => {
       delete process.env[SUDUKU_DATA_DIR_ENV];
     } else {
       process.env[SUDUKU_DATA_DIR_ENV] = prevDataDir;
+    }
+    if (prevSessionSecret === undefined) {
+      delete process.env[SUDUKU_SESSION_SECRET_ENV];
+    } else {
+      process.env[SUDUKU_SESSION_SECRET_ENV] = prevSessionSecret;
     }
     fs.rmSync(dataRoot, { recursive: true, force: true });
   });
@@ -78,9 +87,10 @@ describe("registerUser / login", () => {
 
   it("logs in successfully with matching credential material", async () => {
     const material = "client-side-agreed-secret-string";
-    await registerUser("dave", material);
+    const userId = await registerUser("dave", material);
     const { token } = await login("  dave  ", material);
-    expect(token.length).toBeGreaterThan(10);
+    expect(token.startsWith("suduku-session-v1.")).toBe(true);
+    expect(validateToken(token)).toBe(userId);
   });
 
   it("does not leak user existence on failed login", async () => {

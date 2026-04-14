@@ -9,6 +9,7 @@ import {
 } from "./storage/credentials-file";
 import { getUserDir } from "./storage/paths";
 import { readUsernameIndexFile, writeUsernameIndexFileAtomic } from "./storage/username-index";
+import { createSessionToken } from "./session-token";
 
 /**
  * ## 产品语义：`passwordHash` 与 `login` 的 `password`（任务 3 固定契约）
@@ -139,6 +140,6 @@ export async function login(username: string, password: string): Promise<{ token
     throw new LoginFailedError();
   }
 
-  const token = crypto.randomBytes(32).toString("base64url");
+  const token = createSessionToken(userId);
   return { token };
 }
