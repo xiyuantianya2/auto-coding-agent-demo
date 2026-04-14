@@ -3,9 +3,14 @@ import {
   createGameStateFromGivens,
   serializeGameState,
 } from "@/lib/core";
-import { getNextHint, selectNextSolveStep, solveStepHighlightsToHintFields } from "@/lib/hint";
+import {
+  getHintMessageKey,
+  getNextHint,
+  selectNextSolveStep,
+  solveStepHighlightsToHintFields,
+} from "@/lib/hint";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
-import type { SolveStep } from "@/lib/solver";
+import { TECHNIQUE_IDS, type SolveStep } from "@/lib/solver";
 
 test.describe("Suduku hint system (stub)", () => {
   test("getNextHint skeleton returns null without mutating state", () => {
@@ -21,6 +26,12 @@ test.describe("Suduku hint system (stub)", () => {
       { technique: "naked-single", highlights: [{ kind: "cell", ref: { r: 1, c: 1 } }] },
     ];
     expect(selectNextSolveStep(steps)?.technique).toBe("naked-single");
+  });
+
+  test("getHintMessageKey aligns with TECHNIQUE_IDS (smoke)", () => {
+    expect(getHintMessageKey(TECHNIQUE_IDS.NAKED_SINGLE)).toBe(
+      "hint.technique.naked-single",
+    );
   });
 
   test("solveStepHighlightsToHintFields maps highlights for UI (smoke)", () => {

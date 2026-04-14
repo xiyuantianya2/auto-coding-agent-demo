@@ -21,6 +21,13 @@ export {
 
 export { selectNextSolveStep } from "./select-next-solve-step";
 
+export {
+  HINT_MESSAGE_KEYS,
+  HINT_TECHNIQUE_MESSAGE_KEY_PREFIX,
+  getHintMessageKey,
+  hintMessageKeyToTechniqueId,
+} from "./message-keys";
+
 export type HintResult = {
   /** 需要在棋盘上高亮的格子坐标（行/列，0–8）。 */
   cells: Array<{ r: number; c: number }>;

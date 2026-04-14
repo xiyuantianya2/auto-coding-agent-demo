@@ -46,7 +46,7 @@
         "Vitest 断言每个 TECHNIQUE_IDS 常量均有非空 messageKey（或文档化例外）",
         "messageKey 仅用于文案查找，不改变提示几何信息"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,
