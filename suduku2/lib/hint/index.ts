@@ -17,8 +17,10 @@
  * @module @/lib/hint
  */
 
-import type { GameState } from "@/lib/core";
-import type { TechniqueId } from "@/lib/solver";
+import { isVictory, type GameState } from "@/lib/core";
+import { findApplicableSteps, type TechniqueId } from "@/lib/solver";
+
+import { mapSolveStepToHintResult } from "./map-solve-step-to-hint-result";
 
 // --- 与 `@/lib/solver` 对齐的技巧 id（不重复定义平行常量表） ---
 export type { TechniqueId };
@@ -38,7 +40,7 @@ export {
   type MergedHighlightCandidateEntry,
 } from "./merge-highlight-candidates";
 
-export { mapSolveStepToHintResult } from "./map-solve-step-to-hint-result";
+export { mapSolveStepToHintResult };
 
 /**
  * 单条提示的高亮与说明载荷，与 `module-plan.json` 中 `hint-system` 契约一致。
@@ -64,12 +66,29 @@ export type HintResult = {
 };
 
 /**
- * 返回当前盘面下「下一步」可展示的一条提示；尚未实现具体映射时占位返回 `null`。
+ * 返回当前盘面下「下一步」可展示的一条提示。
  *
- * @param state 当前游戏状态（占位实现不读取盘面，也不会修改引用）
- * @returns 提示载荷，或暂无可展示步骤时 `null`
+ * 内部调用 {@link import("@/lib/solver").findApplicableSteps `findApplicableSteps(state)`}。
+ * 该函数返回的数组已按 `find-applicable-steps` 文档约定：低→中→高阶批次合并、去重后的顺序；
+ * **默认取首个元素**作为「下一步」提示，以便 UI 与测试快照稳定（不要求全局最优或最少分支）。
+ *
+ * - 若数组为空（含求解器在墙上时钟预算内未发现可应用步骤），返回 `null`。
+ * - 若盘面已达胜利态（全盘填满且无冲突），返回 `null`，避免对终盘再调用求解搜索。
+ *
+ * 本函数**不修改** `state`、不维护提示次数；单次耗时主要由 `findApplicableSteps` 决定。
+ *
+ * @param state 当前游戏状态
+ * @returns 提示载荷，或无可展示步骤时 `null`
  */
 export function getNextHint(state: GameState): HintResult | null {
-  void state;
-  return null;
+  if (isVictory(state)) {
+    return null;
+  }
+
+  const steps = findApplicableSteps(state);
+  if (steps.length === 0) {
+    return null;
+  }
+
+  return mapSolveStepToHintResult(steps[0]!);
 }
