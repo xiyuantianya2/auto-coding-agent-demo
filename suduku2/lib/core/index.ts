@@ -5,7 +5,7 @@
  * `Grid9`、`CellState`、`GameState`，以及后续任务将实现的
  * `isValidPlacement`、`cloneGameState`、`serializeGameState`、`deserializeGameState`。
  *
- * 本步（任务 1）仅导出类型、常量与 O(1) 坐标/数字校验；不包含求解、生成与完整规则 API。
+ * 任务 2 起导出规则校验与读盘辅助；其余序列化/克隆等见后续任务。
  *
  * @see {@link Grid9} {@link CellState} {@link GameState}
  */
@@ -26,3 +26,9 @@ export {
 } from "./constants";
 
 export type { CellState, FillNotesMode, GameState, Grid9 } from "./types";
+
+export {
+  getEffectiveCellDigit,
+  getEffectiveDigitAt,
+  isValidPlacement,
+} from "./placement";
