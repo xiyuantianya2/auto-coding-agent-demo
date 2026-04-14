@@ -3,7 +3,7 @@ import {
   createGameStateFromGivens,
   serializeGameState,
 } from "@/lib/core";
-import { getNextHint, solveStepHighlightsToHintFields } from "@/lib/hint";
+import { getNextHint, selectNextSolveStep, solveStepHighlightsToHintFields } from "@/lib/hint";
 import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import type { SolveStep } from "@/lib/solver";
 
@@ -13,6 +13,14 @@ test.describe("Suduku hint system (stub)", () => {
     const before = serializeGameState(state);
     expect(getNextHint(state)).toBeNull();
     expect(serializeGameState(state)).toBe(before);
+  });
+
+  test("selectNextSolveStep picks lowest-tier technique per TECHNIQUE_RESOLUTION_ORDER", () => {
+    const steps: SolveStep[] = [
+      { technique: "hidden-single", highlights: [{ kind: "cell", ref: { r: 0, c: 0 } }] },
+      { technique: "naked-single", highlights: [{ kind: "cell", ref: { r: 1, c: 1 } }] },
+    ];
+    expect(selectNextSolveStep(steps)?.technique).toBe("naked-single");
   });
 
   test("solveStepHighlightsToHintFields maps highlights for UI (smoke)", () => {

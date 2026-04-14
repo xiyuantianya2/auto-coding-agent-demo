@@ -35,7 +35,7 @@
         "Vitest 构造「同时存在裸单与隐单」「同时存在多种消除技法」等微型盘面或伪造 SolveStep 列表，断言选中技法的 TechniqueId 与次序符合 TECHNIQUE_RESOLUTION_ORDER",
         "选取逻辑不依赖 UI，不修改入参数组（必要时先复制）"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
