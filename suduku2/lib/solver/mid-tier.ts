@@ -464,17 +464,25 @@ function collectHiddenTriples(
   }
 }
 
+export type MidTierFromCandidatesOptions = {
+  /**
+   * 绝对截止时间（`Date.now()` 可比）。用于与上层整体预算对齐；未传则本层默认约 2s。
+   */
+  deadlineMs?: number;
+};
+
 /**
  * 在给定候选网格上扫描中阶技巧（不读 `GameState`）。
  * 供测试注入合成盘面，或在上层缓存候选后复用。
  */
 export function findMidTierStepsFromCandidates(
   candidates: CandidatesGrid,
+  options?: MidTierFromCandidatesOptions,
 ): SolveStep[] {
   const out: SolveStep[] = [];
   const seen = new Set<string>();
   const budget: Budget = {
-    deadline: Date.now() + MAX_ELAPSED_MS,
+    deadline: options?.deadlineMs ?? Date.now() + MAX_ELAPSED_MS,
     stepCount: 0,
   };
 

@@ -56,17 +56,26 @@ function getCandidates(
 }
 
 /**
- * 低阶技巧统一入口：在 `computeCandidates` 结果上扫描裸单、隐单、指向与行列摒除，
- * 复杂度 O(81×9×常数)，无回溯搜索。
+ * 在给定候选网格上扫描低阶技巧（不读 `GameState`）。
+ * 供上层缓存候选后复用，或测试注入合成盘面。
  */
-export function findLowTierApplicableSteps(state: GameState): SolveStep[] {
-  const candidates = computeCandidates(state);
+export function findLowTierStepsFromCandidates(
+  candidates: CandidatesGrid,
+): SolveStep[] {
   const steps: SolveStep[] = [];
   collectNakedSingles(candidates, steps);
   collectHiddenSingles(candidates, steps);
   collectPointing(candidates, steps);
   collectBoxLineReductions(candidates, steps);
   return steps;
+}
+
+/**
+ * 低阶技巧统一入口：在 `computeCandidates` 结果上扫描裸单、隐单、指向与行列摒除，
+ * 复杂度 O(81×9×常数)，无回溯搜索。
+ */
+export function findLowTierApplicableSteps(state: GameState): SolveStep[] {
+  return findLowTierStepsFromCandidates(computeCandidates(state));
 }
 
 function collectNakedSingles(

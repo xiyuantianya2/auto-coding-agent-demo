@@ -7,10 +7,21 @@
  */
 
 export { computeCandidates } from "./candidates";
-export { findLowTierApplicableSteps } from "./low-tier";
+export {
+  canonicalStepDedupKey,
+  findApplicableSteps,
+  isRegisteredTechniqueId,
+  MAX_FIND_APPLICABLE_EMITTED_STEPS,
+  MAX_FIND_APPLICABLE_MS,
+} from "./find-applicable-steps";
+export {
+  findLowTierApplicableSteps,
+  findLowTierStepsFromCandidates,
+} from "./low-tier";
 export {
   findMidTierApplicableSteps,
   findMidTierStepsFromCandidates,
+  type MidTierFromCandidatesOptions,
 } from "./mid-tier";
 export {
   findHighTierApplicableSteps,
