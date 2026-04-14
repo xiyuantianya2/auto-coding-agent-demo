@@ -13,8 +13,10 @@ import {
   loadProgress,
   login,
   registerUser,
+  requestNextPuzzle,
   saveProgress,
   validateToken,
+  type ProgressPayload,
 } from "@/server";
 import { USERNAME_INDEX_FILE } from "@/server/storage/paths";
 
@@ -52,10 +54,48 @@ test.describe("Suduku server-api (Node-side)", () => {
     expect(empty.tutorial).toEqual({});
   });
 
-  test("loadProgress returns empty progress placeholder", async () => {
+  test("loadProgress returns empty progress when no progress.json", async () => {
     await expect(loadProgress("test-user")).resolves.toEqual(
       createEmptyProgressPayload(),
     );
+  });
+
+  test("saveProgress merges twice: keeps better bestTimesMs and keeps practice/tutorial", async () => {
+    const userId = "progress-merge-e2e";
+    const first: ProgressPayload = {
+      endless: {
+        normal: {
+          currentLevel: 4,
+          bestTimesMs: { 0: 7000, 1: 8000 },
+        },
+      },
+      practice: { "e2e-mode": { unlocked: true, streak: 3, bestTimeMs: 4000 } },
+      tutorial: { e2eChap: true },
+    };
+    await saveProgress(userId, first);
+
+    const patch: ProgressPayload = {
+      endless: {
+        normal: {
+          currentLevel: 2,
+          bestTimesMs: { 0: 9000, 1: 7500 },
+        },
+      },
+      practice: {},
+      tutorial: {},
+    };
+    await saveProgress(userId, patch);
+
+    await expect(loadProgress(userId)).resolves.toEqual({
+      endless: {
+        normal: {
+          currentLevel: 4,
+          bestTimesMs: { 0: 7000, 1: 7500 },
+        },
+      },
+      practice: { "e2e-mode": { unlocked: true, streak: 3, bestTimeMs: 4000 } },
+      tutorial: { e2eChap: true },
+    });
   });
 
   test("registerUser creates index and credentials JSON; duplicate username fails", async () => {
@@ -87,9 +127,9 @@ test.describe("Suduku server-api (Node-side)", () => {
     });
   });
 
-  test("saveProgress still rejects until implemented", async () => {
-    await expect(
-      saveProgress("u", createEmptyProgressPayload()),
-    ).rejects.toThrow(SERVER_API_NOT_IMPLEMENTED);
+  test("requestNextPuzzle is not implemented yet", async () => {
+    await expect(requestNextPuzzle("u", "easy")).rejects.toThrow(
+      SERVER_API_NOT_IMPLEMENTED,
+    );
   });
 });

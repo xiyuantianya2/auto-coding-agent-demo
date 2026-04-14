@@ -12,6 +12,9 @@ import {
   createEmptyProgressPayload,
   type ProgressPayload,
 } from "./progress-types";
+import { resolveSudukuDataDir } from "./storage/data-root";
+import { mergeProgressPayload } from "./storage/merge-progress-payload";
+import { readUserProgressFile, writeUserProgressFileAtomic } from "./storage/progress-file";
 
 export type { DifficultyTier, PuzzleSpec, TechniqueId };
 
@@ -48,6 +51,7 @@ export {
   ProgressPayloadValidationError,
   parseProgressPayload,
 } from "./storage/progress-payload";
+export { mergeProgressPayload };
 
 /**
  * 注册与登录（任务 3）。`passwordHash` / `login.password` 的产品语义见 {@link "./register-login"} 文件头注释。
@@ -83,21 +87,28 @@ export {
 } from "./register-login";
 
 /**
- * 加载用户进度；无存档时应等价于 {@link createEmptyProgressPayload}（本骨架直接返回空对象）。
+ * 加载用户进度（任务 5）。无存档时等价于 {@link createEmptyProgressPayload}。
+ *
+ * 调用方须已校验会话并得到合法 `userId`；非法 id（路径穿越等）会抛出 {@link InvalidUserIdError}。
  */
 export async function loadProgress(userId: UserId): Promise<ProgressPayload> {
-  void userId;
-  return createEmptyProgressPayload();
+  const dataRoot = resolveSudukuDataDir();
+  return readUserProgressFile(dataRoot, userId);
 }
 
-/** 保存用户进度（合并策略见后续任务）。 */
+/**
+ * 保存用户进度（任务 5）：读磁盘 → {@link mergeProgressPayload} → 原子写回。
+ *
+ * 合并规则见 `merge-progress-payload.ts` 文件头注释；可避免不完整 PATCH 覆盖未提交段落。
+ */
 export async function saveProgress(
   userId: UserId,
   data: ProgressPayload,
 ): Promise<void> {
-  void userId;
-  void data;
-  throw new Error(SERVER_API_NOT_IMPLEMENTED);
+  const dataRoot = resolveSudukuDataDir();
+  const stored = await readUserProgressFile(dataRoot, userId);
+  const merged = mergeProgressPayload(stored, data);
+  await writeUserProgressFileAtomic(dataRoot, userId, merged);
 }
 
 /**

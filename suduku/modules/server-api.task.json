@@ -57,7 +57,7 @@
         "Vitest：模拟两次 save，验证 bestTimesMs 保留更优值、tutorial 与 practice 字段不被意外清空",
         "函数签名与 module-plan 中 loadProgress、saveProgress 完全一致"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,
