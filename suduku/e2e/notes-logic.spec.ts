@@ -10,14 +10,22 @@ import {
 } from "@/lib/notes";
 
 test.describe("Suduku notes logic (contract smoke)", () => {
-  test("applyNotesCommand stub clones; syncNotesWithCandidates tightens notes vs candidates", () => {
+  test("applyNotesCommand toggles notes vs candidates; syncNotesWithCandidates tightens notes vs candidates", () => {
+    const sparse = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+    const sparseCand = computeCandidates(sparse);
+    const tr = 4;
+    const tc = 4;
+    const tdigit = [...sparseCand[tr][tc]][0];
+    const toggled = applyNotesCommand(
+      sparse,
+      { type: "toggle", payload: { r: tr, c: tc, digit: tdigit } },
+      sparseCand,
+    );
+    expect(toggled).not.toBe(sparse);
+    expect(toggled.cells[tr][tc].notes?.has(tdigit)).toBe(true);
+
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     const candidates = computeCandidates(state);
-
-    const toggled = applyNotesCommand(state, { type: "toggle", payload: { r: 0, c: 0, digit: 1 } }, candidates);
-    expect(toggled).not.toBe(state);
-    expect(toggled).toEqual(state);
-
     const synced = syncNotesWithCandidates(state, candidates);
     expect(synced).not.toBe(state);
     expect(synced).toEqual(state);
@@ -65,16 +73,23 @@ test.describe("Suduku notes logic (contract smoke)", () => {
     expect(digit.cells.length).toBeGreaterThan(0);
   });
 
-  test("clone isolation after stub apply still holds for callers", () => {
-    const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
-    const candidates = computeCandidates(state);
-    const next = applyNotesCommand(state, { type: "clearCell", payload: { r: 0, c: 0 } }, candidates);
-    next.cells[0][0].notes = new Set([1, 2]);
-    expect(state.cells[0][0].notes?.size ?? 0).toBe(0);
-
-    const copy = cloneGameState(state);
-    expect(applyNotesCommand(state, { type: "setMode", payload: { mode: "notes" } }, candidates)).toEqual(
-      copy,
+  test("clone isolation after applyNotesCommand still holds for callers", () => {
+    const base = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+    const candidates = computeCandidates(base);
+    const tr = 4;
+    const tc = 4;
+    const tdigit = [...candidates[tr][tc]][0];
+    const withNote = applyNotesCommand(
+      base,
+      { type: "toggle", payload: { r: tr, c: tc, digit: tdigit } },
+      candidates,
     );
+    const next = applyNotesCommand(withNote, { type: "clearCell", payload: { r: tr, c: tc } }, candidates);
+    next.cells[tr][tc].notes = new Set([1, 2]);
+    expect(withNote.cells[tr][tc].notes?.has(tdigit)).toBe(true);
+
+    const mode = applyNotesCommand(base, { type: "setMode", payload: { mode: "notes" } }, candidates);
+    expect(mode.inputMode).toBe("notes");
+    expect(mode.cells[tr][tc].notes?.size ?? 0).toBe(0);
   });
 });

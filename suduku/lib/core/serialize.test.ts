@@ -44,6 +44,12 @@ describe("serializeGameState / deserializeGameState", () => {
     expect(deserializeGameState(serializeGameState(state))).toEqual(cloneGameState(state));
   });
 
+  it("round-trip preserves optional inputMode", () => {
+    const state = createEmptyGameState();
+    state.inputMode = "notes";
+    expect(deserializeGameState(serializeGameState(state))).toEqual(cloneGameState(state));
+  });
+
   it("rejects non-JSON input with GameStateSerializationError", () => {
     expect(() => deserializeGameState("not json {{{")).toThrow(GameStateSerializationError);
   });

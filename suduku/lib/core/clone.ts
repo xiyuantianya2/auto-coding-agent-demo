@@ -69,5 +69,6 @@ export function cloneGameState(state: GameState): GameState {
   if (state.puzzleSeed !== undefined) out.puzzleSeed = state.puzzleSeed;
   if (state.startedAtMs !== undefined) out.startedAtMs = state.startedAtMs;
   if (state.elapsedMs !== undefined) out.elapsedMs = state.elapsedMs;
+  if (state.inputMode !== undefined) out.inputMode = state.inputMode;
   return out;
 }

@@ -68,4 +68,11 @@ export type GameState = {
   /** Monotonic session clock anchors (optional until UI wires timer). */
   startedAtMs?: number;
   elapsedMs?: number;
+  /**
+   * 主输入模式：填数字 vs 铅笔笔记（由笔记模块 `setMode` 写入）。
+   *
+   * **与存档兼容：** 旧版快照无此字段时，行为上等价于 `fill`；反序列化时缺省 `undefined`。
+   * 新增持久化字段不改变 `formatVersion`（仍为版本 1），仅扩展可选键。
+   */
+  inputMode?: "fill" | "notes";
 };

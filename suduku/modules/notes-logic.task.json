@@ -46,7 +46,7 @@
         "Vitest 覆盖合法 toggle、非法格、clearCell、setMode 切换后笔记与填数行为符合规则",
         "若扩展 GameState，在注释中说明与存档模块的兼容性考量"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

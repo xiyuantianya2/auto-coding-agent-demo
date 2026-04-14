@@ -32,6 +32,7 @@ type SerializedGameState = {
   puzzleSeed?: string;
   startedAtMs?: number;
   elapsedMs?: number;
+  inputMode?: "fill" | "notes";
 };
 
 function assertSupportedFormatVersion(v: unknown): asserts v is number {
@@ -73,6 +74,7 @@ export function serializeGameState(state: GameState): string {
   if (state.puzzleSeed !== undefined) payload.puzzleSeed = state.puzzleSeed;
   if (state.startedAtMs !== undefined) payload.startedAtMs = state.startedAtMs;
   if (state.elapsedMs !== undefined) payload.elapsedMs = state.elapsedMs;
+  if (state.inputMode !== undefined) payload.inputMode = state.inputMode;
   return JSON.stringify(payload);
 }
 
@@ -324,6 +326,14 @@ export function deserializeGameState(json: string): GameState {
       throw new GameStateSerializationError("elapsedMs must be a finite number when present");
     }
     out.elapsedMs = root.elapsedMs;
+  }
+
+  if (root.inputMode !== undefined) {
+    const im = root.inputMode;
+    if (im !== "fill" && im !== "notes") {
+      throw new GameStateSerializationError("inputMode must be 'fill' or 'notes' when present");
+    }
+    out.inputMode = im;
   }
 
   return out;

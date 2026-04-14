@@ -12,14 +12,15 @@
  *
  * `syncNotesWithCandidates` 已实现：按候选收紧笔记、清理已解格笔记。
  * `getHighlightCells` / `cellsForRow|Col|Box`：一键筛选高亮坐标（见 `./highlight-filter`）。
- * `applyNotesCommand` 仍为骨架；`createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
+ * `applyNotesCommand` 已实现 `toggle` / `clearCell` / `setMode`；`batchClear` 与 `undo` 分支保留至后续任务。
+ * `createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
  */
 
 import type { GameState } from "@/lib/core";
-import { cloneGameState } from "@/lib/core";
 import type { CandidatesGrid } from "@/lib/solver";
 
 import type { NotesCommand } from "./types";
+import { applyNotesCommandImpl } from "./apply-notes-command";
 import { syncNotesWithCandidates as syncNotesWithCandidatesImpl } from "./sync-notes";
 
 export type {
@@ -39,16 +40,14 @@ export type {
 } from "./types";
 
 /**
- * 将一条笔记命令应用到盘面（不可变更新）。骨架阶段：忽略 `cmd` 与 `candidates`，返回克隆状态。
+ * 将一条笔记命令应用到盘面（不可变更新）。已实现 `toggle` / `clearCell` / `setMode`（见 `./apply-notes-command`）。
  */
 export function applyNotesCommand(
   state: GameState,
   cmd: NotesCommand,
   candidates: CandidatesGrid,
 ): GameState {
-  void cmd;
-  void candidates;
-  return cloneGameState(state);
+  return applyNotesCommandImpl(state, cmd, candidates);
 }
 
 /** 按当前候选网格剔除不再合法的铅笔数、并清理已解格笔记（与 `computeCandidates` 输出对齐）。 */
