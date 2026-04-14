@@ -4,12 +4,48 @@ import {
   getTechniqueCatalog,
   getTechniqueTutorialMetaMap,
   getUnlockGraph,
+  validateCurriculum,
   type CurriculumTier,
   type TechniqueModule,
   type TechniqueTutorialMeta,
   type UnlockEdge,
 } from "@/content/curriculum";
-import { TechniqueIds } from "@/lib/solver";
+import { isRegisteredTechniqueId, TechniqueIds } from "@/lib/solver";
+
+/**
+ * 「扩展 id」占位：若某日在**本目录**引入未在 solver 登记的技巧键（仅文档/实验），在此列出，
+ * 并由下方测试断言 `isRegisteredTechniqueId === false`。正常教学数据应继续只使用 `TechniqueIds` 真源，
+ * 且仍须通过 `collectAllCurriculumTechniqueIdStrings` 的已登记断言。
+ */
+const EXTENSION_PLACEHOLDER_TECHNIQUE_IDS: readonly string[] = [];
+
+function collectAllCurriculumTechniqueIdStrings(): string[] {
+  const ids = new Set<string>();
+  for (const m of getTechniqueCatalog()) {
+    ids.add(m.id);
+  }
+  for (const e of getUnlockGraph()) {
+    ids.add(e.techniqueId);
+    for (const r of e.requires) {
+      ids.add(r);
+    }
+  }
+  return [...ids];
+}
+
+describe("@/lib/solver technique id contract (isRegisteredTechniqueId)", () => {
+  it("every catalog + unlock-graph id is a registered solver technique id", () => {
+    for (const id of collectAllCurriculumTechniqueIdStrings()) {
+      expect(isRegisteredTechniqueId(id), `expected registered technique id, got: "${id}"`).toBe(true);
+    }
+  });
+
+  it("extension placeholder ids (if any) are explicitly not solver-registered", () => {
+    for (const id of EXTENSION_PLACEHOLDER_TECHNIQUE_IDS) {
+      expect(isRegisteredTechniqueId(id), `placeholder must stay unregistered: "${id}"`).toBe(false);
+    }
+  });
+});
 
 describe("content/curriculum skeleton", () => {
   it("exports contract types (structural)", () => {
@@ -157,6 +193,92 @@ describe("getUnlockGraph", () => {
     const first = getUnlockGraph().find((e) => e.techniqueId === firstId);
     expect(first).toBeDefined();
     expect(first!.requires).toEqual([]);
+  });
+});
+
+describe("validateCurriculum", () => {
+  it("returns no errors for the real catalog + graph", () => {
+    const errors = validateCurriculum();
+    expect(errors).toEqual([]);
+  });
+
+  it("detects duplicate practiceEndlessModeId", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "a", tier: "low", order: 0, practiceEndlessModeId: "dup-mode", titleKey: "a" },
+      { id: "b", tier: "low", order: 1, practiceEndlessModeId: "dup-mode", titleKey: "b" },
+    ];
+    const graph: UnlockEdge[] = [
+      { techniqueId: "a", requires: [] },
+      { techniqueId: "b", requires: ["a"] },
+    ];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "DUPLICATE_MODE_ID")).toBe(true);
+  });
+
+  it("detects duplicate id in catalog", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "x", tier: "low", order: 0, practiceEndlessModeId: "m1", titleKey: "x" },
+      { id: "x", tier: "mid", order: 0, practiceEndlessModeId: "m2", titleKey: "x2" },
+    ];
+    const graph: UnlockEdge[] = [{ techniqueId: "x", requires: [] }];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "DUPLICATE_ID")).toBe(true);
+  });
+
+  it("detects graph referencing unknown techniqueId", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "a", tier: "low", order: 0, practiceEndlessModeId: "m1", titleKey: "a" },
+    ];
+    const graph: UnlockEdge[] = [
+      { techniqueId: "a", requires: [] },
+      { techniqueId: "ghost", requires: [] },
+    ];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "GRAPH_UNKNOWN_TECHNIQUE")).toBe(true);
+  });
+
+  it("detects graph edge requiring unknown id", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "a", tier: "low", order: 0, practiceEndlessModeId: "m1", titleKey: "a" },
+    ];
+    const graph: UnlockEdge[] = [{ techniqueId: "a", requires: ["missing-dep"] }];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "GRAPH_UNKNOWN_REQUIRES")).toBe(true);
+  });
+
+  it("detects duplicate order within same tier", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "a", tier: "mid", order: 0, practiceEndlessModeId: "m1", titleKey: "a" },
+      { id: "b", tier: "mid", order: 0, practiceEndlessModeId: "m2", titleKey: "b" },
+    ];
+    const graph: UnlockEdge[] = [
+      { techniqueId: "a", requires: [] },
+      { techniqueId: "b", requires: ["a"] },
+    ];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "DUPLICATE_ORDER")).toBe(true);
+  });
+
+  it("detects catalog technique missing from graph", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "a", tier: "low", order: 0, practiceEndlessModeId: "m1", titleKey: "a" },
+      { id: "b", tier: "low", order: 1, practiceEndlessModeId: "m2", titleKey: "b" },
+    ];
+    const graph: UnlockEdge[] = [{ techniqueId: "a", requires: [] }];
+    const errors = validateCurriculum(catalog, graph);
+    expect(errors.some((e) => e.code === "CATALOG_NOT_IN_GRAPH")).toBe(true);
+  });
+
+  it("returns empty array for valid custom data", () => {
+    const catalog: TechniqueModule[] = [
+      { id: "t1", tier: "low", order: 0, practiceEndlessModeId: "pm1", titleKey: "t1.title" },
+      { id: "t2", tier: "low", order: 1, practiceEndlessModeId: "pm2", titleKey: "t2.title" },
+    ];
+    const graph: UnlockEdge[] = [
+      { techniqueId: "t1", requires: [] },
+      { techniqueId: "t2", requires: ["t1"] },
+    ];
+    expect(validateCurriculum(catalog, graph)).toEqual([]);
   });
 });
 

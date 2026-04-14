@@ -5,6 +5,14 @@
  * 必须使用与 {@link import("@/lib/solver").TechniqueIds} 及 {@link import("@/lib/solver").TechniqueId}
  * 一致的字符串字面量（与求解器登记对齐）。**禁止**自造与求解器未登记不同的异名 id。
  *
+ * 与 **hint-system** / **puzzle-generator** 的交叉引用：凡涉及技巧名或 `TechniqueId` 字符串，均以
+ * `lib/solver/technique-ids.ts` 的 {@link TechniqueIds} 为唯一真源；出题档位、提示返回的 `technique`
+ * 与本目录中的 `id` 必须可对上同一登记集合。
+ *
+ * **扩展 id 策略**：当前目录**不**保留「未在求解器登记的占位技巧 id」。若未来需要教学占位或实验位，
+ * 须在数据旁显式列出并在 Vitest 中单独断言（例如预期 `isRegisteredTechniqueId === false`），**禁止**
+ * 依赖静默拼写错误通过字符串比对混入目录。
+ *
  * 本模块不追求「最少章节数」「最短解锁路径」等极限指标。
  *
  * 讲解文案键与步骤高亮预设见 {@link getTechniqueTutorialMetaMap} / {@link TECHNIQUE_TUTORIAL_META}（并列数据，不扩展 {@link TechniqueModule}）。
@@ -37,6 +45,12 @@ export type {
   TechniqueTutorialMetaMap,
 } from "./technique-tutorial-meta";
 export { getTechniqueTutorialMetaMap, TECHNIQUE_TUTORIAL_META } from "./technique-tutorial-meta";
+
+/**
+ * 类型-only 再导出：标注本模块**运行时不依赖**具体 9×9 盘面；仅便于与上层在类型层对齐 `GameState` 等契约。
+ * 不引入 `core-model` 的运行时值或序列化副作用。
+ */
+export type { CellState, GameState, Grid9 } from "@/lib/core";
 
 /** 与 {@link CurriculumTier} 一致的排序权重（低 → 中 → 高）。 */
 const TIER_RANK: Record<CurriculumTier, number> = {
@@ -147,4 +161,98 @@ export function getUnlockGraph(): UnlockEdge[] {
     techniqueId: t.id,
     requires: i === 0 ? [] : [sorted[i - 1].id],
   }));
+}
+
+// ── Runtime consistency validator ────────────────────────────────
+
+export type CurriculumValidationError = {
+  code: string;
+  message: string;
+};
+
+/**
+ * Validates cross-referential integrity of the curriculum data.
+ *
+ * Checks performed (single linear scan, synchronous, typically < 1 ms):
+ * 1. `getTechniqueCatalog` ↔ `getUnlockGraph` cross-reference closure
+ * 2. `practiceEndlessModeId` uniqueness
+ * 3. No duplicate `order` within the same `tier`
+ * 4. No duplicate `id` in catalog
+ *
+ * @returns An array of validation errors (empty = valid).
+ */
+export function validateCurriculum(
+  catalog: TechniqueModule[] = getTechniqueCatalog(),
+  graph: UnlockEdge[] = getUnlockGraph(),
+): CurriculumValidationError[] {
+  const errors: CurriculumValidationError[] = [];
+  const catalogIds = new Set(catalog.map((m) => m.id));
+
+  // 1. Duplicate id in catalog
+  if (catalogIds.size !== catalog.length) {
+    const seen = new Set<string>();
+    for (const m of catalog) {
+      if (seen.has(m.id)) {
+        errors.push({ code: "DUPLICATE_ID", message: `Duplicate technique id: "${m.id}"` });
+      }
+      seen.add(m.id);
+    }
+  }
+
+  // 2. practiceEndlessModeId uniqueness
+  const modeIdsSeen = new Set<string>();
+  for (const m of catalog) {
+    if (modeIdsSeen.has(m.practiceEndlessModeId)) {
+      errors.push({
+        code: "DUPLICATE_MODE_ID",
+        message: `Duplicate practiceEndlessModeId: "${m.practiceEndlessModeId}"`,
+      });
+    }
+    modeIdsSeen.add(m.practiceEndlessModeId);
+  }
+
+  // 3. No duplicate order within the same tier
+  const orderByTier = new Map<CurriculumTier, Set<number>>();
+  for (const m of catalog) {
+    if (!orderByTier.has(m.tier)) orderByTier.set(m.tier, new Set());
+    const orders = orderByTier.get(m.tier)!;
+    if (orders.has(m.order)) {
+      errors.push({
+        code: "DUPLICATE_ORDER",
+        message: `Duplicate order ${m.order} in tier "${m.tier}"`,
+      });
+    }
+    orders.add(m.order);
+  }
+
+  // 4. Cross-reference: every graph techniqueId must exist in catalog
+  for (const edge of graph) {
+    if (!catalogIds.has(edge.techniqueId)) {
+      errors.push({
+        code: "GRAPH_UNKNOWN_TECHNIQUE",
+        message: `Unlock graph references unknown techniqueId: "${edge.techniqueId}"`,
+      });
+    }
+    for (const req of edge.requires) {
+      if (!catalogIds.has(req)) {
+        errors.push({
+          code: "GRAPH_UNKNOWN_REQUIRES",
+          message: `Unlock graph edge for "${edge.techniqueId}" requires unknown id: "${req}"`,
+        });
+      }
+    }
+  }
+
+  // 5. Every catalog id should appear in graph
+  const graphTechniqueIds = new Set(graph.map((e) => e.techniqueId));
+  for (const id of catalogIds) {
+    if (!graphTechniqueIds.has(id)) {
+      errors.push({
+        code: "CATALOG_NOT_IN_GRAPH",
+        message: `Catalog technique "${id}" has no entry in unlock graph`,
+      });
+    }
+  }
+
+  return errors;
 }
