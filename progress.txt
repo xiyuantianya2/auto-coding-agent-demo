@@ -1,5 +1,36 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 integration-qa id=3 — 计时器与暂停（验收闭环）
+
+### What was done:
+- `e2e/timer-pause.spec.ts` 已覆盖：`page.clock` 推进时间、暂停冻结读数与禁用交互、恢复后继续累计（专项练习路径，稳定 `data-testid`）。
+- `e2e/hint-notes-undo.spec.ts`：笔记用例改为在「填数→笔记」`setMode` 入栈后断言撤销可用；填数用例改为在 1–9 中尝试首个合法填数（避免固定 `6` 与首格冲突），保证 `npm run test:e2e` 全量稳定通过。
+- `modules/integration-qa.task.json`：id=3 `passes: true`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`（24 个 E2E）全部通过。
+
+### Notes:
+- 全量 E2E 为任务 3 硬性门槛；与撤销栈相关的 spec 须与 `setMode`/`commit` 行为一致。
+
+---
+
+## 2026-04-14 - Task: suduku2 integration-qa id=3 — 计时器与暂停 E2E（向上计时、暂停冻结、恢复累计）
+
+### What was done:
+- 新增 `e2e/timer-pause.spec.ts`：专项登录→专项练习局，轮询断言开局 ≥1 秒后暂停；断言 `digit-pad` / 模式切换 / 提示与可玩格在暂停时禁用，计时读数 1.2s 内不变；恢复后读数严格大于冻结值。
+- `playwright.config.ts`：`webServer.env.SUDUKU2_DATA_DIR` 指向 `e2e/.playwright-data`，减轻与本机 `data/` 争用导致的 Windows rename EPERM。
+- `package.json`：`test:e2e` / `test:e2e:headed` 经 `cross-env CI=1` 启动，使 Playwright 自带 dev 服务且 `reuseExistingServer` 与隔离数据目录一致。
+- 根 `.gitignore`：忽略 `suduku2/e2e/.playwright-data/`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`（21 个 E2E）通过；`cross-env CI=1 playwright test e2e/timer-pause.spec.ts --headed` 通过。
+
+### Notes:
+- 本地若已有进程占用 3003，需先结束后再跑 E2E（`CI=1` 时不复用外部 dev）。
+
+---
+
 ## 2026-04-14 - Task: suduku2 client-ui id=8 — `useSudoku2Game`、草稿 `draft` 与 Playwright 端到端回归
 
 ### What was done:
