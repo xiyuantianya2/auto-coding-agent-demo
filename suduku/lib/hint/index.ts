@@ -14,6 +14,11 @@
 import type { GameState } from "@/lib/core";
 import type { TechniqueId } from "@/lib/solver";
 
+export {
+  solveStepHighlightsToHintFields,
+  type HintHighlightFields,
+} from "./solve-step-highlights";
+
 export type HintResult = {
   /** 需要在棋盘上高亮的格子坐标（行/列，0–8）。 */
   cells: Array<{ r: number; c: number }>;

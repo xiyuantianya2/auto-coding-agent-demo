@@ -24,7 +24,7 @@
         "Vitest 覆盖至少：仅 cell、仅 unit、仅 candidate、混合三类高亮的样例，断言 cells 与 highlightCandidates 与预期一致",
         "不修改 lib/solver 与 lib/core 源码"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,
