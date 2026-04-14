@@ -19,6 +19,31 @@ import type { Grid9 } from "@/lib/core";
 import type { TechniqueId } from "@/lib/solver";
 import { TechniqueIds } from "@/lib/solver";
 
+import type { DifficultyTier } from "./difficulty-tier";
+
+export type { DifficultyTier } from "./difficulty-tier";
+export {
+  TIER_PROFILES,
+  getTierProfile,
+  isTechniqueAllowedForTier,
+  maxAllowedTechniqueWeight,
+  scoreFitsTierProfile,
+  type TierProfileDefinition,
+} from "./tier-profiles";
+export {
+  DEFAULT_ANALYZE_BUDGET_MS,
+  DEFAULT_MAX_SOLVE_STEPS,
+  applyOneStep,
+  classifyPuzzleMinimumTier,
+  derivePuzzleDifficultyMetadata,
+  derivePuzzleSpecDifficultyFields,
+  gatherApplicableStepsFromCandidates,
+  puzzleMatchesTierProfile,
+  runHumanSolveTrace,
+  type HumanSolveTraceResult,
+  type RunHumanSolveTraceOptions,
+} from "./human-solve-trace";
+
 export {
   cloneGrid9,
   gameStateFromGivensGrid,
@@ -35,16 +60,6 @@ export { verifyUniqueSolution } from "./unique-solution";
 // Re-export solver technique naming for callers that build or validate PuzzleSpec.requiredTechniques.
 export type { TechniqueId };
 export { TechniqueIds };
-
-/**
- * 四档无尽难度（与产品文案「入门/普通/困难/专家」对应）。
- *
- * - **`entry`**：入门，技巧与分数约束最宽、最易完成。
- * - **`normal`**：普通。
- * - **`hard`**：困难。
- * - **`expert`**：专家，允许的技巧集合与目标分数区间最严。
- */
-export type DifficultyTier = "entry" | "normal" | "hard" | "expert";
 
 /**
  * 一局题目的对外元数据（与 `@/lib/core` 的 {@link Grid9} 对齐）。

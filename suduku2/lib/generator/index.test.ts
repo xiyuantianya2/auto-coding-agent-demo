@@ -8,12 +8,18 @@ import {
 } from "@/lib/core";
 
 import {
+  classifyPuzzleMinimumTier,
   cloneGrid9,
+  derivePuzzleDifficultyMetadata,
+  derivePuzzleSpecDifficultyFields,
   digHolesFromCompleteSolution,
   gameStateFromGivensGrid,
   gameStateFromSolvedGrid,
   generatePuzzle,
   generateRandomCompleteGrid,
+  puzzleMatchesTierProfile,
+  TIER_PROFILES,
+  TechniqueIds,
   verifyUniqueSolution,
 } from "./index";
 
@@ -211,6 +217,71 @@ describe("dig holes keeping unique solution (task 4)", () => {
       });
       expect(dug).not.toBeNull();
       expect(verifyUniqueSolution(dug!)).toBe(true);
+    },
+  );
+});
+
+/** 与 solver 集成测试相同终盘；仅 (0,0) 为空，一步裸单可解。 */
+const ALMOST_SOLVED_ONE_BLANK: Grid9 = [
+  [0, 3, 4, 6, 7, 8, 9, 1, 2],
+  [6, 7, 2, 1, 9, 5, 3, 4, 8],
+  [1, 9, 8, 3, 4, 2, 5, 6, 7],
+  [8, 5, 9, 7, 6, 1, 4, 2, 3],
+  [4, 2, 6, 8, 5, 3, 7, 9, 1],
+  [7, 1, 3, 9, 2, 4, 8, 5, 6],
+  [9, 6, 1, 5, 3, 7, 2, 8, 4],
+  [2, 8, 7, 4, 1, 9, 6, 3, 5],
+  [3, 4, 5, 2, 8, 6, 1, 7, 9],
+];
+
+describe("tier profiles & PuzzleSpec difficulty metadata (task 5)", () => {
+  it("TIER_PROFILES: technique sets nest and expert includes X-Wing", () => {
+    expect(TIER_PROFILES.entry.allowedTechniques.has(TechniqueIds.UniqueCandidate)).toBe(
+      true,
+    );
+    expect(TIER_PROFILES.hard.allowedTechniques.has(TechniqueIds.XWing)).toBe(false);
+    expect(TIER_PROFILES.expert.allowedTechniques.has(TechniqueIds.XWing)).toBe(true);
+  });
+
+  it("derivePuzzleSpecDifficultyFields: shape matches PuzzleSpec difficulty fields", () => {
+    const d = derivePuzzleSpecDifficultyFields(UNIQUE_FIXTURE, mulberry32(11));
+    expect(typeof d.difficultyScore).toBe("number");
+    expect(d.difficultyScore).toBeGreaterThanOrEqual(0);
+    expect(Array.isArray(d.requiredTechniques)).toBe(true);
+    for (const id of d.requiredTechniques) {
+      expect(typeof id).toBe("string");
+    }
+    if (d.scoreBand !== undefined) {
+      expect(d.scoreBand.length).toBe(2);
+      expect(d.scoreBand[0]! <= d.scoreBand[1]!).toBe(true);
+    }
+  });
+
+  it("derivePuzzleDifficultyMetadata: known fixture solves under human trace", () => {
+    const d = derivePuzzleDifficultyMetadata(UNIQUE_FIXTURE, mulberry32(22));
+    expect(d.solved).toBe(true);
+    expect(d.trajectory.length).toBeGreaterThan(0);
+  });
+
+  it("classifyPuzzleMinimumTier: returns a tier for newspaper fixture", () => {
+    const t = classifyPuzzleMinimumTier(UNIQUE_FIXTURE, mulberry32(33));
+    expect(["entry", "normal", "hard", "expert"] as const).toContain(t);
+  });
+
+  it("one-blank grid matches entry tier profile", () => {
+    expect(puzzleMatchesTierProfile(ALMOST_SOLVED_ONE_BLANK, "entry", mulberry32(44))).toBe(
+      true,
+    );
+  });
+
+  it(
+    "expert path: metadata smoke only (structure, no heavy search)",
+    { timeout: 120_000 },
+    () => {
+      const d = derivePuzzleSpecDifficultyFields(UNIQUE_FIXTURE, mulberry32(55));
+      expect(typeof d.difficultyScore).toBe("number");
+      expect(d.requiredTechniques.length).toBeGreaterThanOrEqual(1);
+      expect(puzzleMatchesTierProfile(UNIQUE_FIXTURE, "expert", mulberry32(55))).toBe(true);
     },
   );
 });
