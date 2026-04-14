@@ -1,15 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars -- public API placeholders; params match module contract */
-import type { EndlessGlobalState, UserId, UserProgress } from "./types";
+import type { EndlessGlobalState, UserProgress } from "./types";
 
 const STUB_MSG = "suduku2/server: not implemented (server-api module pending)";
-
-export async function register(
-  username: string,
-  password: string,
-  nickname?: string,
-): Promise<{ userId: UserId }> {
-  throw new Error(STUB_MSG);
-}
 
 export async function login(
   username: string,

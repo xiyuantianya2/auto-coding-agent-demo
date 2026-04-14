@@ -2,7 +2,7 @@
  * # suduku2/server — 局域网服务、账号与 JSON 持久化
  *
  * 对外导出与 `module-plan.json` 中 **server-api** 模块的 interface 一致。
- * 当前为骨架：类型与 `getDataDir()` 已实现；注册/登录/进度等函数为占位实现（抛出错误）。
+ * 当前进度：`getDataDir()`、`register()` 已实现；登录/进度等函数为占位实现（抛出错误）。
  *
  * ## 数据目录 `getDataDir()`
  *
@@ -16,7 +16,7 @@
  *
  * | 相对路径 | 内容 |
  * |----------|------|
- * | `users-index.json` | 用户名 → `userId`、凭证索引（哈希盐等），供注册/登录校验 |
+ * | `users-index.json` | 用户名键（**不区分大小写**，存为小写）→ `userId`、密码 scrypt 哈希与盐、可选昵称 |
  * | `sessions.json` | 不透明会话 token → `userId`（及可选过期元数据） |
  * | `global/endless.json` | `EndlessGlobalState`：四档难度共享无尽关卡池（`maxPreparedLevel`、按关卡号索引的 `puzzles`） |
  * | `users/<userId>.json` | 单用户 `UserProgress`（`techniques`、`practice`、`endless`、`draft`、`settings`） |
@@ -35,10 +35,17 @@ export type {
 export { SUDUKU2_DATA_DIR_ENV, getDataDir } from "./data-dir";
 
 export {
+  InvalidPasswordError,
+  InvalidUsernameError,
+  UsernameConflictError,
+} from "./errors";
+
+export { register } from "./register";
+
+export {
   exportProgress,
   getProgress,
   importProgress,
   login,
-  register,
   saveProgress,
 } from "./stubs";
