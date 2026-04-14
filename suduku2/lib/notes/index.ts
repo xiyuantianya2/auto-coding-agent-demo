@@ -21,6 +21,8 @@ import {
   cloneGameState,
   getEffectiveDigitAt,
   isFilledDigit,
+  isLegalClearCell,
+  isLegalToggleNote,
   type GameState,
 } from "@/lib/core";
 import type { CandidatesGrid } from "@/lib/solver";
@@ -74,17 +76,94 @@ export type UndoRedoApi = {
 /**
  * 应用一条 {@link NotesCommand}；`candidates` 通常由 `@/lib/solver` 的 `computeCandidates` 提供。
  *
- * @throws {Error} 本任务为骨架阶段，始终抛出 `'not implemented'`。
+ * ### 非法命令与未实现分支
+ *
+ * - **`setMode` / `toggle` / `clearCell`**：若 `payload` 形状不符推荐约定，或经 `@/lib/core` 规则判定为非法操作
+ *   （例如 `fill` 模式下切换笔记、清除给定格），**不修改逻辑状态**，返回 {@link cloneGameState}`(state)` 的**新克隆**
+ *   （与输入盘面快照等价，不抛出异常）。
+ * - **`fill` / `undo` / `redo`**：后续任务实现；当前调用仍抛出 `Error`，`message` 为 `'not implemented'`。
+ *
+ * 合法分支均在内部 `clone` 上变更，**从不**就地修改入参 `state`。
  */
 export function applyCommand(
   state: GameState,
   cmd: NotesCommand,
   candidates: CandidatesGrid,
 ): GameState {
-  void state;
-  void cmd;
   void candidates;
-  throw new Error("not implemented");
+
+  switch (cmd.type) {
+    case "setMode": {
+      const p = cmd.payload as { mode?: unknown };
+      if (p?.mode !== "fill" && p?.mode !== "notes") {
+        return cloneGameState(state);
+      }
+      const next = cloneGameState(state);
+      next.mode = p.mode;
+      return next;
+    }
+    case "toggle": {
+      const p = cmd.payload as { r?: unknown; c?: unknown; digit?: unknown };
+      if (
+        typeof p.r !== "number" ||
+        typeof p.c !== "number" ||
+        typeof p.digit !== "number" ||
+        !Number.isInteger(p.r) ||
+        !Number.isInteger(p.c) ||
+        !Number.isInteger(p.digit)
+      ) {
+        return cloneGameState(state);
+      }
+      const { r, c, digit } = p;
+      if (!isLegalToggleNote(state, r, c, digit)) {
+        return cloneGameState(state);
+      }
+      const next = cloneGameState(state);
+      const cell = next.cells[r][c];
+      const toggled = new Set(cell.notes ?? []);
+      if (toggled.has(digit)) {
+        toggled.delete(digit);
+      } else {
+        toggled.add(digit);
+      }
+      next.cells[r][c] = {
+        ...cell,
+        notes: toggled.size > 0 ? toggled : undefined,
+      };
+      next.grid[r][c] = getEffectiveDigitAt(next, r, c);
+      return next;
+    }
+    case "clearCell": {
+      const p = cmd.payload as { r?: unknown; c?: unknown };
+      if (
+        typeof p.r !== "number" ||
+        typeof p.c !== "number" ||
+        !Number.isInteger(p.r) ||
+        !Number.isInteger(p.c)
+      ) {
+        return cloneGameState(state);
+      }
+      const { r, c } = p;
+      if (!isLegalClearCell(state, r, c)) {
+        return cloneGameState(state);
+      }
+      const next = cloneGameState(state);
+      const cell = next.cells[r][c];
+      if (cell.value === undefined) {
+        next.grid[r][c] = getEffectiveDigitAt(next, r, c);
+        return next;
+      }
+      const cleared: typeof cell = { ...cell };
+      delete cleared.value;
+      next.cells[r][c] = cleared;
+      next.grid[r][c] = getEffectiveDigitAt(next, r, c);
+      return next;
+    }
+    case "fill":
+    case "undo":
+    case "redo":
+      throw new Error("not implemented");
+  }
 }
 
 /**

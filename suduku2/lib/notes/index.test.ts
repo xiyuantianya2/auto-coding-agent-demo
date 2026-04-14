@@ -36,12 +36,116 @@ describe("@/lib/notes skeleton (task 1)", () => {
     expect(() => api.push(makeMinimalState())).not.toThrow();
   });
 
-  it("applyCommand throws until implemented", () => {
+  it("applyCommand setMode is implemented (fill → notes)", () => {
+    const state = makeMinimalState();
+    const candidates = computeCandidates(state);
+    const out = applyCommand(state, { type: "setMode", payload: { mode: "notes" } }, candidates);
+    expect(out.mode).toBe("notes");
+    expect(state.mode).toBe("fill");
+  });
+});
+
+describe("applyCommand (setMode / toggle / clearCell)", () => {
+  it("setMode: invalid payload returns a fresh clone equal to input", () => {
+    const state = makeMinimalState();
+    const candidates = computeCandidates(state);
+    const out = applyCommand(state, { type: "setMode", payload: { mode: "invalid" } }, candidates);
+    expect(serializeGameState(out)).toBe(serializeGameState(state));
+    expect(out).not.toBe(state);
+  });
+
+  it("toggle: adds and removes a note in notes mode; does not mutate input", () => {
+    const state = makeMinimalState();
+    state.mode = "notes";
+    const candidates = computeCandidates(state);
+
+    const a = applyCommand(state, { type: "toggle", payload: { r: 2, c: 3, digit: 4 } }, candidates);
+    expect([...(a.cells[2][3].notes ?? [])].sort((x, y) => x - y)).toEqual([4]);
+    expect(a.grid[2][3]).toBe(EMPTY_CELL);
+
+    const b = applyCommand(a, { type: "toggle", payload: { r: 2, c: 3, digit: 4 } }, candidates);
+    expect(b.cells[2][3].notes).toBeUndefined();
+    expect(b.grid[2][3]).toBe(EMPTY_CELL);
+
+    expect(state.cells[2][3].notes).toBeUndefined();
+  });
+
+  it("toggle: rejects fill mode, given cells, and filled cells (returns clone of prior state)", () => {
+    const base = makeMinimalState();
+    const candidates = computeCandidates(base);
+
+    const inFill = applyCommand(
+      base,
+      { type: "toggle", payload: { r: 1, c: 1, digit: 5 } },
+      candidates,
+    );
+    expect(serializeGameState(inFill)).toBe(serializeGameState(base));
+
+    const withGiven = cloneGameState(base);
+    withGiven.grid[0][0] = 9;
+    withGiven.cells[0][0] = { given: 9 };
+    withGiven.mode = "notes";
+    const cg = computeCandidates(withGiven);
+    const g = applyCommand(withGiven, { type: "toggle", payload: { r: 0, c: 0, digit: 1 } }, cg);
+    expect(serializeGameState(g)).toBe(serializeGameState(withGiven));
+
+    const withValue = cloneGameState(base);
+    withValue.mode = "notes";
+    withValue.grid[4][4] = 8;
+    withValue.cells[4][4] = { value: 8 };
+    const cv = computeCandidates(withValue);
+    const v = applyCommand(withValue, { type: "toggle", payload: { r: 4, c: 4, digit: 1 } }, cv);
+    expect(serializeGameState(v)).toBe(serializeGameState(withValue));
+  });
+
+  it("clearCell: removes player value and syncs grid (value-only cell)", () => {
+    const state = makeMinimalState();
+    state.grid[3][5] = 7;
+    state.cells[3][5] = { value: 7 };
+    const candidates = computeCandidates(state);
+
+    const out = applyCommand(state, { type: "clearCell", payload: { r: 3, c: 5 } }, candidates);
+
+    expect(out.cells[3][5].value).toBeUndefined();
+    expect(out.cells[3][5].notes).toBeUndefined();
+    expect(out.grid[3][5]).toBe(EMPTY_CELL);
+    expect(state.cells[3][5].value).toBe(7);
+  });
+
+  it("clearCell: idempotent on empty cell with notes (notes unchanged)", () => {
+    const state = makeMinimalState();
+    state.mode = "notes";
+    state.cells[2][2] = { notes: new Set([3, 4]) };
+    const candidates = computeCandidates(state);
+
+    const out = applyCommand(state, { type: "clearCell", payload: { r: 2, c: 2 } }, candidates);
+
+    expect([...(out.cells[2][2].notes ?? [])].sort((a, b) => a - b)).toEqual([3, 4]);
+    expect(out.grid[2][2]).toBe(EMPTY_CELL);
+  });
+
+  it("clearCell: rejects given cells and leaves state unchanged", () => {
+    const state = makeMinimalState();
+    state.grid[0][0] = 5;
+    state.cells[0][0] = { given: 5 };
+    const candidates = computeCandidates(state);
+
+    const out = applyCommand(state, { type: "clearCell", payload: { r: 0, c: 0 } }, candidates);
+    expect(serializeGameState(out)).toBe(serializeGameState(state));
+  });
+
+  it("fill / undo / redo branches are still not implemented", () => {
     const state = makeMinimalState();
     const candidates = computeCandidates(state);
     expect(() =>
-      applyCommand(state, { type: "setMode", payload: { mode: "notes" } }, candidates),
+      applyCommand(state, { type: "fill", payload: { r: 0, c: 0, digit: 1 } }, candidates),
     ).toThrow("not implemented");
+    expect(() => applyCommand(state, { type: "undo", payload: {} }, candidates)).toThrow(
+      "not implemented",
+    );
+    expect(() => applyCommand(state, { type: "redo", payload: {} }, candidates)).toThrow(
+      "not implemented",
+    );
   });
 });
 
