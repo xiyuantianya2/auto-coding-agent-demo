@@ -3,14 +3,26 @@
  *
  * 下游应自本文件引用（例如 `import { … } from "@/lib/notes"`），避免深路径耦合。
  *
+ * ## 公开 API
+ *
+ * 本模块导出：{@link NotesCommand}、{@link applyCommand}、{@link syncNotesAfterValue}、{@link createUndoRedo}、{@link UndoRedoApi}。
+ *
  * ## 依赖
  *
  * - 盘面与规则类型来自 {@link import("@/lib/core").GameState `@/lib/core`}（如 {@link import("@/lib/core").cloneGameState `cloneGameState`}）。
  * - 候选网格形状 **仅** 使用 {@link import("@/lib/solver").CandidatesGrid `CandidatesGrid`}（自 `@/lib/solver` 导入），本模块不重复定义候选网格类型。
  *
- * ## 与提示步协作（摘要）
+ * ## 与 `@/lib/hint` 及任意「外部步」的撤销协作
  *
- * 本模块不拦截 `@/lib/hint` 的 `getNextHint`。若外部推理或提示会改变 `GameState`，调用方应在应用前后使用 {@link UndoRedoApi.push} 维护可撤销快照；完整约定将在后续任务中补充。
+ * 本模块 **不会** 自动调用或拦截 {@link import("@/lib/hint").getNextHint `getNextHint`}；笔记命令与撤销栈只响应你显式传入的 {@link NotesCommand} 与 {@link UndoRedoApi}。
+ *
+ * 当调用方在应用提示推理、自动解题步、或任何会改写 {@link import("@/lib/core").GameState `GameState`} 的逻辑 **之前** 希望保留可撤销点，应：
+ *
+ * 1. 对**当前**盘面调用 {@link UndoRedoApi.push}`(state)`（或等价地 `push(cloneGameState(state))`，视你的快照策略而定；栈内会再 `clone` 一次以防别名）。
+ * 2. 执行外部变更（例如根据 `getNextHint` 的结果高亮后，由 UI 填入数字并再调 {@link applyCommand} / 或直接改 `GameState`）。
+ * 3. 若用户撤销该步，用 {@link NotesCommand} `undo` 分支传入同一 {@link UndoRedoApi}，或自行 `undo()` 取回快照后再把结果交回 UI。
+ *
+ * `getNextHint` 本身按契约 **不修改** 传入的 `GameState`；但若你在「看过提示之后」用其它代码改了盘面，撤销责任仍在调用方。若一次操作链中混合了本模块命令与外部改写，请在**每一段可撤销操作前** `push`，以保证栈与玩家预期一致。
  *
  * @module @/lib/notes
  */

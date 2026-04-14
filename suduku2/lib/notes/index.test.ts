@@ -2,18 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import {
   cloneGameState,
+  deserializeGameState,
   EMPTY_CELL,
   serializeGameState,
   type CellState,
   type GameState,
   type Grid9,
 } from "@/lib/core";
+import { getNextHint } from "@/lib/hint";
 import { computeCandidates } from "@/lib/solver";
 
 import {
   applyCommand,
   createUndoRedo,
   syncNotesAfterValue,
+  type NotesCommand,
   type UndoRedoApi,
 } from "@/lib/notes";
 
@@ -415,4 +418,80 @@ describe("syncNotesAfterValue", () => {
 
     expect(after).toBe(before);
   });
+});
+
+describe("integration (task 7): serialize round-trip + notes API", () => {
+  it("applyCommand behaves the same on deserializeGameState(serializeGameState(state))", () => {
+    const base = makeMinimalState();
+    base.mode = "notes";
+    base.cells[1][3] = { notes: new Set([2, 7]) };
+
+    const restored = deserializeGameState(serializeGameState(base));
+    const candidatesOrig = computeCandidates(base);
+    const candidatesRt = computeCandidates(restored);
+
+    const cmd: NotesCommand = { type: "toggle", payload: { r: 1, c: 3, digit: 2 } };
+    const outOrig = applyCommand(base, cmd, candidatesOrig);
+    const outRt = applyCommand(restored, cmd, candidatesRt);
+    expect(serializeGameState(outRt)).toBe(serializeGameState(outOrig));
+
+    const base2 = makeMinimalState();
+    const candFill = computeCandidates(base2);
+    const fillCmd: NotesCommand = { type: "fill", payload: { r: 0, c: 0, digit: 1 } };
+    const filledOrig = applyCommand(base2, fillCmd, candFill);
+    const rt2 = deserializeGameState(serializeGameState(base2));
+    const filledRt = applyCommand(rt2, fillCmd, computeCandidates(rt2));
+    expect(serializeGameState(filledRt)).toBe(serializeGameState(filledOrig));
+  });
+
+  it("syncNotesAfterValue matches after deserializeGameState on the same logical board", () => {
+    const state = makeMinimalState();
+    state.grid[0][0] = 5;
+    state.cells[0][0] = { value: 5 };
+    state.cells[0][1] = { notes: new Set([5, 6]) };
+    state.cells[1][0] = { notes: new Set([4, 5]) };
+
+    const candidates = computeCandidates(state);
+    const direct = syncNotesAfterValue(state, candidates);
+
+    const roundTrip = deserializeGameState(serializeGameState(state));
+    const candRt = computeCandidates(roundTrip);
+    const afterRt = syncNotesAfterValue(roundTrip, candRt);
+
+    expect(serializeGameState(afterRt)).toBe(serializeGameState(direct));
+  });
+
+  it("getNextHint does not mutate a fixed GameState (coexistence with @/lib/hint)", () => {
+    const state = makeMinimalState();
+    state.grid[0][0] = 5;
+    state.cells[0][0] = { value: 5 };
+    state.cells[0][1] = { notes: new Set([1, 2, 3]) };
+
+    const before = serializeGameState(state);
+    getNextHint(state);
+    expect(serializeGameState(state)).toBe(before);
+  });
+});
+
+describe("createUndoRedo: large stack smoke (bounded)", () => {
+  it(
+    "supports many push operations without throwing",
+    { timeout: 15_000 },
+    () => {
+      const api = createUndoRedo();
+      const depth = 500;
+      for (let i = 0; i < depth; i++) {
+        const s = makeMinimalState();
+        s.mode = i % 2 === 0 ? "fill" : "notes";
+        api.push(s);
+      }
+      expect(api.canUndo()).toBe(true);
+      let undos = 0;
+      while (api.canUndo()) {
+        expect(api.undo()).not.toBeNull();
+        undos += 1;
+      }
+      expect(undos).toBe(depth - 1);
+    },
+  );
 });
