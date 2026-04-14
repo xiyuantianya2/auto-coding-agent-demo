@@ -12,6 +12,14 @@ export {
   findMidTierApplicableSteps,
   findMidTierStepsFromCandidates,
 } from "./mid-tier";
+export {
+  findHighTierApplicableSteps,
+  findHighTierStepsFromCandidates,
+  MAX_ELAPSED_MS_HI,
+  MAX_HI_EMITTED_STEPS,
+  MAX_HI_PATTERN_PROBES,
+} from "./high-tier";
+export type { HighTierOptions } from "./high-tier";
 export type { TechniqueId, KnownTechniqueId } from "./technique-ids";
 export { TechniqueIds } from "./technique-ids";
 export type {

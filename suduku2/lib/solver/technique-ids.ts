@@ -19,7 +19,7 @@ export const TechniqueIds = {
   Pointing: "pointing",
   /** 行列摒除：同行/列上某候选仅落在一个宫内，删该宫内行/列外的该候选 */
   BoxLineReduction: "box-line-reduction",
-  /** X-Wing（占位） */
+  /** X-Wing（2×2 鱼）：行/列上双强链矩形删候选 */
   XWing: "x-wing",
 } as const satisfies Record<string, string>;
 
