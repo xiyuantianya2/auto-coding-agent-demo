@@ -11,6 +11,8 @@ export {
   useSudoku2ApiBase,
 } from "./sudoku2-app-providers";
 
+export { Sudoku2ThemeProvider, useSudoku2Theme } from "./sudoku2-theme-provider";
+
 export {
   DEFAULT_SUDOKU2_API_BASE_URL,
   joinSudoku2ApiPath,

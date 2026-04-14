@@ -51,14 +51,14 @@ export function LoginForm(): JSX.Element {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-zinc-900/60 p-8 shadow-xl">
-      <div className="flex gap-2 rounded-lg bg-zinc-950/80 p-1">
+    <div className="w-full max-w-md rounded-2xl border border-[var(--s2-border)] bg-[var(--s2-card)] p-8 shadow-xl">
+      <div className="flex gap-2 rounded-lg bg-[var(--s2-card-muted)] p-1">
         <button
           type="button"
           className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
             mode === "login"
               ? "bg-emerald-600 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
+              : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
           onClick={() => {
             setMode("login");
@@ -73,7 +73,7 @@ export function LoginForm(): JSX.Element {
           className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
             mode === "register"
               ? "bg-emerald-600 text-white"
-              : "text-zinc-400 hover:text-zinc-200"
+              : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
           onClick={() => {
             setMode("register");
@@ -87,14 +87,14 @@ export function LoginForm(): JSX.Element {
 
       <form className="mt-8 space-y-5" onSubmit={onSubmit}>
         <div>
-          <label htmlFor={usernameId} className="block text-sm font-medium text-zinc-300">
+          <label htmlFor={usernameId} className="block text-sm font-medium text-[var(--s2-text-muted)]">
             用户名
           </label>
           <input
             id={usernameId}
             name="username"
             autoComplete="username"
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+            className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
             value={username}
             onChange={(ev) => setUsername(ev.target.value)}
             required
@@ -102,7 +102,7 @@ export function LoginForm(): JSX.Element {
           />
         </div>
         <div>
-          <label htmlFor={passwordId} className="block text-sm font-medium text-zinc-300">
+          <label htmlFor={passwordId} className="block text-sm font-medium text-[var(--s2-text-muted)]">
             密码（不少于 6 位）
           </label>
           <input
@@ -110,7 +110,7 @@ export function LoginForm(): JSX.Element {
             name="password"
             type="password"
             autoComplete={mode === "login" ? "current-password" : "new-password"}
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+            className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
             value={password}
             onChange={(ev) => setPassword(ev.target.value)}
             required
@@ -120,14 +120,14 @@ export function LoginForm(): JSX.Element {
         </div>
         {mode === "register" ? (
           <div>
-            <label htmlFor={nicknameId} className="block text-sm font-medium text-zinc-300">
+            <label htmlFor={nicknameId} className="block text-sm font-medium text-[var(--s2-text-muted)]">
               昵称（可选）
             </label>
             <input
               id={nicknameId}
               name="nickname"
               autoComplete="nickname"
-              className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+              className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
               value={nickname}
               onChange={(ev) => setNickname(ev.target.value)}
               data-testid="auth-nickname"
@@ -160,8 +160,8 @@ export function LoginForm(): JSX.Element {
         </button>
       </form>
 
-      <p className="mt-8 text-center text-sm text-zinc-500">
-        <Link href="/" className="text-emerald-400 underline-offset-4 hover:underline">
+      <p className="mt-8 text-center text-sm text-[var(--s2-text-subtle)]">
+        <Link href="/" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400">
           返回首页
         </Link>
       </p>

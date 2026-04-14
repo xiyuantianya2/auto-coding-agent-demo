@@ -11,8 +11,8 @@ export function GameGate(props: { children: ReactNode }): JSX.Element {
 
   if (!ready) {
     return (
-      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-zinc-950 px-6 py-16 text-zinc-100">
-        <p className="text-sm text-zinc-400" data-testid="game-gate-loading">
+      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
+        <p className="text-sm text-[var(--s2-text-muted)]" data-testid="game-gate-loading">
           加载中…
         </p>
       </div>
@@ -21,11 +21,11 @@ export function GameGate(props: { children: ReactNode }): JSX.Element {
 
   if (!token) {
     return (
-      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-zinc-950 px-6 py-16 text-zinc-100">
+      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
         <div className="max-w-md text-center">
           <h1 className="text-2xl font-semibold">对局</h1>
           <p
-            className="mt-4 text-sm leading-relaxed text-zinc-400"
+            className="mt-4 text-sm leading-relaxed text-[var(--s2-text-muted)]"
             data-testid="game-login-hint"
           >
             进入对局前请先登录账号，以便同步进度与无尽关卡数据。
@@ -42,7 +42,7 @@ export function GameGate(props: { children: ReactNode }): JSX.Element {
           <p className="mt-6">
             <Link
               href="/"
-              className="text-emerald-400/90 underline-offset-4 hover:underline"
+              className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400/90"
             >
               返回首页
             </Link>

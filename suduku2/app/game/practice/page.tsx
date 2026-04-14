@@ -14,7 +14,7 @@ export default function PracticePage(): JSX.Element {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full flex-1 items-center justify-center px-6 py-16 text-sm text-zinc-400">
+        <div className="flex min-h-full flex-1 items-center justify-center px-6 py-16 text-sm text-[var(--s2-text-muted)]">
           加载专项页面…
         </div>
       }

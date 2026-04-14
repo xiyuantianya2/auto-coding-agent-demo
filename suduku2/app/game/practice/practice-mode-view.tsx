@@ -251,8 +251,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
 
   if (phase.kind === "no-mode") {
     return (
-      <div className="mx-auto max-w-md px-6 py-16 text-center text-zinc-100">
-        <p className="text-sm text-zinc-400">未指定专项模式。请从教学大纲点击「专项练习」进入。</p>
+      <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
+        <p className="text-sm text-[var(--s2-text-muted)]">未指定专项模式。请从教学大纲点击「专项练习」进入。</p>
         <p className="mt-6">
           <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
             前往教学大纲
@@ -264,8 +264,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
 
   if (phase.kind === "invalid-mode") {
     return (
-      <div className="mx-auto max-w-md px-6 py-16 text-center text-zinc-100">
-        <p className="text-sm text-zinc-400">无效的专项模式参数。</p>
+      <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
+        <p className="text-sm text-[var(--s2-text-muted)]">无效的专项模式参数。</p>
         <p className="mt-6">
           <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
             返回教学大纲
@@ -278,7 +278,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
   if (phase.kind === "locked") {
     return (
       <div
-        className="mx-auto flex w-full max-w-lg flex-col gap-4 px-6 py-16 text-zinc-100"
+        className="mx-auto flex w-full max-w-lg flex-col gap-4 px-6 py-16 text-[var(--s2-text)]"
         data-testid="practice-locked-root"
       >
         <h1 className="text-xl font-semibold">{phase.techniqueTitle}</h1>
@@ -304,7 +304,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
 
   return (
     <div
-      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10 text-zinc-100"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10 text-[var(--s2-text)] md:px-6 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-5xl"
       data-testid="practice-play-root"
     >
       <header className="flex flex-col gap-2">
@@ -322,26 +322,26 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
           </Link>
         </div>
         {practiceStats ? (
-          <p className="text-sm text-zinc-400" data-testid="practice-stats">
+          <p className="text-sm text-[var(--s2-text-muted)]" data-testid="practice-stats">
             连胜：{practiceStats.streak ?? 0} · 最佳用时：
             {typeof practiceStats.bestTimeMs === "number"
               ? `${Math.floor(practiceStats.bestTimeMs / 1000)} 秒`
               : "—"}
           </p>
         ) : (
-          <p className="text-sm text-zinc-400" data-testid="practice-stats">
+          <p className="text-sm text-[var(--s2-text-muted)]" data-testid="practice-stats">
             连胜：0 · 最佳用时：—
           </p>
         )}
         {phase.kind === "playing" ? (
-          <p className="text-xs text-zinc-500" data-testid="practice-meta">
+          <p className="text-xs text-[var(--s2-text-subtle)]" data-testid="practice-meta">
             难度分：{phase.spec.difficultyScore.toFixed(1)} · 种子：{phase.spec.seed}
           </p>
         ) : null}
       </header>
 
       {phase.kind === "loading" ? (
-        <p className="text-sm text-zinc-400" data-testid="practice-loading">
+        <p className="text-sm text-[var(--s2-text-muted)]" data-testid="practice-loading">
           加载进度与题目…
         </p>
       ) : null}
@@ -351,7 +351,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
           <p>{phase.message}</p>
           <button
             type="button"
-            className="mt-4 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
+            className="mt-4 rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] disabled:opacity-60"
             onClick={() => void loadPuzzle()}
             disabled={busy}
             data-testid="practice-retry"
@@ -411,7 +411,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-800 disabled:opacity-40"
+                  className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
                   onClick={() => void onLeave()}
                   disabled={busy}
                   data-testid="practice-leave"
@@ -419,7 +419,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
                   返回教学
                 </button>
                 {statusHint ? (
-                  <p className="text-xs leading-relaxed text-zinc-400" data-testid="practice-status">
+                  <p className="text-xs leading-relaxed text-[var(--s2-text-muted)]" data-testid="practice-status">
                     {statusHint}
                   </p>
                 ) : null}

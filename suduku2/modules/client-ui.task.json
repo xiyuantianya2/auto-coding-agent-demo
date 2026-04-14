@@ -87,7 +87,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "补充 Playwright：主题切换或高对比开关生效（可检查 class 或 CSS 变量）、导入导出至少一轮冒烟，并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: suduku2 client-ui id=7 — 主题、高对比、平板布局与进度导入/导出 UI
+
+### What was done:
+- `app/globals.css`：`--s2-*` 变量驱动亮/暗与 `html.hc-candidates` 候选数高对比；`app/layout.tsx` 注入 `beforeInteractive` 脚本（`ui-preferences.ts`）避免首屏主题闪烁；`Sudoku2ThemeProvider` 同步 localStorage 与已登录用户的 `saveProgress({ settings })`。
+- `app/home-settings-section.tsx`：主题下拉、候选高对比复选框、导出/导入（`progress-backup-api.ts` + `progress-import-errors.ts` 中文错误映射）；`app/page.tsx` 挂载。
+- 全站主要页面与 `sudoku-play-surface.tsx`：语义色与平板横屏断点（棋盘/候选字号、教学与无尽列表列数）。
+- `e2e/settings-backup.spec.ts` + fixtures；`playwright.config.ts` 本地 `workers: 4` 减轻 `next dev` 并发压力；`e2e/board.spec.ts` 选择器与计时断言调整。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e` 全部通过。
+
+### Notes:
+- 外观键：`settings.theme`（`light`|`dark`|`system`）、`settings.highContrastCandidates`（boolean）；导出 JSON 不含 token（与 server `exportProgress` 契约一致）。
+
+---
+
 ## 2026-04-14 - Task: suduku2 client-ui id=6 — 主棋盘（GameState、笔记、提示、计时/暂停、撤销重做）
 
 ### What was done:

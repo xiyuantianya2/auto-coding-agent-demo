@@ -1,0 +1,15 @@
+{
+  "exportVersion": 1,
+  "format": "suduku2-user-progress-v1",
+  "progress": {
+    "version": 1,
+    "techniques": {},
+    "practice": {},
+    "endless": {
+      "entry": { "clearedLevel": 0 },
+      "normal": { "clearedLevel": 0 },
+      "hard": { "clearedLevel": 0 },
+      "expert": { "clearedLevel": 0 }
+    }
+  }
+}

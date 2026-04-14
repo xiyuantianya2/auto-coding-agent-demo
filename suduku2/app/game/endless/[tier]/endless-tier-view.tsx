@@ -211,8 +211,8 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
 
   if (!tier) {
     return (
-      <div className="mx-auto max-w-md px-6 py-16 text-center text-zinc-100">
-        <p className="text-sm text-zinc-400">无效的难度档位。</p>
+      <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
+        <p className="text-sm text-[var(--s2-text-muted)]">无效的难度档位。</p>
         <p className="mt-6">
           <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/game/endless">
             返回无尽模式
@@ -224,7 +224,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
 
   return (
     <div
-      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 py-10 text-zinc-100"
+      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10 text-[var(--s2-text)] md:px-6 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-5xl"
       data-testid="endless-play-root"
     >
       <header className="flex flex-col gap-2">
@@ -242,20 +242,20 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
           </Link>
         </div>
         {progress ? (
-          <p className="text-sm text-zinc-400" data-testid="endless-cleared">
+          <p className="text-sm text-[var(--s2-text-muted)]" data-testid="endless-cleared">
             已通关：{progress.endless[tier].clearedLevel} 关 · 本题关卡编号：
             {phase.kind === "playing" ? phase.nextLevel : phase.kind === "pool-not-ready" ? phase.nextLevel : "—"}
           </p>
         ) : null}
         {phase.kind === "playing" ? (
-          <p className="text-xs text-zinc-500" data-testid="endless-meta">
+          <p className="text-xs text-[var(--s2-text-subtle)]" data-testid="endless-meta">
             难度分：{phase.spec.difficultyScore.toFixed(1)} · 提示数：{givensCount} · 种子：{phase.spec.seed}
           </p>
         ) : null}
       </header>
 
       {phase.kind === "loading" ? (
-        <p className="text-sm text-zinc-400" data-testid="endless-loading">
+        <p className="text-sm text-[var(--s2-text-muted)]" data-testid="endless-loading">
           加载进度与题库…
         </p>
       ) : null}
@@ -265,7 +265,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
           <p>{phase.message}</p>
           <button
             type="button"
-            className="mt-4 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900 disabled:opacity-60"
+            className="mt-4 rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] disabled:opacity-60"
             onClick={() => void loadRun()}
             disabled={busy}
             data-testid="endless-retry"
@@ -347,7 +347,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
                 </button>
                 <button
                   type="button"
-                  className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-800 disabled:opacity-40"
+                  className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
                   onClick={() => void onAbandon()}
                   disabled={busy}
                   data-testid="endless-abandon"
@@ -355,7 +355,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
                   放弃本关
                 </button>
                 {statusHint ? (
-                  <p className="text-xs leading-relaxed text-zinc-400" data-testid="endless-status">
+                  <p className="text-xs leading-relaxed text-[var(--s2-text-muted)]" data-testid="endless-status">
                     {statusHint}
                   </p>
                 ) : null}

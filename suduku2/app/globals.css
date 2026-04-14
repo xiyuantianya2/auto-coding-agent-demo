@@ -1,18 +1,105 @@
 @import "tailwindcss";
 
+/* 亮色为默认（SSR）；`html.dark` 由首屏脚本与 ThemeProvider 同步 */
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  color-scheme: light;
+  --s2-page-bg: #fafafa;
+  --s2-text: #18181b;
+  --s2-text-muted: #71717a;
+  --s2-text-subtle: #a1a1aa;
+  --s2-border: #d4d4d8;
+  --s2-border-strong: #a1a1aa;
+  --s2-card: #f4f4f5;
+  --s2-card-muted: #e4e4e7;
+  --s2-nav-border: #a1a1aa;
+  --s2-input-bg: #ffffff;
+  --s2-input-border: #d4d4d8;
+  --s2-btn-secondary-bg: #e4e4e7;
+  --s2-btn-secondary-hover: #d4d4d8;
+  --s2-btn-secondary-text: #18181b;
+  --s2-btn-secondary-ring: #a1a1aa;
+  --s2-timer-text: #52525b;
+  --s2-board-outer-bg: #e4e4e7;
+  --s2-board-border: #a1a1aa;
+  --s2-cell-given-bg: #e4e4e7;
+  --s2-cell-given-text: #18181b;
+  --s2-cell-empty-bg: #ffffff;
+  --s2-cell-fill-text: #047857;
+  --s2-cell-selected-ring: rgba(16, 185, 129, 0.75);
+  --s2-cell-hint-ring: rgba(245, 158, 11, 0.95);
+  --s2-cand-pip-muted: #d4d4d8;
+  --s2-cand-pip-on: #3f3f46;
+  --s2-cand-hint: #b45309;
+  --s2-digit-pad-bg: #e4e4e7;
+  --s2-digit-pad-text: #18181b;
+  --s2-hint-btn-bg: rgba(245, 158, 11, 0.2);
+  --s2-hint-btn-text: #92400e;
+  --s2-hint-banner: #92400e;
+  --s2-amber-warn-bg: rgba(245, 158, 11, 0.12);
+  --s2-amber-warn-border: rgba(245, 158, 11, 0.45);
+  --s2-amber-warn-text: #78350f;
+}
+
+html.dark {
+  color-scheme: dark;
+  --s2-page-bg: #09090b;
+  --s2-text: #fafafa;
+  --s2-text-muted: #a1a1aa;
+  --s2-text-subtle: #71717a;
+  --s2-border: #3f3f46;
+  --s2-border-strong: #52525b;
+  --s2-card: rgba(24, 24, 27, 0.65);
+  --s2-card-muted: #18181b;
+  --s2-nav-border: #3f3f46;
+  --s2-input-bg: #09090b;
+  --s2-input-border: #3f3f46;
+  --s2-btn-secondary-bg: #18181b;
+  --s2-btn-secondary-hover: #27272a;
+  --s2-btn-secondary-text: #fafafa;
+  --s2-btn-secondary-ring: #3f3f46;
+  --s2-timer-text: #d4d4d8;
+  --s2-board-outer-bg: #18181b;
+  --s2-board-border: #3f3f46;
+  --s2-cell-given-bg: #27272a;
+  --s2-cell-given-text: #fafafa;
+  --s2-cell-empty-bg: #09090b;
+  --s2-cell-fill-text: #a7f3d0;
+  --s2-cell-selected-ring: rgba(52, 211, 153, 0.85);
+  --s2-cell-hint-ring: rgba(251, 191, 36, 0.95);
+  --s2-cand-pip-muted: #71717a;
+  --s2-cand-pip-on: #e4e4e7;
+  --s2-cand-hint: #fde68a;
+  --s2-digit-pad-bg: #18181b;
+  --s2-digit-pad-text: #fafafa;
+  --s2-hint-btn-bg: rgba(180, 83, 9, 0.45);
+  --s2-hint-btn-text: #fffbeb;
+  --s2-hint-banner: #fef3c7;
+  --s2-amber-warn-bg: rgba(245, 158, 11, 0.12);
+  --s2-amber-warn-border: rgba(245, 158, 11, 0.35);
+  --s2-amber-warn-text: #fde68a;
+}
+
+/* 候选数高对比：提高笔记数字与背景的对比度 */
+html.hc-candidates {
+  --s2-cand-pip-muted: #71717a;
+  --s2-cand-pip-on: #18181b;
+  --s2-cand-hint: #b45309;
+}
+
+html.dark.hc-candidates {
+  --s2-cand-pip-muted: #52525b;
+  --s2-cand-pip-on: #fafafa;
+  --s2-cand-hint: #fef08a;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--s2-page-bg);
+  --color-foreground: var(--s2-text);
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji";
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--s2-page-bg);
+  color: var(--s2-text);
 }

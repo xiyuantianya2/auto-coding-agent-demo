@@ -131,12 +131,12 @@ export function TutorialCurriculumView(): JSX.Element {
 
   return (
     <div
-      className="mx-auto w-full max-w-3xl px-4 py-10 text-zinc-100"
+      className="mx-auto w-full max-w-3xl px-4 py-10 text-[var(--s2-text)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-5xl [@media(min-width:768px)_and_(orientation:landscape)]:px-8"
       data-testid="tutorial-curriculum-root"
     >
-      <header className="border-b border-zinc-800 pb-6">
+      <header className="border-b border-[var(--s2-border)] pb-6">
         <h1 className="text-2xl font-semibold tracking-tight">教学大纲</h1>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-400">
+        <p className="mt-2 text-sm leading-relaxed text-[var(--s2-text-muted)]">
           按低 / 中 / 高阶分组；解锁依赖来自大纲图（每项最多依赖上一技巧）。
         </p>
         {!token && ready ? (
@@ -149,7 +149,7 @@ export function TutorialCurriculumView(): JSX.Element {
           </p>
         ) : null}
         {token && fetchStatus === "loading" ? (
-          <p className="mt-4 text-sm text-zinc-400" data-testid="tutorial-progress-loading">
+          <p className="mt-4 text-sm text-[var(--s2-text-muted)]" data-testid="tutorial-progress-loading">
             正在加载进度…
           </p>
         ) : null}
@@ -168,7 +168,7 @@ export function TutorialCurriculumView(): JSX.Element {
           }
           return (
             <section key={tier} aria-labelledby={`tier-${tier}`}>
-              <h2 id={`tier-${tier}`} className="text-lg font-medium text-emerald-400/95">
+              <h2 id={`tier-${tier}`} className="text-lg font-medium text-emerald-600 dark:text-emerald-400/95">
                 {TIER_LABEL[tier]}
               </h2>
               <ul className="mt-4 space-y-3">
@@ -198,24 +198,24 @@ export function TutorialCurriculumView(): JSX.Element {
                   return (
                     <li
                       key={mod.id}
-                      className="rounded-xl border border-zinc-800 bg-zinc-900/40 px-4 py-3"
+                      className="rounded-xl border border-[var(--s2-border)] bg-[var(--s2-card)] px-4 py-3"
                       data-testid={`tutorial-technique-${mod.id}`}
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <p className="font-medium text-zinc-100">
+                          <p className="font-medium text-[var(--s2-text)]">
                             {techniqueTitleZh(mod.titleKey)}
                           </p>
-                          <p className="mt-1 text-xs text-zinc-500">{prereqText}</p>
+                          <p className="mt-1 text-xs text-[var(--s2-text-subtle)]">{prereqText}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
                           <span
                             className={
                               unlocked === true
-                                ? "rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-200"
+                                ? "rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-800 dark:text-emerald-200"
                                 : unlocked === false
-                                  ? "rounded-md bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400"
-                                  : "rounded-md bg-zinc-800/80 px-2 py-0.5 text-xs text-zinc-500"
+                                  ? "rounded-md bg-[var(--s2-card-muted)] px-2 py-0.5 text-xs text-[var(--s2-text-muted)]"
+                                  : "rounded-md bg-[var(--s2-card-muted)] px-2 py-0.5 text-xs text-[var(--s2-text-subtle)]"
                             }
                             data-testid={`tutorial-unlock-status-${mod.id}`}
                           >
@@ -224,21 +224,21 @@ export function TutorialCurriculumView(): JSX.Element {
                           {token && fetchStatus === "ok" && unlocked === true ? (
                             <Link
                               href={`/game/practice?modeId=${encodeURIComponent(mod.practiceEndlessModeId)}`}
-                              className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/20"
+                              className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-500/20 dark:text-emerald-200"
                               data-testid={`tutorial-practice-link-${mod.id}`}
                             >
                               专项练习
                             </Link>
                           ) : token && fetchStatus === "ok" && unlocked === false ? (
                             <span
-                              className="inline-flex cursor-not-allowed items-center rounded-md border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-500"
+                              className="inline-flex cursor-not-allowed items-center rounded-md border border-dashed border-[var(--s2-border-strong)] px-2 py-1 text-xs text-[var(--s2-text-subtle)]"
                               data-testid={`tutorial-practice-locked-${mod.id}`}
                             >
                               需先解锁专项
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center rounded-md border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-500"
+                              className="inline-flex items-center rounded-md border border-dashed border-[var(--s2-border-strong)] px-2 py-1 text-xs text-[var(--s2-text-subtle)]"
                               data-testid={`tutorial-practice-wait-${mod.id}`}
                               title={!token ? "登录后可进入专项练习" : "正在读取解锁状态"}
                             >
@@ -259,7 +259,7 @@ export function TutorialCurriculumView(): JSX.Element {
       <p className="mt-10 text-center">
         <Link
           href="/"
-          className="text-emerald-400 underline-offset-4 hover:underline"
+          className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400"
         >
           返回首页
         </Link>

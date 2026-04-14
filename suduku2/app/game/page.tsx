@@ -3,10 +3,10 @@ import type { JSX } from "react";
 
 export default function GamePage(): JSX.Element {
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-zinc-950 px-6 py-16 text-zinc-100">
+    <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
       <div className="max-w-md text-center">
         <h1 className="text-2xl font-semibold">对局</h1>
-        <p className="mt-3 text-sm text-zinc-400">
+        <p className="mt-3 text-sm text-[var(--s2-text-muted)]">
           无尽模式从服务器题库选题并同步进度；主棋盘的高级交互将在后续任务继续完善。
         </p>
         <p className="mt-8">
