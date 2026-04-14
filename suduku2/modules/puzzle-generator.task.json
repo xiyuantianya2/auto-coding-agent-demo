@@ -1,0 +1,97 @@
+{
+  "project": "数独2",
+  "module": "puzzle-generator",
+  "moduleTitle": "唯一解出题与四档难度约束",
+  "description": "生成带唯一解的题目，面向四档难度（入门/普通/困难/专家）约束所需技巧层级与难度分区间；向玩家侧暴露难度分或区间元数据。不追求最少提示数或极限稀疏盘面；以随机挖洞/约束求解等简单可靠策略为主，超时则重新随机并重试。单次生成目标在 5 秒内完成；失败可重试多次但总耗时应可控，避免单次生成卡死。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "出题模块类型、`PuzzleSpec` 与 `lib/generator` 目录骨架",
+      "description": "在 `suduku2/lib/generator` 建立模块骨架：实现对外契约中的 `DifficultyTier`（`'entry'|'normal'|'hard'|'expert'`）、`PuzzleSpec`（`seed`、`givens: Grid9`、`difficultyScore`、`scoreBand?`、`requiredTechniques` 等字段语义在 JSDoc 中写清，并与 `@/lib/core` 的 `Grid9` 对齐）。约定 `TechniqueId` 与 `@/lib/solver` 中 `TechniqueId`/`TechniqueIds` 命名一致。提供入口文件（如 `index.ts`）导出类型与后续任务将实现的函数占位（可先 `throw` 或返回 `null`，但类型签名必须与 `module-plan.json` 一致）。说明 `generatePuzzle` 的 `seed` 为可复现/可展示字符串（例如由 tier、尝试序号与 rng 派生摘要），不要求密码学强度。纯类型与轻量辅助应在毫秒级完成；不引入「最少提示数」「最稀疏盘面」等模块未要求的极限目标。",
+      "steps": [
+        "新增 `suduku2/lib/generator` 目录、类型与对外导出，确保可从 `@/lib/generator`（或项目既有路径别名）引用，并与 `module-plan.json` 中本模块接口描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "`Grid9` 与 `GameState` 互转及随机**完整有效解**盘面生成",
+      "description": "实现从「仅含给定数字的 `Grid9`」构造供 `@/lib/core`/`@/lib/solver` 使用的 `GameState`（或项目约定的等价只读盘面）的辅助函数，以及将完整填好的 `Grid9` 转为 `GameState` 的路径；保证与 `serializeGameState`/`cloneGameState` 等下游用法无意外共享可变引用。实现**随机完整有效数独解**生成：可采用「有效种子盘 + 行列/数字置换/换行换列块」等随机变换，或经评审的简单回溯填充 + `rng` 打散候选顺序；目标为单次调用在常规硬件上通常在毫秒到数百毫秒内完成（一般远小于 5 秒），失败则返回 `null` 或由上层重试。不要求生成「最难」或「最少约束」的完整盘，以稳定可行为主。",
+      "steps": [
+        "实现完整解生成与 `GameState` 构造辅助，并从 `@/lib/core` 正确引用类型与工具函数。",
+        "编写 Vitest：对固定 `rng`/`seed` 断言生成结果为 9×9、每格 1–9、满足行/列/宫约束；至少一例随机用例。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "`verifyUniqueSolution`：解计数与早停（不依赖人类技巧完备求解）",
+      "description": "实现 `verifyUniqueSolution(givens: Grid9): boolean`：在标准数独规则下判断该提示盘面是否**恰有一个**完整解。推荐使用带**早停**的回溯/DLX 等约束搜索：找到第二个解即可返回 `false`，找到唯一解并穷尽后返回 `true`，明显无解返回 `false`。本实现应独立于 `findApplicableSteps` 的人类技巧链（因出题验证需要完备性）。对单次调用设置**节点扩展或步数/时间预算**（实现可选其一或组合），超预算时返回 `false` 或交由上层重试策略处理，并在注释中说明，避免单次调用无界卡死；目标为典型题目在毫秒级到约 1–2 秒内完成，最坏可控且一般应明显低于 5 秒。不要求与最少提示数或最短搜索路径相关的优化。",
+      "steps": [
+        "实现 `verifyUniqueSolution` 并导出；补充单元测试：已知唯一解/多解/无解的小型 fixture（可取自公开最小用例或手写）。",
+        "对刻意构造的较重输入可仅做「在合理 `test.timeout` 内返回布尔、不抛错」的冒烟，不要求全量穷举所有高难度盘。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "随机挖洞与唯一性保持（可冗余提示，超时即放弃本轮）",
+      "description": "在任务 2 得到的完整解盘面上，按 `rng` 随机顺序尝试将非给定格置空（挖洞），每步或每批挖洞后用任务 3 的 `verifyUniqueSolution` 校验仍唯一；若破坏唯一性则回退该步或换一种挖洞顺序。不追求最少提示数或极限稀疏：允许保留较多提示数以提高成功率与速度。为**单次挖洞尝试**设置与 `timeoutMs` 协调的时间或步数上限，超时则中止本轮挖洞并交由上层重新随机完整盘/重试。渐进式策略：先实现「能稳定产出唯一解盘」的简单版本，再按需微调挖洞批次与回退策略；单次完整挖洞流程在常见档位下目标在数秒内完成，与模块「单次生成约 5 秒」一致。",
+      "steps": [
+        "实现挖洞流程（可拆为内部函数），保证输出 `Grid9` 仍为有效提示且（在验证器预算内）唯一解。",
+        "编写 Vitest：使用固定 `rng` 种子跑短流程，断言输出通过 `verifyUniqueSolution`；对极慢随机组合仅做冒烟或跳过，并注明原因。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "四档难度画像：技巧层级与 `scoreDifficulty` 区间约束",
+      "description": "为每个 `DifficultyTier` 定义**数据驱动**画像：允许的 `TechniqueId` 集合或层级上下界、以及与 `@/lib/solver` 的 `scoreDifficulty` 对齐的**目标分数区间**（可与 `scoreBand` 字段对应）。验证方式应基于已有求解引擎：例如从提示盘面构建 `GameState`，迭代调用 `computeCandidates`、`findApplicableSteps`，按项目约定选择并应用一步（或记录解题轨迹上的技巧集合），直至填满或判定无法仅用允许技巧推进；再对轨迹调用 `scoreDifficulty` 得到 `difficultyScore` 与可选 `scoreBand`。不要求一步最优或最少步数解题；若单步有多条可应用步骤，可采用固定优先级或 `rng` 打破并列，但须在注释中说明。对单次分析设置合理上限（与 solver 已有预算协调），避免长时间循环；一般应在秒级内完成，明显超过 5 秒的路径应截断并重试。不要引入「必须用到某技巧的最少次数」等模块未要求的极限约束。",
+      "steps": [
+        "实现 tier 画像配置与 `PuzzleSpec` 所需 `requiredTechniques` / `difficultyScore` / `scoreBand` 的推导或填充逻辑。",
+        "编写 Vitest：对少量固定谜题 fixture 断言 tier 判定与元数据字段形状正确；对 expert 等可能较慢的路径仅做结构冒烟或设置较长 `test.timeout`，不对全空间随机搜索做压测。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "`generatePuzzle`：超时、重试与总耗时可控",
+      "description": "实现 `generatePuzzle(options: { tier: DifficultyTier; rng: () => number; timeoutMs?: number }): PuzzleSpec | null`：串联完整盘生成 → 挖洞 → `verifyUniqueSolution` → tier 画像与难度元数据校验；任一步失败或超时时进入下一轮尝试（重新随机完整盘或重新挖洞，策略在注释中说明）。`timeoutMs` 为单次调用总预算的**建议上限**（若未传则采用合理默认，如 5000ms）：实现应使用单调时钟或时间戳在循环中检测，避免单次调用在死循环中卡死；允许返回 `null` 表示在预算内未找到符合 tier 的题目。`seed` 字段应能区分不同尝试与可复现参数（与传入 `rng` 的用法一致）。重申：性能优先于最优性——不追求最少提示或最难盘；单次调用在常规硬件上目标在约 5 秒内完成或主动放弃，失败重试由调用方或本函数外层循环承担但总耗时应可控。",
+      "steps": [
+        "实现并导出 `generatePuzzle`，行为与 `module-plan.json` 中公开接口一致。",
+        "编写 Vitest：对易完成档位（如 entry）使用固定种子断言在默认超时内返回非 `null` 且字段合法；对高难度档位可断言「在极短超时或 mock 下返回 `null` 或非抛错」等冒烟，避免 CI 因随机深搜索不稳定而失败。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "公开 API 聚合与模块集成测试（Vitest，不含 E2E）",
+      "description": "在 `suduku2/lib/generator` 入口统一导出：`DifficultyTier`、`PuzzleSpec`、`generatePuzzle`、`verifyUniqueSolution` 及必要的内部类型（若需对外）。确认与 `@/lib/core`、`@/lib/solver` 的导入路径及 `TechniqueId` 命名一致。新增集成测试：至少覆盖「`generatePuzzle` → 返回的 `givens` → `verifyUniqueSolution` 为真」、`PuzzleSpec` JSON 可序列化字段形状、以及与 `deserializeGameState`/`cloneGameState` 无冲突的衔接（若测试中构造 `GameState`）。本模块不涉及 UI，验收**仅使用 Vitest**；**不要**在 steps 中要求 Playwright E2E。对 `generatePuzzle` 的性能敏感用例：对已知慢路径（如 expert 或大范围随机）仅做结构冒烟或设置合理 `test.timeout`，不要求全量覆盖所有随机种子。",
+      "steps": [
+        "整理对外导出与简短模块级 README 式注释（可仅在 `index.ts` 顶部块注释），说明 tier 画像与超时/重试语义。",
+        "编写并维护集成用例全部通过；常规用例在默认测试超时内完成。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
