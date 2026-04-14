@@ -5,7 +5,9 @@
  * 必须使用与 {@link import("@/lib/solver").TechniqueIds} 及 {@link import("@/lib/solver").TechniqueId}
  * 一致的字符串字面量（与求解器登记对齐）。**禁止**自造与求解器未登记不同的异名 id。
  *
- * 本模块不追求「最少章节数」「最短解锁路径」等极限指标；后续任务再填充目录与解锁图数据。
+ * 本模块不追求「最少章节数」「最短解锁路径」等极限指标。
+ *
+ * 讲解文案键与步骤高亮预设见 {@link getTechniqueTutorialMetaMap} / {@link TECHNIQUE_TUTORIAL_META}（并列数据，不扩展 {@link TechniqueModule}）。
  */
 
 import { TechniqueIds } from "@/lib/solver";
@@ -29,6 +31,12 @@ export type UnlockEdge = {
   techniqueId: string;
   requires: string[];
 };
+
+export type {
+  TechniqueTutorialMeta,
+  TechniqueTutorialMetaMap,
+} from "./technique-tutorial-meta";
+export { getTechniqueTutorialMetaMap, TECHNIQUE_TUTORIAL_META } from "./technique-tutorial-meta";
 
 /** 与 {@link CurriculumTier} 一致的排序权重（低 → 中 → 高）。 */
 const TIER_RANK: Record<CurriculumTier, number> = {
@@ -124,7 +132,19 @@ export function getTechniqueCatalog(): TechniqueModule[] {
   });
 }
 
-/** 占位：首版返回空图，后续任务填充渐进解锁关系（有向无环）。 */
+/**
+ * 渐进解锁依赖图（有向无环）。
+ *
+ * 策略：全目录按 tier（低→中→高）→ order → id 排序后形成单链，
+ * 每项依赖排序中的前一项；首项 `requires: []` 表示默认解锁 / 教程入口。
+ *
+ * 与 `server-api` 的衔接：服务端可在此图允许的"下一跳"里
+ * 更新 `techniques[id].unlocked` 持久化状态。
+ */
 export function getUnlockGraph(): UnlockEdge[] {
-  return [];
+  const sorted = getTechniqueCatalog();
+  return sorted.map((t, i) => ({
+    techniqueId: t.id,
+    requires: i === 0 ? [] : [sorted[i - 1].id],
+  }));
 }
