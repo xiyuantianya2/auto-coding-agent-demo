@@ -3,15 +3,15 @@
  * 具体检测逻辑由后续任务实现；此处仅提供命名契约，便于 `curriculum` 与 `HintResult` 交叉引用。
  */
 export const TechniqueIds = {
-  /** 唯一候选 / 裸单（占位，待任务 2 实现） */
+  /** 唯一候选 / 裸单 */
   UniqueCandidate: "unique-candidate",
-  /** 隐唯一（占位） */
+  /** 隐唯一（行/列/宫内） */
   HiddenSingle: "hidden-single",
   /** 显性数对（占位） */
   NakedPair: "naked-pair",
-  /** 宫内指向 / 区块摒除（占位） */
+  /** 宫内指向：同宫内某候选被限制在同一行或列，删该行/列在宫外的该候选 */
   Pointing: "pointing",
-  /** 行列摒除（占位） */
+  /** 行列摒除：同行/列上某候选仅落在一个宫内，删该宫内行/列外的该候选 */
   BoxLineReduction: "box-line-reduction",
   /** X-Wing（占位） */
   XWing: "x-wing",
