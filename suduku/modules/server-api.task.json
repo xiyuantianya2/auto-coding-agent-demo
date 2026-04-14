@@ -24,7 +24,7 @@
         "Vitest：使用 os.tmpdir() 或项目内临时目录，覆盖「首次写入」「更新合并」「损坏/非法 JSON 拒绝」等路径",
         "不在此任务引入 HTTP 或 token，仅 fs 封装与数据结构校验"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,

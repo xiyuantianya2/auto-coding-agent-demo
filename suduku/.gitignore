@@ -21,6 +21,9 @@
 # production
 /build
 
+# suduku server runtime data (default `SUDUKU_DATA_DIR` when unset)
+.data/
+
 # misc
 .DS_Store
 *.pem

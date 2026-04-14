@@ -9,56 +9,46 @@
 
 import type { DifficultyTier, PuzzleSpec, TechniqueId } from "@/lib/generator";
 
+import {
+  createEmptyProgressPayload,
+  type ProgressPayload,
+} from "./progress-types";
+
 export type { DifficultyTier, PuzzleSpec, TechniqueId };
 
 /** 服务端用户标识（不可猜测的随机 id 等），与 `module-plan` 一致。 */
 export type UserId = string;
 
-/**
- * 用户进度载荷（与 `module-plan.json` 中 server-api `interface` 一致）。
- *
- * **键空间约定（与客户端 / `content/curriculum` 对齐）：**
- *
- * - **`endless`**：键为无尽模式分段 id。**典型键**为四档难度 {@link DifficultyTier}
- *   (`'easy' | 'normal' | 'hard' | 'hell'`)，或产品定义的其它无尽线 id（同一字符串契约贯穿存档）。
- * - **`practice`**：键为专项练习 **`modeId`**，与 `getPracticeModeForTechnique(techniqueId).modeId`
- *   及技巧线一致（参见 `content/curriculum` 中 `PRACTICE_MODE_ID_PREFIX` 等约定）。
- * - **`tutorial`**：键为教学章节 **`ChapterId`**（`getCurriculumTree()` 节点的 `id` 字符串）。
- */
-export type ProgressPayload = {
-  endless: Record<
-    string,
-    {
-      /** 当前关卡序号（产品约定非负整数，由客户端与服务器同一语义）。 */
-      currentLevel: number;
-      /** 关卡号 → 最短通关时间（毫秒）。键为关卡序号。 */
-      bestTimesMs: Record<number, number>;
-    }
-  >;
-  practice: Record<
-    string,
-    {
-      unlocked: boolean;
-      streak: number;
-      bestTimeMs?: number;
-    }
-  >;
-  /** 章节完成标记：`ChapterId` → 是否已完成。 */
-  tutorial: Record<string, boolean>;
-};
+export type { ProgressPayload };
+export { createEmptyProgressPayload };
 
 /** 骨架阶段：后续任务实现失败时仍可使用本消息或 `loadProgress` 的空占位。 */
 export const SERVER_API_NOT_IMPLEMENTED =
   "server-api: not implemented (skeleton; replace in later server-api tasks)";
 
-/** 与持久化缺省文件对应的空进度结构（供 `loadProgress` 占位与测试）。 */
-export function createEmptyProgressPayload(): ProgressPayload {
-  return {
-    endless: {},
-    practice: {},
-    tutorial: {},
-  };
-}
+/** 本地数据根目录解析、用户路径与 `progress.json` 原子读写（任务 2；供后续 `loadProgress` / `saveProgress` 接线）。 */
+export {
+  DEFAULT_DATA_DIR_RELATIVE,
+  SUDUKU_DATA_DIR_ENV,
+  ensureDirExists,
+  resolveSudukuDataDir,
+} from "./storage/data-root";
+export {
+  InvalidUserIdError,
+  USER_FILES,
+  USERS_SEGMENT,
+  getUserDir,
+  getUserProgressPath,
+} from "./storage/paths";
+export {
+  ProgressFileParseError,
+  readUserProgressFile,
+  writeUserProgressFileAtomic,
+} from "./storage/progress-file";
+export {
+  ProgressPayloadValidationError,
+  parseProgressPayload,
+} from "./storage/progress-payload";
 
 /**
  * 注册新用户：写入用户名索引与凭证（后续任务）。
