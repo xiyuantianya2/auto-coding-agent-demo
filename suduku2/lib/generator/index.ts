@@ -19,6 +19,13 @@ import type { Grid9 } from "@/lib/core";
 import type { TechniqueId } from "@/lib/solver";
 import { TechniqueIds } from "@/lib/solver";
 
+export {
+  cloneGrid9,
+  gameStateFromGivensGrid,
+  gameStateFromSolvedGrid,
+} from "./grid-game-state";
+export { generateRandomCompleteGrid } from "./random-complete-grid";
+
 // Re-export solver technique naming for callers that build or validate PuzzleSpec.requiredTechniques.
 export type { TechniqueId };
 export { TechniqueIds };
