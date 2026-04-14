@@ -14,6 +14,7 @@ import {
   applyCommand,
   createUndoRedo,
   syncNotesAfterValue,
+  type UndoRedoApi,
 } from "@/lib/notes";
 
 function makeMinimalState(): GameState {
@@ -134,15 +135,84 @@ describe("applyCommand (setMode / toggle / clearCell)", () => {
     expect(serializeGameState(out)).toBe(serializeGameState(state));
   });
 
-  it("undo / redo branches are still not implemented", () => {
+  it("undo: uses UndoRedoApi.undo(); null yields clone of input state", () => {
     const state = makeMinimalState();
     const candidates = computeCandidates(state);
-    expect(() => applyCommand(state, { type: "undo", payload: {} }, candidates)).toThrow(
-      "not implemented",
-    );
-    expect(() => applyCommand(state, { type: "redo", payload: {} }, candidates)).toThrow(
-      "not implemented",
-    );
+
+    const restored = cloneGameState(state);
+    restored.mode = "notes";
+
+    const api: UndoRedoApi = {
+      push: () => {},
+      undo: () => restored,
+      redo: () => null,
+      canUndo: () => true,
+      canRedo: () => false,
+    };
+
+    const out = applyCommand(state, { type: "undo", payload: api }, candidates);
+    expect(out.mode).toBe("notes");
+    expect(state.mode).toBe("fill");
+
+    const apiNull: UndoRedoApi = {
+      push: () => {},
+      undo: () => null,
+      redo: () => null,
+      canUndo: () => false,
+      canRedo: () => false,
+    };
+    const base = makeMinimalState();
+    base.cells[1][2] = { notes: new Set([3]) };
+    const cg = computeCandidates(base);
+    const whenNull = applyCommand(base, { type: "undo", payload: apiNull }, cg);
+    expect(serializeGameState(whenNull)).toBe(serializeGameState(base));
+    expect(whenNull).not.toBe(base);
+  });
+
+  it("redo: uses UndoRedoApi.redo(); invalid payload returns clone of input", () => {
+    const state = makeMinimalState();
+    const candidates = computeCandidates(state);
+
+    const forward = cloneGameState(state);
+    forward.grid[0][0] = 4;
+    forward.cells[0][0] = { value: 4 };
+
+    const api: UndoRedoApi = {
+      push: () => {},
+      undo: () => null,
+      redo: () => forward,
+      canUndo: () => false,
+      canRedo: () => true,
+    };
+
+    const out = applyCommand(state, { type: "redo", payload: api }, candidates);
+    expect(out.grid[0][0]).toBe(4);
+    expect(state.grid[0][0]).toBe(EMPTY_CELL);
+
+    const badPayload = applyCommand(state, { type: "redo", payload: null }, candidates);
+    expect(serializeGameState(badPayload)).toBe(serializeGameState(state));
+    expect(badPayload).not.toBe(state);
+  });
+
+  it("undo/redo: does not mutate input GameState; stack side effects stay inside UndoRedoApi", () => {
+    const state = makeMinimalState();
+    const candidates = computeCandidates(state);
+    let undoCalls = 0;
+    const api: UndoRedoApi = {
+      push: () => {},
+      undo: () => {
+        undoCalls += 1;
+        return cloneGameState(state);
+      },
+      redo: () => null,
+      canUndo: () => true,
+      canRedo: () => false,
+    };
+
+    const before = serializeGameState(state);
+    applyCommand(state, { type: "undo", payload: api }, candidates);
+    expect(serializeGameState(state)).toBe(before);
+    expect(undoCalls).toBe(1);
   });
 });
 

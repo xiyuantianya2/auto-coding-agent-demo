@@ -37,7 +37,7 @@ import type { CandidatesGrid } from "@/lib/solver";
  * - **`clearCell`**：`{ r: number; c: number }` — 清除非给定格的玩家填数，并按规则清理相关笔记。
  * - **`fill`**：`{ r: number; c: number; digit: number }` — 填数模式下在 `(r,c)` 填入 `digit`，并与 {@link syncNotesAfterValue} 串联做同行/列/宫笔记剔除。
  * - **`setMode`**：`{ mode: import("@/lib/core").FillNotesMode }` — 即 `{ mode: 'fill' | 'notes' }`，切换当前输入模式。
- * - **`undo`** / **`redo`**：**后续任务**与 {@link UndoRedoApi} 集成 — 推荐将 `UndoRedoApi` 实例置于 `payload`（或对 `unknown` 校验后使用），由 {@link applyCommand} 调用 {@link UndoRedoApi.undo} / {@link UndoRedoApi.redo}，并以返回的 `GameState` 作为结果；若返回 `null`，语义由实现与 JSDoc 固定。**本任务不实现**具体分支逻辑，仅占位。
+ * - **`undo`** / **`redo`**：`payload` **应为** {@link UndoRedoApi} 实例（至少具备可调用的 `undo` / `redo` 方法）。{@link applyCommand} 会调用 `payload.undo()` 或 `payload.redo()` 并以返回的 `GameState` 作为结果；若返回 `null`（栈空等），则返回 {@link cloneGameState}`(state)` —— 与输入盘面快照等价的新克隆。`payload` 形状不符时同样返回输入状态的克隆（不抛错）。本路径**不**调用 `findApplicableSteps`。
  */
 export type NotesCommand = {
   type: "toggle" | "clearCell" | "fill" | "undo" | "redo" | "setMode";
@@ -82,7 +82,7 @@ export type UndoRedoApi = {
  * - **`setMode` / `toggle` / `clearCell` / `fill`**：若 `payload` 形状不符推荐约定，或经 `@/lib/core` 规则判定为非法操作
  *   （例如 `notes` 模式下填数、违反 {@link import("@/lib/core").isLegalFill `isLegalFill`}），**不修改逻辑状态**，返回
  *   {@link cloneGameState}`(state)` 的**新克隆**（与输入盘面快照等价，不抛出异常）。
- * - **`undo` / `redo`**：后续任务实现；当前调用仍抛出 `Error`，`message` 为 `'not implemented'`。
+ * - **`undo` / `redo`**：`payload` 须为带 `undo()` / `redo()` 的对象（见 {@link NotesCommand}）。若方法返回 `GameState`，直接作为返回值；若返回 `null` 或 `payload` 非法，返回 {@link cloneGameState}`(state)`。`candidates` 参数被忽略。不调用 `findApplicableSteps`。
  *
  * ### `fill` 与 `candidates`（避免双份候选实现）
  *
@@ -187,9 +187,22 @@ export function applyCommand(
       next.cells[r][c] = { given: prev.given, value: digit };
       return syncNotesAfterValue(next, candidates);
     }
-    case "undo":
-    case "redo":
-      throw new Error("not implemented");
+    case "undo": {
+      const p = cmd.payload;
+      if (p === null || typeof p !== "object" || typeof (p as { undo?: unknown }).undo !== "function") {
+        return cloneGameState(state);
+      }
+      const result = (p as UndoRedoApi).undo();
+      return result ?? cloneGameState(state);
+    }
+    case "redo": {
+      const p = cmd.payload;
+      if (p === null || typeof p !== "object" || typeof (p as { redo?: unknown }).redo !== "function") {
+        return cloneGameState(state);
+      }
+      const result = (p as UndoRedoApi).redo();
+      return result ?? cloneGameState(state);
+    }
   }
 }
 
