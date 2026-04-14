@@ -38,10 +38,19 @@ test.describe("Suduku tutorial curriculum (contract smoke)", () => {
     expect(pm.modeId).toBe(`endless-practice:${t}`);
   });
 
-  test("validateCurriculumTechniqueIds: empty tree passes", () => {
+  test("validateCurriculumTechniqueIds: production tree passes", () => {
     expect(validateCurriculumTechniqueIds(getCurriculumTree())).toEqual({
       ok: true,
     });
+  });
+
+  test("getCurriculumTree: non-empty and all three tiers present", () => {
+    const tree = getCurriculumTree();
+    expect(tree.length).toBeGreaterThan(0);
+    const tiers = new Set(tree.map((n) => n.tier));
+    expect(tiers.has("low")).toBe(true);
+    expect(tiers.has("mid")).toBe(true);
+    expect(tiers.has("high")).toBe(true);
   });
 
   test("validateCurriculumTechniqueIds: all TECHNIQUE_IDS in one chapter passes", () => {

@@ -1,6 +1,5 @@
 /**
- * 教学大纲与专项映射（骨架）。
- * 完整章节数据与校验见后续任务；此处仅稳定类型与公开 API 签名。
+ * 教学大纲与专项映射：章节树见 `./curriculum`，技巧 id 校验见 `./technique-validation`。
  */
 
 export type ChapterId = string;
@@ -14,10 +13,7 @@ export type CurriculumNode = {
   unlockAfter?: ChapterId[];
 };
 
-/** 占位：后续任务填入完整树；当前保证签名与返回类型稳定。 */
-export function getCurriculumTree(): CurriculumNode[] {
-  return [];
-}
+export { getCurriculumTree } from "./curriculum";
 
 export {
   listKnownTechniqueIds,
