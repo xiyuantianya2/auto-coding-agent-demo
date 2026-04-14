@@ -76,20 +76,11 @@ function assertUserProgressShape(p: unknown): asserts p is Omit<UserProgressFile
   }
 }
 
-function readUserProgressFile(dataDir: string, userId: UserId): UserProgress {
-  const file = userProgressPath(dataDir, userId);
-  if (!fs.existsSync(file)) {
-    return defaultUserProgress();
-  }
-  const raw = JSON.parse(fs.readFileSync(file, "utf8")) as unknown;
-  if (!isRecord(raw) || raw.version !== 1) {
-    throw new Error("suduku2/server: invalid user progress file version");
-  }
-  const techniques = raw.techniques;
-  const practice = raw.practice;
-  const endless = raw.endless;
-  const settings = raw.settings;
-  const draftWire = raw.draft;
+/**
+ * 自磁盘/导入快照中的 `UserProgressFileV1` 还原运行时 {@link UserProgress}。
+ */
+function userProgressFromWireObject(raw: UserProgressFileV1): UserProgress {
+  const { techniques, practice, endless, settings, draft: draftWire } = raw;
   assertUserProgressShape({ techniques, practice, endless });
   const base: UserProgress = {
     techniques: techniques as UserProgress["techniques"],
@@ -101,6 +92,18 @@ function readUserProgressFile(dataDir: string, userId: UserId): UserProgress {
     base.draft = deserializeGameState(JSON.stringify(draftWire));
   }
   return base;
+}
+
+function readUserProgressFile(dataDir: string, userId: UserId): UserProgress {
+  const file = userProgressPath(dataDir, userId);
+  if (!fs.existsSync(file)) {
+    return defaultUserProgress();
+  }
+  const raw = JSON.parse(fs.readFileSync(file, "utf8")) as unknown;
+  if (!isRecord(raw) || raw.version !== 1) {
+    throw new Error("suduku2/server: invalid user progress file version");
+  }
+  return userProgressFromWireObject(raw as UserProgressFileV1);
 }
 
 /**
@@ -226,5 +229,90 @@ export async function saveProgress(token: string, patch: Partial<UserProgress>):
   const current = readUserProgressFile(dataDir, userId);
   const merged = mergeUserProgress(current, patch);
   writeUserProgressAtomic(dataDir, userId, merged);
+  refreshEndlessGlobalPool(dataDir);
+}
+
+/** 与 `exportProgress` 写出 JSON 中的 `format` 字段一致，用于版本化与校验。 */
+export const USER_PROGRESS_EXPORT_FORMAT = "suduku2-user-progress-v1" as const;
+
+/** 导入 JSON 字符串最大字节数（UTF-16 引擎下按 `.length` 近似约束，防恶意超大 payload）。 */
+export const MAX_IMPORT_JSON_BYTES = 2 * 1024 * 1024;
+
+type UserProgressExportEnvelopeV1 = {
+  exportVersion: 1;
+  format: typeof USER_PROGRESS_EXPORT_FORMAT;
+  progress: UserProgressFileV1;
+};
+
+/**
+ * 导出当前登录用户的进度为可长期保存的 JSON 字符串。
+ *
+ * ## 内容边界（稳定契约）
+ *
+ * - **不包含**会话 token、`userId`、用户名、密码或任何登录凭证。
+ * - **仅包含**用户进度快照：根对象含 `exportVersion`、`format`、`progress`；`progress` 与磁盘文件
+ *   `users/<userId>.json` 同形（`version: 1` 与 `techniques` / `practice` / `endless` / 可选 `draft` / `settings`），
+ *   其中 `draft` 为与 `serializeGameState` 一致的 JSON 对象，而非含 `Set` 的运行时 {@link GameState}。
+ * - **不包含**无尽全局池 `global`（`EndlessGlobalState` 为服务器派生共享状态，不应随用户备份文件漂移）。
+ */
+export async function exportProgress(token: string): Promise<string> {
+  const userId = getUserIdFromToken(token);
+  const dataDir = getDataDir();
+  const progress = readUserProgressFile(dataDir, userId);
+  const wire = userProgressToFile(progress);
+  const envelope: UserProgressExportEnvelopeV1 = {
+    exportVersion: 1,
+    format: USER_PROGRESS_EXPORT_FORMAT,
+    progress: wire,
+  };
+  return `${JSON.stringify(envelope, null, 2)}\n`;
+}
+
+function parseImportedUserProgressJson(json: string): UserProgress {
+  if (json.length > MAX_IMPORT_JSON_BYTES) {
+    throw new Error(
+      `suduku2/server: import JSON exceeds max length (${MAX_IMPORT_JSON_BYTES} code units)`,
+    );
+  }
+  let root: unknown;
+  try {
+    root = JSON.parse(json);
+  } catch {
+    throw new Error("suduku2/server: import JSON parse failed");
+  }
+  if (!isRecord(root)) {
+    throw new Error("suduku2/server: import root must be an object");
+  }
+  if (root.exportVersion !== 1) {
+    throw new Error("suduku2/server: unsupported import exportVersion");
+  }
+  if (root.format !== USER_PROGRESS_EXPORT_FORMAT) {
+    throw new Error("suduku2/server: unexpected import format");
+  }
+  const progressRaw = root.progress;
+  if (!isRecord(progressRaw) || progressRaw.version !== 1) {
+    throw new Error("suduku2/server: invalid imported progress.version");
+  }
+  return userProgressFromWireObject(progressRaw as UserProgressFileV1);
+}
+
+/**
+ * 自备份 JSON 恢复用户进度。
+ *
+ * ## 合并 / 覆盖策略
+ *
+ * 校验通过后，将快照 **整份替换** 当前用户存档（`writeUserProgressAtomic`），与 `saveProgress` 一致采用
+ * **last-write-wins**：本次导入作为一次成功的完整写入，覆盖服务器上已有进度；不做与旧存档的字段级合并，
+ * 以免备份还原时残留旧技巧/关卡。导入后刷新无尽全局池（与 `saveProgress` 相同）。
+ *
+ * ## 安全
+ *
+ * 解析前限制字符串大小 {@link MAX_IMPORT_JSON_BYTES}；`JSON.parse` 失败或形状/version 不匹配则抛错，不落盘。
+ */
+export async function importProgress(token: string, json: string): Promise<void> {
+  const userId = getUserIdFromToken(token);
+  const dataDir = getDataDir();
+  const next = parseImportedUserProgressJson(json);
+  writeUserProgressAtomic(dataDir, userId, next);
   refreshEndlessGlobalPool(dataDir);
 }

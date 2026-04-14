@@ -2,8 +2,8 @@
  * # suduku2/server — 局域网服务、账号与 JSON 持久化
  *
  * 对外导出与 `module-plan.json` 中 **server-api** 模块的 interface 一致。
- * 当前进度：`getDataDir()`、`register()`、`login()`、`getUserIdFromToken()`、`getProgress()`（含 `global` 无尽池）、`saveProgress()` 已实现；
- * `exportProgress` / `importProgress` 仍为占位（后续任务）。
+ * 当前进度：`getDataDir()`、`register()`、`login()`、`getUserIdFromToken()`、`getProgress()`（含 `global` 无尽池）、
+ * `saveProgress()`、`exportProgress()`、`importProgress()` 已实现。
  *
  * ## 数据目录 `getDataDir()`
  *
@@ -48,6 +48,12 @@ export { register } from "./register";
 
 export { getUserIdFromToken, login } from "./login";
 
-export { getProgress, saveProgress } from "./progress";
+export {
+  MAX_IMPORT_JSON_BYTES,
+  USER_PROGRESS_EXPORT_FORMAT,
+  exportProgress,
+  getProgress,
+  importProgress,
+  saveProgress,
+} from "./progress";
 
-export { exportProgress, importProgress } from "./stubs";
