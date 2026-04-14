@@ -221,13 +221,30 @@ export function TutorialCurriculumView(): JSX.Element {
                           >
                             {unlockLabel}
                           </span>
-                          <span
-                            className="inline-flex cursor-not-allowed items-center rounded-md border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-500"
-                            data-testid={`tutorial-practice-placeholder-${mod.id}`}
-                            title="专项练习路由将在后续任务接入 practiceEndlessModeId"
-                          >
-                            专项练习（占位）
-                          </span>
+                          {token && fetchStatus === "ok" && unlocked === true ? (
+                            <Link
+                              href={`/game/practice?modeId=${encodeURIComponent(mod.practiceEndlessModeId)}`}
+                              className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-200 transition hover:bg-emerald-500/20"
+                              data-testid={`tutorial-practice-link-${mod.id}`}
+                            >
+                              专项练习
+                            </Link>
+                          ) : token && fetchStatus === "ok" && unlocked === false ? (
+                            <span
+                              className="inline-flex cursor-not-allowed items-center rounded-md border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-500"
+                              data-testid={`tutorial-practice-locked-${mod.id}`}
+                            >
+                              需先解锁专项
+                            </span>
+                          ) : (
+                            <span
+                              className="inline-flex items-center rounded-md border border-dashed border-zinc-600 px-2 py-1 text-xs text-zinc-500"
+                              data-testid={`tutorial-practice-wait-${mod.id}`}
+                              title={!token ? "登录后可进入专项练习" : "正在读取解锁状态"}
+                            >
+                              {!token ? "登录后可专项" : "专项练习"}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </li>

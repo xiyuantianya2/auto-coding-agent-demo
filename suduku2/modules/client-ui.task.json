@@ -62,7 +62,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "补充 Playwright：已解锁技巧可进入专项页；未解锁时可见中文拦截提示；在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

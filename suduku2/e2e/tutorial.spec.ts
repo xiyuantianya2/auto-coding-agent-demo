@@ -66,5 +66,5 @@ test("已登录时教学列表与解锁态与进度一致", async ({ page }) => 
   await expect(page.getByTestId(`tutorial-technique-${TID.uniqueCandidate}`)).toContainText(
     "唯一候选（裸单）",
   );
-  await expect(page.getByTestId(`tutorial-practice-placeholder-${TID.uniqueCandidate}`)).toBeVisible();
+  await expect(page.getByTestId(`tutorial-practice-link-${TID.uniqueCandidate}`)).toBeVisible();
 });

@@ -6,7 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "rea
 
 import {
   cloneGameState,
-  EMPTY_CELL,
   getEffectiveDigitAt,
   isLegalClearCell,
   isLegalFill,
@@ -24,6 +23,7 @@ import {
 import { useSudoku2Auth } from "@/app/auth-context";
 import { useSudoku2ApiBase } from "@/app/sudoku2-app-providers";
 import { ENDLESS_TIER_LABEL_ZH } from "@/app/game/endless/endless-meta";
+import { SudokuPlaySurface } from "@/app/game/sudoku-play-surface";
 import type { DifficultyTier, PuzzleSpec } from "@/server/types";
 
 const REQUEST_TIMEOUT_MS = 8000;
@@ -366,70 +366,17 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div
-              className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-9 gap-px overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-2"
-              data-testid="endless-board"
-            >
-              {Array.from({ length: 81 }, (_, i) => {
-                const r = Math.floor(i / 9);
-                const c = i % 9;
-                const d = getEffectiveDigitAt(gameState, r, c);
-                const isGiven = gameState.cells[r][c].given !== undefined;
-                const isSel = selected?.r === r && selected?.c === c;
-                return (
-                  <button
-                    key={`${r}-${c}`}
-                    type="button"
-                    className={[
-                      "flex aspect-square items-center justify-center text-base font-semibold md:text-lg",
-                      isGiven ? "bg-zinc-800 text-zinc-100" : "bg-zinc-950 text-emerald-200",
-                      isSel ? "ring-2 ring-emerald-400/80" : "",
-                    ].join(" ")}
-                    data-testid={`sudoku-cell-${r}-${c}`}
-                    aria-label={`单元格 ${r + 1}-${c + 1}`}
-                    onClick={() => {
-                      if (isGiven) {
-                        setSelected(null);
-                        return;
-                      }
-                      setSelected({ r, c });
-                    }}
-                  >
-                    {d === EMPTY_CELL ? "" : String(d)}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="flex w-full flex-col gap-3 md:max-w-xs">
-              <div className="grid grid-cols-9 gap-2 md:grid-cols-3">
-                {Array.from({ length: 9 }, (_, i) => {
-                  const n = i + 1;
-                  return (
-                    <button
-                      key={n}
-                      type="button"
-                      className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-800 disabled:opacity-40"
-                      data-testid={`digit-pad-${n}`}
-                      onClick={() => onDigit(n)}
-                      disabled={busy || justWon}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                type="button"
-                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-zinc-100 ring-1 ring-zinc-800 hover:bg-zinc-800 disabled:opacity-40"
-                onClick={onClear}
-                disabled={busy || justWon || !selected}
-                data-testid="endless-clear-cell"
-              >
-                清除所选格
-              </button>
-              <div className="flex flex-col gap-2">
+          <SudokuPlaySurface
+            gameState={gameState}
+            selected={selected}
+            onSelectCell={setSelected}
+            onDigit={onDigit}
+            onClear={onClear}
+            disabled={busy || justWon}
+            boardTestId="endless-board"
+            clearCellTestId="endless-clear-cell"
+            extraRightColumn={
+              <>
                 <button
                   type="button"
                   className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-40"
@@ -448,14 +395,14 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
                 >
                   放弃本关
                 </button>
-              </div>
-              {statusHint ? (
-                <p className="text-xs leading-relaxed text-zinc-400" data-testid="endless-status">
-                  {statusHint}
-                </p>
-              ) : null}
-            </div>
-          </div>
+                {statusHint ? (
+                  <p className="text-xs leading-relaxed text-zinc-400" data-testid="endless-status">
+                    {statusHint}
+                  </p>
+                ) : null}
+              </>
+            }
+          />
         </div>
       ) : null}
     </div>
