@@ -18,11 +18,16 @@ export type ClearCellNotesPayload = {
 
 /**
  * 批量清除若干格的笔记（仅清除笔记，不改 given/value）。
- * 顺序由调用方数组顺序决定；实现层须保持确定顺序（见后续任务说明）。
+ *
+ * - **`cells`**：按数组**下标从 0 递增**顺序逐格处理；重复坐标会重复执行清除（幂等）。
+ * - **`region`**：展开为固定遍历顺序（与 `highlight-filter` 的 `cellsForRow` / `cellsForCol` / `cellsForBox` 一致：
+ *   行内 `c` 0→8；列内 `r` 0→8；宫内行优先），再按该顺序逐格处理。
+ *
+ * 不可修改格（越界、`given` 格等，见 `lib/core` 的 `canModifyCell`）跳过；展开与跳过规则见 `apply-notes-command` 实现注释。
  */
-export type BatchClearNotesPayload = {
-  cells: Array<{ r: number; c: number }>;
-};
+export type BatchClearNotesPayload =
+  | { cells: Array<{ r: number; c: number }> }
+  | { region: "row" | "col" | "box"; index: number };
 
 /** `applyNotesCommand` 中 `undo` 分支的占位 payload（推荐撤销走 {@link createUndoStack}）。 */
 export type UndoNotesPayload = Record<string, never>;

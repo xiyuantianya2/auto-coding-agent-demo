@@ -92,4 +92,24 @@ test.describe("Suduku notes logic (contract smoke)", () => {
     expect(mode.inputMode).toBe("notes");
     expect(mode.cells[tr][tc].notes?.size ?? 0).toBe(0);
   });
+
+  test("applyNotesCommand batchClear clears notes on listed cells", () => {
+    const base = createGameStateFromGivens(SAMPLE_GIVENS_MINIMAL);
+    const candidates = computeCandidates(base);
+    const tr = 3;
+    const tc = 3;
+    const tdigit = [...candidates[tr][tc]][0];
+    const withNote = applyNotesCommand(
+      base,
+      { type: "toggle", payload: { r: tr, c: tc, digit: tdigit } },
+      candidates,
+    );
+    const cleared = applyNotesCommand(
+      withNote,
+      { type: "batchClear", payload: { cells: [{ r: tr, c: tc }, { r: 0, c: 0 }] } },
+      candidates,
+    );
+    expect(cleared.cells[tr][tc].notes?.size ?? 0).toBe(0);
+    expect(cleared.cells[0][0].given).toBe(base.cells[0][0].given);
+  });
 });

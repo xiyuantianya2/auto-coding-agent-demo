@@ -12,7 +12,7 @@
  *
  * `syncNotesWithCandidates` 已实现：按候选收紧笔记、清理已解格笔记。
  * `getHighlightCells` / `cellsForRow|Col|Box`：一键筛选高亮坐标（见 `./highlight-filter`）。
- * `applyNotesCommand` 已实现 `toggle` / `clearCell` / `setMode`；`batchClear` 与 `undo` 分支保留至后续任务。
+ * `applyNotesCommand` 已实现 `toggle` / `clearCell` / `setMode` / `batchClear`；`undo` 分支保留至后续任务。
  * `createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
  */
 
@@ -40,7 +40,7 @@ export type {
 } from "./types";
 
 /**
- * 将一条笔记命令应用到盘面（不可变更新）。已实现 `toggle` / `clearCell` / `setMode`（见 `./apply-notes-command`）。
+ * 将一条笔记命令应用到盘面（不可变更新）。已实现 `toggle` / `clearCell` / `setMode` / `batchClear`（见 `./apply-notes-command`）。
  */
 export function applyNotesCommand(
   state: GameState,

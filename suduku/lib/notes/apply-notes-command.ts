@@ -1,5 +1,5 @@
 /**
- * `applyNotesCommand` 的实现分支（toggle / clearCell / setMode；其它命令类型由入口保留至后续任务）。
+ * `applyNotesCommand` 的实现分支（toggle / clearCell / setMode / batchClear；`undo` 见后续任务）。
  *
  * **存档与 {@link GameState.inputMode}：** `inputMode` 为 core 模型上的可选字段；旧存档缺省该字段时与
  * `fill` 语义一致（见 `lib/core/types.ts` 注释）。序列化层在字段存在时写入 JSON，保证读回后行为一致。
@@ -15,7 +15,8 @@ import {
 import type { CandidatesGrid } from "@/lib/solver";
 
 import { cellIsSolved, syncNotesWithCandidates } from "./sync-notes";
-import type { NotesCommand } from "./types";
+import { cellsForBox, cellsForCol, cellsForRow } from "./highlight-filter";
+import type { BatchClearNotesPayload, NotesCommand } from "./types";
 
 function cellInObviousConflict(state: GameState, r: number, c: number): boolean {
   return findObviousConflictPositions(state).some((p) => p.r === r && p.c === c);
@@ -86,7 +87,50 @@ function applySetMode(
 }
 
 /**
- * 将一条笔记命令应用到盘面（不可变更新）。已实现：`toggle`、`clearCell`、`setMode`；其余类型返回克隆快照。
+ * 将 {@link BatchClearNotesPayload} 展开为 `(r,c)` 列表，顺序确定且与 `highlight-filter` 的宫/行/列遍历一致。
+ */
+function expandBatchClearCoords(payload: BatchClearNotesPayload): Array<{ r: number; c: number }> {
+  if ("region" in payload) {
+    const { region, index } = payload;
+    const frozen =
+      region === "row"
+        ? cellsForRow(index)
+        : region === "col"
+          ? cellsForCol(index)
+          : cellsForBox(index);
+    return frozen.map((p) => ({ r: p.r, c: p.c }));
+  }
+  return [...payload.cells];
+}
+
+/**
+ * 长按批量清除：对展开后的坐标列表**依次**处理（见 {@link BatchClearNotesPayload}）。
+ * 对每一格：若 `canModifyCell` 为假则**跳过**；否则与 `clearCell` 相同地仅清除笔记（已解格写空 `Set`，未解格 `delete notes`）。
+ * 全程在**单次** `cloneGameState` 结果上就地更新，最后对整个盘面调用 {@link syncNotesWithCandidates}。
+ */
+function applyBatchClear(
+  state: GameState,
+  payload: BatchClearNotesPayload,
+  candidates: CandidatesGrid,
+): GameState {
+  const coords = expandBatchClearCoords(payload);
+  const next = cloneGameState(state);
+  for (const { r, c } of coords) {
+    if (!canModifyCell(next, r, c)) {
+      continue;
+    }
+    const cell = next.cells[r][c];
+    if (cellIsSolved(cell)) {
+      cell.notes = new Set();
+    } else {
+      delete cell.notes;
+    }
+  }
+  return syncNotesWithCandidates(next, candidates);
+}
+
+/**
+ * 将一条笔记命令应用到盘面（不可变更新）。已实现：`toggle`、`clearCell`、`setMode`、`batchClear`；`undo` 仍返回克隆快照。
  */
 export function applyNotesCommandImpl(
   state: GameState,
@@ -105,7 +149,9 @@ export function applyNotesCommandImpl(
     case "setMode": {
       return applySetMode(state, candidates, cmd.payload.mode);
     }
-    case "batchClear":
+    case "batchClear": {
+      return applyBatchClear(state, cmd.payload, candidates);
+    }
     case "undo":
       return cloneGameState(state);
   }

@@ -57,7 +57,7 @@
         "Vitest 覆盖多格清除、含不可修改格、空列表边界",
         "与任务 4 的单元测试一并执行 npm test 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,
