@@ -27,3 +27,33 @@ export class InvalidUsernameError extends Error {
     this.name = "InvalidUsernameError";
   }
 }
+
+/** 用户名在索引中不存在（未注册） */
+export class UnknownUserError extends Error {
+  readonly code = "UNKNOWN_USER";
+
+  constructor(message = "Unknown username") {
+    super(message);
+    this.name = "UnknownUserError";
+  }
+}
+
+/** 密码与存储哈希不匹配 */
+export class WrongPasswordError extends Error {
+  readonly code = "WRONG_PASSWORD";
+
+  constructor(message = "Wrong password") {
+    super(message);
+    this.name = "WrongPasswordError";
+  }
+}
+
+/** 会话令牌缺失、格式无效或已失效 */
+export class InvalidTokenError extends Error {
+  readonly code = "INVALID_TOKEN";
+
+  constructor(message = "Invalid or expired session token") {
+    super(message);
+    this.name = "InvalidTokenError";
+  }
+}

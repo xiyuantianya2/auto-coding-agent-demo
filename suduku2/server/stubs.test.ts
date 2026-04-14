@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { login } from "./stubs";
+import { getProgress } from "./stubs";
 
 describe("server stubs", () => {
-  it("login rejects until implemented", async () => {
-    await expect(login("u", "secret12")).rejects.toThrow(/not implemented/);
+  it("getProgress rejects until implemented", async () => {
+    await expect(getProgress("any-token")).rejects.toThrow(/not implemented/);
   });
 });
