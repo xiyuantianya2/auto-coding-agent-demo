@@ -5,12 +5,26 @@
  *
  * ## 与 `module-plan.json` 对齐的契约
  *
- * - **难度档**：{@link DifficultyTier}（入门 / 普通 / 困难 / 专家）。
+ * - **难度档**：{@link DifficultyTier}（顺序 `entry` → `normal` → `hard` → `expert`，与产品「入门→专家」一致）。
  * - **题目元数据**：{@link PuzzleSpec}（提示盘面、难度分、可选分数区间、解题轨迹上涉及的技巧 id）。
  * - **技巧标识**：{@link TechniqueId} 与 {@link TechniqueIds} 与 `@/lib/solver`、教学大纲一致；勿自行发明异名字符串。
  * - **函数**：{@link generatePuzzle}（完整盘 → 挖洞 → 唯一解 → tier 画像）、{@link verifyUniqueSolution}（完备回溯计数 + 早停）。
  *
  * `seed` 为可复现/可展示的题面标识（例如由 tier、尝试序号与 `rng` 派生的短摘要），**不要求密码学强度**。
+ *
+ * ## 四档 tier 画像（摘要）
+ *
+ * 每档在 {@link ./tier-profiles} 中数据驱动定义：**允许的 {@link TechniqueId} 集合**、以及与
+ * `scoreDifficulty` 对齐的**目标分数区间**（用于 {@link PuzzleSpec.scoreBand} 与校验）。
+ * 高档位是低档位的超集（技巧集合单调扩张）；`expert` 允许高阶模式（如 X-Wing），`entry` 仅允许基础技巧。
+ * 出题**不**追求最少提示或最难终盘；保留冗余提示可显著加速命中 tier 与唯一性。
+ *
+ * ## `generatePuzzle`：超时与重试语义
+ *
+ * - **`timeoutMs`**：单次调用的**总墙上时钟预算**（默认 5000ms）。内部用 `Date.now()` 与截止时间判断，避免死循环。
+ * - **重试**：在预算内循环「随机完整有效解 → 随机挖洞（子预算）→ {@link verifyUniqueSolution} →
+ *   人类式 tier 校验」。任一步失败或子预算耗尽则**整轮丢弃**并换新的完整解重试（不长期卡在同一终盘上）。
+ * - **结果**：预算内找到合规题则返回 {@link PuzzleSpec}；否则返回 `null`（不抛错）。子步骤另有步数/次数上限，与总预算协同。
  *
  * @module @/lib/generator
  */
