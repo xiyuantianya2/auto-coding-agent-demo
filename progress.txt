@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 integration-qa id=4 — 提示、笔记模式与撤销/重做 UI 契约
+
+### What was done:
+- `e2e/hint-notes-undo.spec.ts`：补充文件头与 `test.describe` 归类；提示用例在 `page.evaluate` 中通过 `data-testid^="sudoku-cell-"` / `data-testid^="sudoku-hint-candidate-"` 与 `data-hint-*` 对齐断言，避免脆弱 CSS 类名。
+- `modules/integration-qa.task.json`：id=4 `passes: true`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`（24 个 E2E）全部通过。
+
+### Notes:
+- 撤销/重做以盘面按钮与 `aria-pressed` 为主；应用侧未暴露 Ctrl+Z 快捷键时以按钮态满足「或键盘路径」中的按钮路径。
+
+---
+
 ## 2026-04-15 - Task: suduku2 integration-qa id=3 — 计时器与暂停（验收闭环）
 
 ### What was done:

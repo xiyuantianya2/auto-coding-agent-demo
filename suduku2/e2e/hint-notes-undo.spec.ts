@@ -1,8 +1,14 @@
+/**
+ * integration-qa / task id=4：提示、笔记模式与撤销/重做 — 与 `@/lib/hint`、`@/lib/notes` 行为一致的 UI 契约。
+ * 断言依赖 `data-testid`、`data-hint-*`、`aria-pressed` 与 `evaluate` 读取的计算样式（opacity），不依赖 Tailwind 类名。
+ */
 import { test, expect } from "@playwright/test";
 
 import { apiRegisterAndLogin, injectAuth } from "./helpers";
 
 test.describe.configure({ retries: 1 });
+
+test.describe("提示、笔记模式与撤销/重做（hint / notes / undo-redo）", () => {
 
 const TID = "unique-candidate";
 const MODE = "practice-endless:unique-candidate";
@@ -87,11 +93,19 @@ test("提示：请求后出现 data-hint-cell / data-hint-candidate 或提示条
   await expect(page.getByTestId("sudoku-hint-banner")).toBeVisible({ timeout: 8_000 });
 
   const hintDom = await page.evaluate(() => {
-    const cells = document.querySelectorAll('[data-hint-cell="true"]');
+    const hintedCells = [...document.querySelectorAll('[data-testid^="sudoku-cell-"]')].filter(
+      (el) => el.getAttribute("data-hint-cell") === "true",
+    );
     const cands = document.querySelectorAll('[data-hint-candidate="true"]');
-    return { hintCellCount: cells.length, hintCandCount: cands.length };
+    const candByTestId = document.querySelectorAll('[data-testid^="sudoku-hint-candidate-"]');
+    return {
+      hintCellCount: hintedCells.length,
+      hintCandCount: cands.length,
+      hintCandByTestIdCount: candByTestId.length,
+    };
   });
   expect(hintDom.hintCellCount + hintDom.hintCandCount).toBeGreaterThan(0);
+  expect(hintDom.hintCandByTestIdCount).toBe(hintDom.hintCandCount);
 });
 
 test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 一致", async ({ page, request }) => {
@@ -206,3 +220,5 @@ test("填数模式：填一格后撤销清空、重做恢复（与 canUndo/canRe
 
   await expect.poll(async () => readFilledDigit(page, tid!)).toBe(placed);
 });
+
+}); // describe 提示、笔记模式与撤销/重做
