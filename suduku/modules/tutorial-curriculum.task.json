@@ -79,7 +79,7 @@
         "在 suduku 目录下执行 npm test，全部通过",
         "人工核对 module-plan 中 tutorial-curriculum 的 interface 字段名与导出一致，必要时列出导出清单供后续 client-ui 对接"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }
