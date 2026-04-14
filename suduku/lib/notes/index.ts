@@ -23,12 +23,7 @@ import type { NotesCommand } from "./types";
 import { applyNotesCommandImpl } from "./apply-notes-command";
 import { syncNotesWithCandidates as syncNotesWithCandidatesImpl } from "./sync-notes";
 
-export type {
-  HighlightCellCoord,
-  NotesHighlightCells,
-} from "./highlight-filter";
-export { cellsForBox, cellsForCol, cellsForRow, getHighlightCells } from "./highlight-filter";
-
+/** --- 类型（`NotesCommand` / `HighlightFilter` 及 payload 分支）--- */
 export type {
   BatchClearNotesPayload,
   ClearCellNotesPayload,
@@ -39,6 +34,14 @@ export type {
   UndoNotesPayload,
 } from "./types";
 
+/** --- 一键筛选高亮（纯数据坐标）--- */
+export type {
+  HighlightCellCoord,
+  NotesHighlightCells,
+} from "./highlight-filter";
+export { cellsForBox, cellsForCol, cellsForRow, getHighlightCells } from "./highlight-filter";
+
+/** --- 撤销栈（与 `NotesCommand.undo` 分离；见包级说明）--- */
 export { createUndoStack } from "./undo-stack";
 
 /**
