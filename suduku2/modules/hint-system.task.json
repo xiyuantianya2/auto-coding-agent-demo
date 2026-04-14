@@ -1,0 +1,94 @@
+{
+  "project": "数独2",
+  "module": "hint-system",
+  "moduleTitle": "高亮式提示引擎",
+  "description": "基于当前盘面与求解引擎，返回「下一步可应用」的推理：高亮相关格与候选、删减方向，可选返回技巧名称文案键；不自动填入答案。每局提示次数不限、无冷却。与 curriculum 中的 TechniqueId 及 solver 输出对齐。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "提示模块类型、`HintResult` 与 `lib/hint` 目录骨架",
+      "description": "在 `suduku2/lib/hint` 建立模块骨架：实现对外契约中的 `TechniqueId`（与 `@/lib/solver` 的 `TechniqueId`/`TechniqueIds` 字符串命名一致，不在本模块重复造第二套 id）、`HintResult`（`technique`、`cells`、`highlightCandidates?`、`messageKey?` 字段语义在 JSDoc 中写清：`messageKey` 对应 solver 的 `explanationKey`，供 curriculum/i18n 使用）。提供入口文件（如 `index.ts`）导出类型与后续任务将实现的 `getNextHint` 占位（可先 `throw new Error('not implemented')` 或返回 `null`，但函数签名必须与 `module-plan.json` 一致）。说明本模块**不维护**提示次数/冷却状态（由 UI 可选展示，引擎侧无限制）。纯类型与目录创建应在毫秒级完成；不引入「最优下一步」「最少高亮格」等模块未要求的极限目标。",
+      "steps": [
+        "新增 `suduku2/lib/hint` 目录、`HintResult` 类型与对外导出，确保可从 `@/lib/hint` 引用，并与 `module-plan.json` 中本模块接口描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "`SolveStep.highlights` 归一化为可展示坐标与候选（含 `unit` 展开）",
+      "description": "实现从 `@/lib/solver` 的 `SolveStep` 到 UI 友好结构的映射辅助（可拆为 `mapHighlightsToCells` 等）：严格按 `SolveStep` 文档中的推荐形状解析 `highlights[].ref`——`kind: \"cell\"` → `{r,c}`；`kind: \"unit\"` → `{ type: 'row'|'col'|'box'; index }` 并展开为该 unit 内全部 9 个 `(r,c)`；`kind: \"candidate\"` → `{r,c,digit}` 并用于后续候选高亮。对 `cells` 字段：合并上述涉及格并去重（建议按行优先 `(r,c)` 排序以便稳定快照）。若遇到未知/缺字段的 `ref`，采取**显式容错**（跳过该项或记录为窄化结果），避免抛未捕获异常导致提示整条链路崩溃；不要求覆盖 solver 未实现的技巧形状。映射本身为 O(1) 规模上的轻量转换；不涉及额外深度搜索。单次调用应在毫秒级完成，一般远小于 5 秒。",
+      "steps": [
+        "实现高亮解析与 `unit` 展开逻辑，仅从 `@/lib/solver` 与 `@/lib/core` 引用已有类型与常量（如宫索引换算若项目已有工具则复用）。",
+        "编写 Vitest：对 `row`/`col`/`box` 各至少一例断言展开格数与坐标集合正确；对 `cell`/`candidate` 各一例。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "`highlightCandidates` 与 `eliminations` 删减方向合并",
+      "description": "将 `SolveStep` 中的 `candidate` 类高亮与可选 `eliminations` 合并为 `HintResult.highlightCandidates`：`digits` 表示需要强调显示的候选集合（通常来自同一 `(r,c)` 的多个 `candidate` 高亮）；`eliminate`（若存在）表示建议从该格当前候选中**删去**的数字方向，语义应与 solver 文档一致（`{r,c,digit}` 列表）。同一 `(r,c)` 多条记录应合并为单条或稳定顺序的列表（在注释中约定）。不读取 `CellState.notes` 来决定删减（与 `computeCandidates` 一致：笔记同步属 `notes-logic`）；仅基于 `SolveStep` 输出给出「推理层面的删减提示」。不自动修改 `GameState`、不自动填数。合并算法为线性于高亮/删减条数；单次调用应在毫秒级完成，一般远小于 5 秒。",
+      "steps": [
+        "实现 `eliminations` 解析（数组元素形状校验）与 `highlightCandidates` 组装；对空 `eliminations` 的技巧仅返回高亮信息。",
+        "编写 Vitest：构造最小 `SolveStep` fixture（可手写）断言 `digits`/`eliminate` 字段与输入一致；对异常项跳过策略有至少一例覆盖。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "`mapSolveStepToHintResult`：完整单步映射与 `messageKey` 对齐",
+      "description": "聚合任务 2–3 的辅助函数，实现 `mapSolveStepToHintResult(step: SolveStep): HintResult`（名称可调整但需导出或模块内清晰分层）：`technique` 原样传递；`cells` 非空时应覆盖推理相关格（若某技巧仅产生删减而无直接 `cell` 高亮，允许主要由 `highlightCandidates`/`eliminations` 推导出的格集，但须在注释中说明）；`messageKey` 取自 `step.explanationKey`（若存在）。**禁止**在本映射阶段应用技巧或改写盘面。映射为纯函数、可单测。性能优先于最优性：不做「最少高亮」「最短解释」等模块未要求的优化。",
+      "steps": [
+        "实现并导出（或作为 `getNextHint` 内部函数）完整映射；补充单元测试覆盖至少一种低阶技巧与一种含 `eliminations` 的技巧（可使用 `@/lib/solver` 在固定 `GameState` 上生成真实 `SolveStep` 再断言映射结果字段形状）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "`getNextHint(state)`：基于 `findApplicableSteps` 的步序选择与空结果语义",
+      "description": "实现 `getNextHint(state: GameState): HintResult | null`：内部调用 `@/lib/solver` 的 `findApplicableSteps(state)`，在返回数组上选择**单条**下一步提示。步序应与 `find-applicable-steps` 文档一致：输出数组已按低→中→高阶批次与去重规则组织，**默认取首个元素**作为「下一步」（在代码注释中写明，便于 UI 与测试稳定）；若数组为空则返回 `null`。对已完全填满且与规则一致的终盘、或 solver 在时间预算内未找到可应用步骤的情形，均应返回 `null`（具体判定以实现为准，可辅助 `computeCandidates` 或项目已有「是否还有空格」工具，但避免重复实现求解器）。**不得**在本函数内实现与 `findApplicableSteps` 重复的大规模技巧搜索；单次调用耗时主要由 `findApplicableSteps` 决定，该函数已有墙上时钟上限（如 5000ms 量级），整体目标为典型盘面在常规硬件上通常明显低于 5 秒；不要求「最优下一步」或最少分支。不引入提示次数计数、冷却或节流（模块无状态）。",
+      "steps": [
+        "实现 `getNextHint` 并在 `suduku2/lib/hint` 入口导出；用 Vitest 断言：对已知可解中盘 fixture，`getNextHint` 返回非 `null` 且 `technique` 为合法字符串；对已知已完成盘返回 `null`。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "与 `TechniqueIds`/教学标识符的契约回归与边界冒烟",
+      "description": "补充回归测试：对 `getNextHint` 返回的 `technique` 在已知登记 id 集合内可断言等于预期（使用 `@/lib/solver` 的 `TechniqueIds` 或 `isRegisteredTechniqueId`）；对自定义/未来扩展 id 保持字符串透传、不强制抛错。对「极复杂或刻意拖慢 solver 的盘面」仅做**结构冒烟**或设置合理 `test.timeout`，注明依赖 `findApplicableSteps` 的预算早停行为；不对全空间随机谜题做压测。不添加最少步、最少技巧数等极限断言。",
+      "steps": [
+        "新增/扩展 Vitest：至少覆盖 2 个不同 `TechniqueId` 的映射一致性；对慢路径仅冒烟或长超时，避免 CI 不稳定。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "公开 API 聚合与模块集成测试（Vitest，不含 E2E）",
+      "description": "在 `suduku2/lib/hint` 入口统一导出：`HintResult`、`getNextHint`、以及测试所需的辅助类型（若对外有益且稳定）。确认与 `@/lib/core` 的 `GameState` 及 `@/lib/solver` 的 `SolveStep`/`TechniqueId` 导入路径一致。新增集成测试：`cloneGameState` 后多次调用 `getNextHint` 不改变原状态；`serializeGameState`/`deserializeGameState` 往返后的盘面调用结果一致（若适用）。本模块不涉及 UI，验收**仅使用 Vitest**；**不要**在 steps 中要求 Playwright E2E。",
+      "steps": [
+        "整理对外导出与 `index.ts` 顶部模块说明（块注释），说明步序选择、`messageKey` 与 solver `explanationKey` 对应关系及无次数限制语义。",
+        "集成测试全部通过；常规用例在默认测试超时内完成。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
