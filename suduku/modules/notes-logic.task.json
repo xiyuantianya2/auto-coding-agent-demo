@@ -79,7 +79,7 @@
         "执行 npm test，lib/notes 下新增用例全部通过",
         "不新增 Playwright E2E；仅限 lib 层单元测试"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

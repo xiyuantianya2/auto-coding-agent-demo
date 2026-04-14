@@ -18,6 +18,11 @@ import { cellIsSolved, syncNotesWithCandidates } from "./sync-notes";
 import { cellsForBox, cellsForCol, cellsForRow } from "./highlight-filter";
 import type { BatchClearNotesPayload, NotesCommand } from "./types";
 
+/** Compile-time exhaustiveness guard for {@link NotesCommand}（新增分支时若漏实现会报错）。 */
+function assertNeverNotesCommand(branch: never): never {
+  throw new Error(`unreachable: unhandled NotesCommand branch (${String(branch)})`);
+}
+
 function cellInObviousConflict(state: GameState, r: number, c: number): boolean {
   return findObviousConflictPositions(state).some((p) => p.r === r && p.c === c);
 }
@@ -157,5 +162,7 @@ export function applyNotesCommandImpl(
       throw new Error(
         'applyNotesCommand does not handle { type: "undo" }. Push snapshots with createUndoStack().push(state) before mutating, then call createUndoStack().undo() to restore.',
       );
+    default:
+      return assertNeverNotesCommand(cmd);
   }
 }
