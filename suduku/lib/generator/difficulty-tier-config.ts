@@ -17,6 +17,10 @@
  *
  * 当前分数区间在档与档之间**刻意留出间隙**（互不重叠），便于分档断言；若未来改为允许边界重叠，请在
  * {@link DIFFICULTY_TIER_SCORE_RANGE_OVERLAP_POLICY} 中写明策略并同步更新单元测试。
+ *
+ * **`easy` 与累加分数：**`generatePuzzle` 对 `easy` 使用「裸单/隐单链」全路径调用 `scoreDifficulty`（`lib/solver`），累加分会随步数
+ * 增长，可能**高于**本表 `easy.difficultyScoreRange.max`；验收时以「仅允许裸单/隐单且链式可解」为主，分数区间主要用于
+ * `normal`/`hard`/`hell`（见 `generate-puzzle.ts`）。
  */
 
 import type { DifficultyTier } from "../core";
@@ -81,14 +85,15 @@ export const DIFFICULTY_TIER_CONFIG: Readonly<
   },
   hard: {
     tier: "hard",
-    maxTechniqueResolutionOrderIndex: 7,
-    difficultyScoreRange: { min: 1151, max: 2600 },
+    /** 与首层 `findTechniques` 快照一致：允许至 `xy-wing`（索引 9）；地狱档同技巧上界，以分数区间区分。 */
+    maxTechniqueResolutionOrderIndex: 9,
+    difficultyScoreRange: { min: 1151, max: 2199 },
     givensCount: { min: 22, max: 34 },
   },
   hell: {
     tier: "hell",
     maxTechniqueResolutionOrderIndex: 9,
-    difficultyScoreRange: { min: 2601, max: 1_000_000 },
+    difficultyScoreRange: { min: 2200, max: 1_000_000 },
     givensCount: { min: 17, max: 28 },
   },
 } as const;

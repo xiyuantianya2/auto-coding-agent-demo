@@ -4,7 +4,9 @@ import { SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import {
   DIFFICULTY_TIER_CONFIG,
   allowedTechniquesForTier,
+  createMulberry32,
   createRngFromSeed,
+  derivePuzzleSeedString,
   digPuzzleFromSolution,
   generateCompleteGrid,
   generatePuzzle,
@@ -15,14 +17,11 @@ import {
 const EMPTY_GRID: Grid9 = Array.from({ length: 9 }, () => Array(9).fill(0)) as Grid9;
 
 test.describe("Suduku puzzle generator (contract smoke)", () => {
-  test("generatePuzzle returns a canonical seed and replayable rng", () => {
-    const spec = generatePuzzle({
-      tier: "normal",
-      rng: () => 0.5,
-    });
-    expect(isValidPuzzleSeedString(spec.seed)).toBe(true);
-    expect(spec.seed).toMatch(/^[0-9a-f]{32}$/);
-    const r = createRngFromSeed(spec.seed);
+  test("derivePuzzleSeedString + createRngFromSeed form a replayable encoding", () => {
+    const seed = derivePuzzleSeedString(() => 0.5);
+    expect(isValidPuzzleSeedString(seed)).toBe(true);
+    expect(seed).toMatch(/^[0-9a-f]{32}$/);
+    const r = createRngFromSeed(seed);
     expect(typeof r()).toBe("number");
   });
 
@@ -50,6 +49,17 @@ test.describe("Suduku puzzle generator (contract smoke)", () => {
         expect(v).toBeLessThanOrEqual(9);
       }
     }
+  });
+
+  test("generatePuzzle (easy) yields unique givens, seed, and solver metadata", () => {
+    const spec = generatePuzzle({
+      tier: "easy",
+      rng: createMulberry32(0x9e3779b1),
+    });
+    expect(isValidPuzzleSeedString(spec.seed)).toBe(true);
+    expect(verifyUniqueSolution(spec.givens)).toBe(true);
+    expect(spec.difficultyScore).toBeGreaterThanOrEqual(0);
+    expect(spec.requiredTechniques.length).toBeGreaterThanOrEqual(0);
   });
 
   test("digPuzzleFromSolution keeps a unique-solution puzzle with givens >= tier min", () => {

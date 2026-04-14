@@ -79,7 +79,7 @@
         "Vitest：对各 tier 至少一次成功生成（可适当放宽重试上限仅用于测试）；断言返回的 difficultyScore、requiredTechniques 与 givens 一致于独立调用 solver 的结果",
         "公开函数签名与 module-plan 中 generatePuzzle、PuzzleSpec 完全一致；不修改 solver 的 scoreDifficulty 公式，仅消费其输出"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

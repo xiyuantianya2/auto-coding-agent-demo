@@ -52,6 +52,11 @@ export type DigPuzzleFromSolutionOptions = {
   completedGrid: Grid9;
   /** 用于读取该档最少提示下界 {@link DIFFICULTY_TIER_CONFIG}[tier].givensCount.min。 */
   tier: DifficultyTier;
+  /**
+   * 覆盖「删格停止」时的**最少保留给定数**（与 `givensCount.min` 语义相同：当盘面上 1–9 格数 `<=` 该值时不再尝试删格）。
+   * 例如 `easy` 与 {@link generatePuzzle} 可设为 `givensCount.max`，保留更多提示以利于「仅裸单/隐单」链式可解。
+   */
+  minGivensStopOverride?: number;
   /** `[0, 1)` 均匀随机源，用于打乱删格顺序。 */
   rng: () => number;
   /**
@@ -81,7 +86,11 @@ export function digPuzzleFromSolution(options: DigPuzzleFromSolutionOptions): Gr
   } = options;
 
   const grid = cloneGrid9(completedGrid);
-  const minGivens = DIFFICULTY_TIER_CONFIG[tier].givensCount.min;
+  const gc = DIFFICULTY_TIER_CONFIG[tier].givensCount;
+  const minGivens = Math.min(
+    gc.max,
+    Math.max(gc.min, options.minGivensStopOverride ?? gc.min),
+  );
 
   const t0 =
     maxElapsedMs !== undefined && typeof performance !== "undefined"
