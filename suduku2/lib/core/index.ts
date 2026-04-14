@@ -44,6 +44,13 @@ export {
 export { cloneGameState } from "./clone";
 
 export {
+  DeserializeGameStateError,
+  deserializeGameState,
+  SERIALIZATION_SCHEMA_VERSION,
+  serializeGameState,
+} from "./serialize";
+
+export {
   findFirstRuleConflictPair,
   hasRuleConflict,
   isBoardFilled,
