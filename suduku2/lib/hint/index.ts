@@ -32,6 +32,12 @@ export {
   type HighlightCellCoord,
 } from "./map-highlights";
 
+export {
+  mergeCandidateHighlightsWithEliminations,
+  parseEliminationEntries,
+  type MergedHighlightCandidateEntry,
+} from "./merge-highlight-candidates";
+
 /**
  * 单条提示的高亮与说明载荷，与 `module-plan.json` 中 `hint-system` 契约一致。
  *
