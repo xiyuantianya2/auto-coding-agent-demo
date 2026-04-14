@@ -24,7 +24,7 @@ import {
 import { getDataDir } from "./data-dir";
 import { refreshEndlessGlobalPool } from "./endless-pool";
 import { getUserIdFromToken } from "./login";
-import type { DifficultyTier, EndlessGlobalState, UserId, UserProgress } from "./types";
+import type { DifficultyTier, EndlessGlobalState, UserId, UserProgress, UserProgressPatch } from "./types";
 
 export const USERS_SUBDIR = "users";
 
@@ -70,7 +70,7 @@ function assertUserProgressShape(p: unknown): asserts p is Omit<UserProgressFile
   if (!isRecord(p.endless)) throw new Error("suduku2/server: invalid endless");
   for (const tier of DIFFICULTY_TIERS) {
     const t = p.endless[tier];
-    if (!isRecord(t) || typeof t.clearedLevel !== "number" || !Number.isInteger(t.clearedLevel)) {
+    if (!isRecord(t) || typeof t.clearedLevel !== "number" || !Number.isInteger(t.clearedLevel) || t.clearedLevel < 0) {
       throw new Error(`suduku2/server: invalid endless.${tier}`);
     }
   }
@@ -176,7 +176,7 @@ function mergePractice(
 
 function mergeEndless(
   current: UserProgress["endless"],
-  patch: UserProgress["endless"] | undefined,
+  patch: Partial<UserProgress["endless"]> | undefined,
 ): UserProgress["endless"] {
   if (!patch) return current;
   const out: UserProgress["endless"] = { ...current };
@@ -187,7 +187,7 @@ function mergeEndless(
   return out;
 }
 
-export function mergeUserProgress(current: UserProgress, patch: Partial<UserProgress>): UserProgress {
+export function mergeUserProgress(current: UserProgress, patch: UserProgressPatch): UserProgress {
   const next: UserProgress = {
     techniques: mergeTechniques(current.techniques, patch.techniques),
     practice: mergePractice(current.practice, patch.practice),
@@ -223,7 +223,7 @@ export async function getProgress(
   return { ...progress, global };
 }
 
-export async function saveProgress(token: string, patch: Partial<UserProgress>): Promise<void> {
+export async function saveProgress(token: string, patch: UserProgressPatch): Promise<void> {
   const userId = getUserIdFromToken(token);
   const dataDir = getDataDir();
   const current = readUserProgressFile(dataDir, userId);

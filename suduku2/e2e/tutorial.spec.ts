@@ -1,10 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test.describe.configure({ retries: 1 });
+import { apiRegisterAndLogin, injectAuth } from "./helpers";
 
-function uniqueUsername(): string {
-  return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
+test.describe.configure({ retries: 1 });
 
 /** 与 `@/lib/solver/technique-ids` 对齐，E2E 中避免额外模块解析配置 */
 const TID = {
@@ -21,23 +19,11 @@ test("未登录访问教学页时显示登录提示", async ({ page }) => {
   );
 });
 
-test("已登录时教学列表与解锁态与进度一致", async ({ page }) => {
-  const username = uniqueUsername();
-  const password = "secret12";
+test("已登录时教学列表与解锁态与进度一致", async ({ page, request }) => {
+  const { token } = await apiRegisterAndLogin(request);
+  await injectAuth(page, token);
 
-  await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
-  await page.getByTestId("auth-username").fill(username);
-  await page.getByTestId("auth-password").fill(password);
-  await page.getByTestId("auth-submit").click();
-  await page.waitForURL("http://127.0.0.1:3003/");
-
-  const token = await page.evaluate(() =>
-    globalThis.localStorage.getItem("suduku2.auth.token"),
-  );
-  expect(token).toBeTruthy();
-
-  const patchRes = await page.request.patch("http://127.0.0.1:3003/api/progress", {
+  const patchRes = await request.patch("http://127.0.0.1:3003/api/progress", {
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json; charset=utf-8",

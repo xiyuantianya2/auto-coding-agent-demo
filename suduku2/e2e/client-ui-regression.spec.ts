@@ -1,10 +1,8 @@
 import { test, expect } from "@playwright/test";
 
-test.describe.configure({ retries: 1 });
+import { apiRegisterAndLogin, injectAuth } from "./helpers";
 
-function uniqueUsername(): string {
-  return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
+test.describe.configure({ retries: 1 });
 
 /**
  * 与仓库 Playwright 规范对齐的数独场景回归（串行降低 next dev 并发压力）。
@@ -17,18 +15,8 @@ test.describe.serial("client-ui 集成回归", () => {
   }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
 
-    const username = uniqueUsername();
-    const password = "secret12";
-
-    await page.goto("/login");
-    await page.getByTestId("auth-tab-register").click();
-    await page.getByTestId("auth-username").fill(username);
-    await page.getByTestId("auth-password").fill(password);
-    await page.getByTestId("auth-submit").click();
-    await page.waitForURL("http://127.0.0.1:3003/");
-
-    const token = await page.evaluate(() => globalThis.localStorage.getItem("suduku2.auth.token"));
-    expect(token).toBeTruthy();
+    const { token } = await apiRegisterAndLogin(request);
+    await injectAuth(page, token);
 
     await page.goto("/game/endless/entry");
     await expect(page.getByTestId("endless-board")).toBeVisible({ timeout: 60_000 });
@@ -40,42 +28,37 @@ test.describe.serial("client-ui 集成回归", () => {
     await empty.click();
     await page.getByTestId("digit-pad-7").click();
 
-    await page.waitForTimeout(2500);
-
-    const res = await request.get("http://127.0.0.1:3003/api/progress", {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    expect(res.ok()).toBeTruthy();
-    const body = (await res.json()) as {
-      draft?: { cells?: Array<Array<{ notes?: number[] }>> };
-    };
-    expect(body.draft?.cells?.length).toBe(9);
-    let foundNote = false;
-    const cells = body.draft?.cells;
-    if (cells) {
-      for (let r = 0; r < 9; r++) {
-        for (let c = 0; c < 9; c++) {
-          if (cells[r]?.[c]?.notes?.includes(7)) {
-            foundNote = true;
-            break;
+    await expect(async () => {
+      const res = await request.get("http://127.0.0.1:3003/api/progress", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      expect(res.ok()).toBeTruthy();
+      const body = (await res.json()) as {
+        draft?: { cells?: Array<Array<{ notes?: number[] }>> };
+      };
+      expect(body.draft?.cells?.length).toBe(9);
+      let foundNote = false;
+      const cells = body.draft?.cells;
+      if (cells) {
+        for (let r = 0; r < 9; r++) {
+          for (let c = 0; c < 9; c++) {
+            if (cells[r]?.[c]?.notes?.includes(7)) {
+              foundNote = true;
+              break;
+            }
           }
         }
       }
-    }
-    expect(foundNote).toBe(true);
+      expect(foundNote).toBe(true);
+    }).toPass({ timeout: 10_000 });
   });
 
-  test("专家档无尽：题库未就绪或棋盘可见（结构冒烟）", async ({ page }) => {
+  test("专家档无尽：题库未就绪或棋盘可见（结构冒烟）", async ({ page, request }) => {
     test.setTimeout(120_000);
     await page.emulateMedia({ reducedMotion: "reduce" });
 
-    const username = uniqueUsername();
-    await page.goto("/login");
-    await page.getByTestId("auth-tab-register").click();
-    await page.getByTestId("auth-username").fill(username);
-    await page.getByTestId("auth-password").fill("secret12");
-    await page.getByTestId("auth-submit").click();
-    await page.waitForURL("http://127.0.0.1:3003/");
+    const { token } = await apiRegisterAndLogin(request);
+    await injectAuth(page, token);
 
     await page.goto("/game/endless/expert");
     await expect(page.getByTestId("endless-play-root")).toBeVisible({ timeout: 60_000 });
@@ -90,16 +73,14 @@ test.describe.serial("client-ui 集成回归", () => {
     }).toPass({ timeout: 90_000 });
   });
 
-  test("多步导航：登录 → 无尽入门 → 返回选档 → 首页仍显示已登录", async ({ page }) => {
+  test("多步导航：登录 → 无尽入门 → 返回选档 → 首页仍显示已登录", async ({
+    page,
+    request,
+  }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
 
-    const username = uniqueUsername();
-    await page.goto("/login");
-    await page.getByTestId("auth-tab-register").click();
-    await page.getByTestId("auth-username").fill(username);
-    await page.getByTestId("auth-password").fill("secret12");
-    await page.getByTestId("auth-submit").click();
-    await page.waitForURL("http://127.0.0.1:3003/");
+    const { token } = await apiRegisterAndLogin(request);
+    await injectAuth(page, token);
 
     await page.goto("/game/endless/entry");
     await expect(page.getByTestId("endless-board")).toBeVisible({ timeout: 60_000 });

@@ -1,13 +1,11 @@
 import { test, expect } from "@playwright/test";
 
+import { apiRegisterAndLogin, injectAuth } from "./helpers";
+
 test.describe.configure({ retries: 1 });
 
 /** 首屏 DOM 可交互的合理上限（任务约定通常远小于 5s；CI/冷启动略放宽） */
 const FIRST_PAINT_MAX_MS = 8000;
-
-function uniqueUsername(): string {
-  return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
-}
 
 test.describe("页面加载与渲染基线（棋盘 / HUD / 无障碍 / reducedMotion）", () => {
   test.beforeEach(async ({ page }) => {
@@ -36,19 +34,14 @@ test.describe("页面加载与渲染基线（棋盘 / HUD / 无障碍 / reducedM
     expect(Date.now() - t1).toBeLessThan(FIRST_PAINT_MAX_MS);
 
     await expect(page.getByRole("heading", { name: "对局" })).toBeVisible();
-    /* GameGate：未登录时引导登录；已登录才渲染子页「无尽模式」入口 */
     await expect(page.getByTestId("game-login-hint")).toBeVisible();
     await expect(page.getByTestId("game-goto-login")).toBeVisible();
     await expect(page.getByRole("link", { name: "返回首页" })).toBeVisible();
   });
 
-  test("无尽入门：81 格棋盘、grid 角色与关卡/难度/计时 HUD", async ({ page }) => {
-    await page.goto("/login");
-    await page.getByTestId("auth-tab-register").click();
-    await page.getByTestId("auth-username").fill(uniqueUsername());
-    await page.getByTestId("auth-password").fill("secret12");
-    await page.getByTestId("auth-submit").click();
-    await page.waitForURL("http://127.0.0.1:3003/");
+  test("无尽入门：81 格棋盘、grid 角色与关卡/难度/计时 HUD", async ({ page, request }) => {
+    const { token } = await apiRegisterAndLogin(request);
+    await injectAuth(page, token);
 
     await page.goto("/game/endless/entry", {
       waitUntil: "domcontentloaded",

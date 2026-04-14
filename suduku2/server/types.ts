@@ -25,3 +25,11 @@ export type UserProgress = {
   draft?: unknown;
   settings?: Record<string, unknown>;
 };
+
+/**
+ * `saveProgress` 的 patch 类型：所有字段可选；`endless` 允许只传部分档位，
+ * `mergeEndless` 仅合并 patch 中出现的 tier。
+ */
+export type UserProgressPatch = Omit<Partial<UserProgress>, "endless"> & {
+  endless?: Partial<UserProgress["endless"]>;
+};

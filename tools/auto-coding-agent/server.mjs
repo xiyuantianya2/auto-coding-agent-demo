@@ -31,7 +31,6 @@ const PREFERRED_PORT = Number(process.env.PORT) || 3910;
 const HOST = process.env.HOST || "127.0.0.1";
 let httpPort = PREFERRED_PORT;
 
-const AGENT_TIMEOUT_MS = Math.max(60_000, Number(process.env.AUTOCODING_AGENT_TIMEOUT_MS) || 45 * 60 * 1000);
 const MAX_AGENT_CLI_CHARS = Math.max(
   50_000,
   Math.min(4 * 1024 * 1024, Number(process.env.AUTOCODING_AGENT_CLI_MAX_CHARS) || 900_000),
@@ -52,7 +51,6 @@ async function getRuntime(projectId) {
   const proj = getProject(projectId);
   if (!proj) return null;
   const rt = new ProjectRuntime(proj, REPO_ROOT, DATA_DIR, {
-    agentTimeoutMs: AGENT_TIMEOUT_MS,
     maxCliChars: MAX_AGENT_CLI_CHARS,
   });
   await rt.loadState();

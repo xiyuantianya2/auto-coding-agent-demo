@@ -19,7 +19,7 @@ export default function GamePage(): JSX.Element {
           </Link>
         </p>
         <p className="mt-6">
-          <Link href="/" className="text-emerald-400 underline-offset-4 hover:underline">
+          <Link href="/" className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline">
             返回首页
           </Link>
         </p>

@@ -167,12 +167,9 @@ export function applyCommand(
       }
       const next = cloneGameState(state);
       const cell = next.cells[r][c];
-      if (cell.value === undefined) {
-        next.grid[r][c] = getEffectiveDigitAt(next, r, c);
-        return next;
-      }
       const cleared: typeof cell = { ...cell };
       delete cleared.value;
+      delete cleared.notes;
       next.cells[r][c] = cleared;
       next.grid[r][c] = getEffectiveDigitAt(next, r, c);
       return next;

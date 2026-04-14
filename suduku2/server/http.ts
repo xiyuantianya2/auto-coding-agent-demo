@@ -13,7 +13,7 @@ import {
   UsernameConflictError,
   WrongPasswordError,
 } from "./errors";
-import type { EndlessGlobalState, UserProgress } from "./types";
+import type { EndlessGlobalState, UserProgress, UserProgressPatch } from "./types";
 
 /** 与所有 API 错误响应一致的最小形状 */
 export type ApiErrorBody = {
@@ -130,8 +130,8 @@ export function userProgressWithGlobalToJson(
 export function normalizePatchBodyForSaveProgress(
   body: Record<string, unknown>,
   deserializeGameStateFromWire: (wire: unknown) => UserProgress["draft"],
-): Partial<UserProgress> {
-  const patch: Partial<UserProgress> = {};
+): UserProgressPatch {
+  const patch: UserProgressPatch = {};
   if ("techniques" in body && body.techniques !== undefined) {
     patch.techniques = body.techniques as UserProgress["techniques"];
   }
@@ -139,7 +139,7 @@ export function normalizePatchBodyForSaveProgress(
     patch.practice = body.practice as UserProgress["practice"];
   }
   if ("endless" in body && body.endless !== undefined) {
-    patch.endless = body.endless as UserProgress["endless"];
+    patch.endless = body.endless as Partial<UserProgress["endless"]>;
   }
   if ("settings" in body && body.settings !== undefined) {
     patch.settings = body.settings as Record<string, unknown>;

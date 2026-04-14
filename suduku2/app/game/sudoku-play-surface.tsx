@@ -5,6 +5,7 @@ import { useMemo } from "react";
 
 import { EMPTY_CELL, getEffectiveDigitAt, type GameState } from "@/lib/core";
 import type { HintResult } from "@/lib/hint";
+import { techniqueIdToZh } from "@/app/tutorial/technique-titles-zh";
 
 import { useSudoku2Game } from "@/app/game/use-sudoku2-game";
 
@@ -278,8 +279,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
 
           {hint ? (
             <p className="text-xs text-[var(--s2-hint-banner)]" data-testid="sudoku-hint-banner" aria-live="polite">
-              提示技巧：{hint.technique}
-              {hint.messageKey ? `（${hint.messageKey}）` : ""}
+              提示技巧：{techniqueIdToZh(hint.technique)}
             </p>
           ) : null}
 

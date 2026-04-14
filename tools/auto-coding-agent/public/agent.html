@@ -237,6 +237,13 @@
         white-space: pre-wrap;
         word-break: break-word;
       }
+      .phase-progress-pct {
+        font-size: 0.82rem;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: #93c5fd;
+        flex-shrink: 0;
+      }
       @keyframes pulse-dot {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.3; }
@@ -493,6 +500,7 @@
       <div class="panel panel-phase" id="panelPhase" style="display: none">
         <div class="panel-head">
           <span style="font-size: 0.85rem; font-weight: 600">Agent 实时状态</span>
+          <span class="phase-progress-pct" id="phaseProgress" title="当前这一条 Agent 任务的粗略完成度（按阶段估计），不含队列总进度">—</span>
         </div>
         <div style="margin-top: 0.4rem">
           <span class="phase-label idle" id="phaseLabel"><span class="pulse-dot"></span> 空闲</span>
@@ -517,6 +525,66 @@
 
       /** @type {{ prompt: string; cli: string; log: string }} */
       let copyPayload = { prompt: "", cli: "", log: "" };
+
+      /**
+       * 当前**单个** Agent 任务：同一任务内阶段会反复切换，瞬时权重会回落导致 % 来回跳。
+       * 对当前任务记录阶段权重历史最大值（单调不减）；任务标识变化时重置。
+       */
+      let progressRunState = { taskKey: "", maxPhaseWeight: 0 };
+
+      function resetProgressRunState() {
+        progressRunState = { taskKey: "", maxPhaseWeight: 0 };
+      }
+
+      /** @param {string} phase */
+      function phaseToWeight(phase) {
+        const m = {
+          init: 0.12,
+          processing: 0.26,
+          thinking: 0.42,
+          tool: 0.62,
+          responding: 0.9,
+          done: 1,
+          idle: 0.06,
+        };
+        return m[phase] ?? 0.28;
+      }
+
+      /** 与队列总进度无关，仅标识「当前这一条 Agent 任务」。 */
+      function currentAgentTaskKey(d) {
+        const p = d.agentPromptTaskId;
+        const c = d.agentCliTaskId;
+        if (p != null && String(p) !== "") return `prompt:${String(p)}`;
+        if (c != null && String(c) !== "") return `cli:${String(c)}`;
+        if (d.lastTaskId != null && String(d.lastTaskId) !== "") return `last:${String(d.lastTaskId)}`;
+        if (d.nextTask && d.nextTask.id != null) return `next:${String(d.nextTask.id)}`;
+        return `fallback:${PROJECT_ID}:${Number(d.pendingCount) || 0}`;
+      }
+
+      /**
+       * @param {string} st
+       * @param {any} d
+       * @param {any} ap
+       */
+      function syncProgressRunState(st, d, ap) {
+        if (st !== "running" || !ap || !ap.phase) {
+          resetProgressRunState();
+          return;
+        }
+        const taskKey = currentAgentTaskKey(d);
+        const w = phaseToWeight(String(ap.phase));
+        if (taskKey !== progressRunState.taskKey) {
+          progressRunState = { taskKey, maxPhaseWeight: w };
+        } else {
+          progressRunState.maxPhaseWeight = Math.max(progressRunState.maxPhaseWeight, w);
+        }
+      }
+
+      /** 当前单个任务完成度 0–100（仅由阶段权重推导，非队列总进度）。 */
+      function currentSingleTaskProgressPct() {
+        const w = progressRunState.maxPhaseWeight;
+        return Math.min(100, Math.max(0, Math.round(w * 100)));
+      }
 
       (async function initProjectHeader() {
         try {
@@ -809,6 +877,10 @@
             if (show) {
               const pl = $("phaseLabel");
               const pd = $("phaseDetail");
+              const pctEl = $("phaseProgress");
+              syncProgressRunState(st, d, ap);
+              const pct = currentSingleTaskProgressPct();
+              if (pctEl) pctEl.textContent = `本任务 ${pct}%`;
               const phaseMap = {
                 init:       { cls: "init",       icon: "⚙️", text: "初始化" },
                 processing: { cls: "processing", icon: "⏳", text: "处理中" },
@@ -826,6 +898,10 @@
                   info.icon + " " + info.text;
               }
               if (pd) pd.textContent = ap.detail || "";
+            } else {
+              resetProgressRunState();
+              const pctEl = $("phaseProgress");
+              if (pctEl) pctEl.textContent = "—";
             }
           }
         } catch (e) {

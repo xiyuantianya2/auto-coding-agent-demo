@@ -116,7 +116,7 @@ describe("applyCommand (setMode / toggle / clearCell)", () => {
     expect(state.cells[3][5].value).toBe(7);
   });
 
-  it("clearCell: idempotent on empty cell with notes (notes unchanged)", () => {
+  it("clearCell: clears notes on empty cell with notes", () => {
     const state = makeMinimalState();
     state.mode = "notes";
     state.cells[2][2] = { notes: new Set([3, 4]) };
@@ -124,7 +124,7 @@ describe("applyCommand (setMode / toggle / clearCell)", () => {
 
     const out = applyCommand(state, { type: "clearCell", payload: { r: 2, c: 2 } }, candidates);
 
-    expect([...(out.cells[2][2].notes ?? [])].sort((a, b) => a - b)).toEqual([3, 4]);
+    expect(out.cells[2][2].notes).toBeUndefined();
     expect(out.grid[2][2]).toBe(EMPTY_CELL);
   });
 

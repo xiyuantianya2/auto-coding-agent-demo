@@ -31,6 +31,7 @@ export type {
   PuzzleSpec,
   UserId,
   UserProgress,
+  UserProgressPatch,
 } from "./types";
 
 export { SUDUKU2_DATA_DIR_ENV, getDataDir } from "./data-dir";

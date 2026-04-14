@@ -236,7 +236,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
         <p className="text-sm text-[var(--s2-text-muted)]">未指定专项模式。请从教学大纲点击「专项练习」进入。</p>
         <p className="mt-6">
-          <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
+          <Link className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
             前往教学大纲
           </Link>
         </p>
@@ -249,7 +249,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
         <p className="text-sm text-[var(--s2-text-muted)]">无效的专项模式参数。</p>
         <p className="mt-6">
-          <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
+          <Link className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
             返回教学大纲
           </Link>
         </p>
@@ -273,7 +273,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         </div>
         <p>
           <Link
-            className="text-emerald-400 underline-offset-4 hover:underline"
+            className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline"
             href="/tutorial"
             data-testid="practice-back-tutorial"
           >
@@ -292,11 +292,11 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/90">专项练习</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400/90">专项练习</p>
             <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
           </div>
           <Link
-            className="text-sm text-emerald-400/90 underline-offset-4 hover:underline"
+            className="text-sm text-emerald-600 dark:text-emerald-400/90 underline-offset-4 hover:underline"
             href="/tutorial"
             data-testid="practice-back-tutorial-header"
           >

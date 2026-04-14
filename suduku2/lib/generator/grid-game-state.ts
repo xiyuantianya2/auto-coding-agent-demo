@@ -23,7 +23,7 @@ export function gameStateFromGivensGrid(givens: Grid9): GameState {
   const grid: Grid9 = Array.from({ length: GRID_SIZE }, (_, r) =>
     Array.from({ length: GRID_SIZE }, (_, c) => {
       const v = givens[r]?.[c];
-      return typeof v === "number" && !Number.isNaN(v) ? v : EMPTY_CELL;
+      return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 9 ? v : EMPTY_CELL;
     }),
   );
 

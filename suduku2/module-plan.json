@@ -9,7 +9,7 @@
       "dir": "lib/core",
       "dependencies": [],
       "interface": "type Grid9 = number[][]; type CellState = { given?: number; value?: number; notes?: Set<number> }; type GameState = { grid: Grid9; cells: CellState[][]; mode: 'fill'|'notes' }; function isValidPlacement(state: GameState, r: number, c: number, n: number): boolean; function cloneGameState(state: GameState): GameState; function serializeGameState(state: GameState): string; function deserializeGameState(json: string): GameState;",
-      "status": "running"
+      "status": "completed"
     },
     {
       "id": "solver-engine",
@@ -20,7 +20,7 @@
         "core-model"
       ],
       "interface": "type TechniqueId = string; type SolveStep = { technique: TechniqueId; highlights: Array<{ kind: 'cell'|'unit'|'candidate'; ref: unknown }>; eliminations?: unknown[]; explanationKey?: string }; function computeCandidates(state: GameState): CandidatesGrid; function findApplicableSteps(state: GameState): SolveStep[]; function scoreDifficulty(state: GameState, steps: SolveStep[]): { score: number; band?: [number, number] };",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "puzzle-generator",
@@ -32,7 +32,7 @@
         "solver-engine"
       ],
       "interface": "type DifficultyTier = 'entry'|'normal'|'hard'|'expert'; type TechniqueId = string; type PuzzleSpec = { seed: string; givens: Grid9; difficultyScore: number; scoreBand?: [number, number]; requiredTechniques: TechniqueId[] }; function generatePuzzle(options: { tier: DifficultyTier; rng: () => number; timeoutMs?: number }): PuzzleSpec | null; function verifyUniqueSolution(givens: Grid9): boolean;",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "hint-system",
@@ -44,7 +44,7 @@
         "solver-engine"
       ],
       "interface": "type TechniqueId = string; type HintResult = { technique: TechniqueId; cells: Array<{ r: number; c: number }>; highlightCandidates?: Array<{ r: number; c: number; digits: number[]; eliminate?: number[] }>; messageKey?: string }; function getNextHint(state: GameState): HintResult | null;",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "notes-logic",
@@ -56,7 +56,7 @@
         "solver-engine"
       ],
       "interface": "type NotesCommand = { type: 'toggle'|'clearCell'|'fill'|'undo'|'redo'|'setMode'; payload: unknown }; function applyCommand(state: GameState, cmd: NotesCommand, candidates: CandidatesGrid): GameState; function syncNotesAfterValue(state: GameState, candidates: CandidatesGrid): GameState; type UndoRedoApi = { push(snapshot: GameState): void; undo(): GameState | null; redo(): GameState | null; canUndo(): boolean; canRedo(): boolean }; function createUndoRedo(): UndoRedoApi;",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "tutorial-curriculum",
@@ -67,7 +67,7 @@
         "core-model"
       ],
       "interface": "type CurriculumTier = 'low'|'mid'|'high'; type TechniqueModule = { id: string; tier: CurriculumTier; order: number; practiceEndlessModeId: string; titleKey: string }; function getTechniqueCatalog(): TechniqueModule[]; function getUnlockGraph(): Array<{ techniqueId: string; requires: string[] }>;",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "server-api",
@@ -79,7 +79,7 @@
         "puzzle-generator"
       ],
       "interface": "type DifficultyTier = 'entry'|'normal'|'hard'|'expert'; type UserId = string; type PuzzleSpec = { seed: string; givens: number[][]; difficultyScore: number }; type EndlessGlobalState = Record<DifficultyTier, { maxPreparedLevel: number; puzzles: Record<number, PuzzleSpec> }>; type UserProgress = { techniques: Record<string, { unlocked: boolean }>; practice: Record<string, { streak?: number; bestTimeMs?: number }>; endless: Record<DifficultyTier, { clearedLevel: number }>; draft?: unknown /* GameState, 见 core-model */; settings?: Record<string, unknown> }; function register(username: string, password: string, nickname?: string): Promise<{ userId: UserId }>; function login(username: string, password: string): Promise<{ token: string }>; function getProgress(token: string): Promise<UserProgress & { global: EndlessGlobalState }>; function saveProgress(token: string, patch: Partial<UserProgress>): Promise<void>; function exportProgress(token: string): Promise<string>; function importProgress(token: string, json: string): Promise<void>; function getDataDir(): string;",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "client-ui",
@@ -95,7 +95,7 @@
         "server-api"
       ],
       "interface": "export function Sudoku2AppProviders(props: { children: React.ReactNode; apiBaseUrl: string }): JSX.Element; export function useSudoku2Game(): { state: GameState; actions: unknown }; // 具体 hooks/路由以实现为准，此处仅表达与后端与 lib 的集成边界",
-      "status": "pending"
+      "status": "completed"
     },
     {
       "id": "integration-qa",
@@ -113,7 +113,7 @@
         "client-ui"
       ],
       "interface": "async function runAcceptanceSuite(): Promise<{ passed: boolean; report: string }>; // Playwright 或等价 E2E 入口",
-      "status": "pending"
+      "status": "completed"
     }
   ]
 }

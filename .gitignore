@@ -1,6 +1,9 @@
 # Playwright MCP
 .playwright-mcp/
 
+# suduku2 E2E isolated server data
+suduku2/e2e/.playwright-data/
+
 # Dependencies
 node_modules/
 
@@ -22,6 +25,13 @@ build/
 # Environment
 .env.local
 .env.*.local
+
+# Sudoku2 runtime / test artifacts
+suduku2/data/
+suduku2/pw-out/
+suduku2/test-results/
+suduku2/board-run.log
+suduku2/tsconfig.tsbuildinfo
 
 # Cursor 全自动面板状态
 .auto-coding-agent/

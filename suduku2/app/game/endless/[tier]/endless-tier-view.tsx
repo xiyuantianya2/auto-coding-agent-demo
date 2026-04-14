@@ -198,7 +198,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
       <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
         <p className="text-sm text-[var(--s2-text-muted)]">无效的难度档位。</p>
         <p className="mt-6">
-          <Link className="text-emerald-400 underline-offset-4 hover:underline" href="/game/endless">
+          <Link className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline" href="/game/endless">
             返回无尽模式
           </Link>
         </p>
@@ -214,11 +214,11 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-400/90">无尽模式</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400/90">无尽模式</p>
             <h1 className="mt-1 text-2xl font-semibold">{tierLabel}</h1>
           </div>
           <Link
-            className="text-sm text-emerald-400/90 underline-offset-4 hover:underline"
+            className="text-sm text-emerald-600 dark:text-emerald-400/90 underline-offset-4 hover:underline"
             href="/game/endless"
             data-testid="endless-back"
           >

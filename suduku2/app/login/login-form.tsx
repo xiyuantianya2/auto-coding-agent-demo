@@ -142,7 +142,7 @@ export function LoginForm(): JSX.Element {
           className={
             message
               ? message.kind === "ok"
-                ? "text-sm text-emerald-400"
+                ? "text-sm text-emerald-600 dark:text-emerald-400"
                 : "text-sm text-rose-400"
               : "text-sm text-transparent"
           }

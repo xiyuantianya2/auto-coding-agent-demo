@@ -34,13 +34,13 @@ npm start
 | `AUTO_CODING_REPO_ROOT` | 仓库根目录绝对路径；默认为本工具上两级目录。 |
 | `PORT` | HTTP 端口，默认 `3910`。 |
 | `HOST` | 监听地址，默认 `127.0.0.1`。 |
-| `AUTOCODING_AGENT_TIMEOUT_MS` | 单次 Agent 超时（毫秒），默认 45 分钟。 |
+| `AUTOCODING_AGENT_TIMEOUT_MS` | 单次 Agent 超时（毫秒），默认 **90 分钟**（大型项目含 Playwright 时仍可提高，例如 `7200000` 为 2 小时）。 |
 | `AUTOCODING_AGENT_MODEL` | 传给 `agent --model`。**未设置或空字符串时默认使用 `auto`**（与 IDE「Auto」一致）。若某环境报错，可设为 `omit`（不传 `--model`，CLI 可能回退为 `composer-2-fast` 等）。其它值则原样作为模型名。 |
 | `AUTOCODING_APPROVE_MCPS` | 默认 **`1`/未设置即开启**：为 `agent` 追加 **`--approve-mcps`**，全自动运行时自动批准 MCP，避免浏览器类 MCP 卡住等人点「允许」。若你的 CLI 版本不支持该参数，设为 `0` 或 `false` 关闭。 |
 | `AUTOCODING_PASS_POLL_ATTEMPTS` / `AUTOCODING_PASS_POLL_MS` | Agent 返回 0 后，轮询根目录 `task.json` 是否已把当前任务标为 `passes: true`（默认约 8 次 × 250ms）。 |
 | `AUTOCODING_AGENT_CLI_MAX_CHARS` | 单任务 CLI 输出在内存中保留的最大字符数（默认约 90 万），超出会截断尾部保留。 |
 | `AUTOCODING_TRUST_ZERO_EXIT` | 设为 `1` 时：若 Agent 退出码为 0 但 `passes` 仍未变，**仍视为本步成功**（仅当你确认实现已完成、仅漏改 JSON 时使用）。 |
-| `AUTOCODING_AGENT_IDLE_TIMEOUT_MS` | Agent 无输出超时（毫秒），默认 10 分钟。若 Agent 连续无新输出超过此阈值，自动终止进程。设为 `0` 禁用。 |
+| `AUTOCODING_AGENT_IDLE_TIMEOUT_MS` | Agent **无新 CLI 输出**超时（毫秒），默认 **30 分钟**。长时间跑 Playwright 若终端几乎无输出，可能被此项先于「单次 Agent 超时」终止，请按需提高或与单次任务耗时对齐。设为 `0` 禁用。 |
 | `CURSOR_CLI` | 自定义 `agent` 可执行文件路径。 |
 | `AUTOCODING_USE_CURSOR_EXE_FALLBACK` | Windows 下 `agent` 失败后再试 `Cursor.exe`（会启动图形界面）。 |
 

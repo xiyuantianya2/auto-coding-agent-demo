@@ -8,6 +8,7 @@
  */
 
 import { spawn } from "node:child_process";
+import { createConnection } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,7 +28,24 @@ function suduku2RootDir(): string {
   return path.resolve(here, "..");
 }
 
-function runPlaywrightJsonReporter(projectRoot: string): Promise<{
+/**
+ * 检测端口是否被占用（有服务在监听）。
+ * 用于判断是否应以 CI 模式启动生产构建，还是复用已有 dev server。
+ */
+function isPortInUse(port: number, host = "127.0.0.1"): Promise<boolean> {
+  return new Promise((resolve) => {
+    const sock = createConnection({ port, host });
+    sock.once("connect", () => {
+      sock.destroy();
+      resolve(true);
+    });
+    sock.once("error", () => {
+      resolve(false);
+    });
+  });
+}
+
+function runPlaywrightJsonReporter(projectRoot: string, useCI: boolean): Promise<{
   exitCode: number;
   stdout: string;
   stderr: string;
@@ -39,10 +57,14 @@ function runPlaywrightJsonReporter(projectRoot: string): Promise<{
       "--reporter=json",
       "--config=playwright.config.ts",
     ];
+    const env = { ...process.env };
+    if (useCI) {
+      env.CI = "1";
+    }
     const child = spawn("npx", args, {
       cwd: projectRoot,
       shell: true,
-      env: { ...process.env },
+      env,
     });
 
     let stdout = "";
@@ -73,8 +95,12 @@ function stderrTail(stderr: string, maxChars = 4000): string {
  */
 export async function runAcceptanceSuite(): Promise<AcceptanceSuiteResult> {
   const projectRoot = suduku2RootDir();
+  const alreadyHasCI = !!process.env.CI;
+  const serverRunning = await isPortInUse(3003);
+  // CI 模式（生产构建）：调用方已设 CI，或端口空闲时自动启用以获得更快的页面加载
+  const useCI = alreadyHasCI || !serverRunning;
   const { exitCode, stdout, stderr } =
-    await runPlaywrightJsonReporter(projectRoot);
+    await runPlaywrightJsonReporter(projectRoot, useCI);
 
   let reportJson: PlaywrightJsonReport;
   try {

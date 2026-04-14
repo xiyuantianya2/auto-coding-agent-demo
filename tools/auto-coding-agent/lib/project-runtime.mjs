@@ -8,7 +8,12 @@ import fsp from "node:fs/promises";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { runCursorAgent } from "./agent-runner.mjs";
-import { loadIncompleteTasks, isTaskDoneSafe, tryLoadIncompleteTasks } from "./task-queue.mjs";
+import {
+  loadIncompleteTasks,
+  isTaskDoneSafe,
+  isTaskIncomplete,
+  tryLoadIncompleteTasks,
+} from "./task-queue.mjs";
 import { performProjectCleanup } from "./project-cleanup.mjs";
 import { formatBeijingDateTime } from "./beijing-time.mjs";
 import {
@@ -30,6 +35,41 @@ import {
 
 const MAX_LOG_LINES = 900;
 
+/** 单次 Agent 调用墙上时钟默认上限（大型项目 lint/build/Playwright 常超过 45 分钟）。 */
+export const DEFAULT_AGENT_TIMEOUT_MS = 90 * 60 * 1000;
+
+/** 无 CLI 输出时触发看门狗终止的默认阈值；长时间 E2E 可能许久无新行。 */
+const DEFAULT_AGENT_IDLE_TIMEOUT_MS = 30 * 60 * 1000;
+
+/**
+ * 解析单次 Agent 超时：显式参数优先，否则 `AUTOCODING_AGENT_TIMEOUT_MS`，否则 {@link DEFAULT_AGENT_TIMEOUT_MS}。
+ * @param {number | undefined} explicit
+ * @returns {number}
+ */
+export function resolveAgentTimeoutMs(explicit) {
+  if (typeof explicit === "number" && Number.isFinite(explicit) && explicit > 0) {
+    return Math.max(60_000, explicit);
+  }
+  const fromEnv = Number(process.env.AUTOCODING_AGENT_TIMEOUT_MS);
+  if (Number.isFinite(fromEnv) && fromEnv > 0) {
+    return Math.max(60_000, fromEnv);
+  }
+  return DEFAULT_AGENT_TIMEOUT_MS;
+}
+
+/**
+ * `AUTOCODING_AGENT_IDLE_TIMEOUT_MS`：无输出多久后强杀；`0` 表示禁用。
+ * @returns {number}
+ */
+function resolveAgentIdleTimeoutMs() {
+  const raw = process.env.AUTOCODING_AGENT_IDLE_TIMEOUT_MS;
+  if (raw !== undefined && raw !== "") {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n >= 0) return n;
+  }
+  return DEFAULT_AGENT_IDLE_TIMEOUT_MS;
+}
+
 // ── project-specific agent prompt builders ──────────────────────────
 
 const CUSTOM_AGENT_BUILDERS = {
@@ -47,13 +87,15 @@ const CUSTOM_AGENT_BUILDERS = {
       `验收步骤：`,
       steps,
       ``,
-      `硬性要求：`,
+      `硬性要求（必须按顺序执行，且仅在前置步骤全部通过后才进入下一步）：`,
       `- 严格按 CLAUDE.md 的会话流程：先确认基线（init 或 link-game 下 dev），再实现本任务。`,
-      `- 实现完成后：必须修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
-      `- 更新 progress.txt 记录本任务。`,
-      `- 在 link-game 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `- 单元/集成测试：若项目有 vitest / jest 测试，在 link-game 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E。`,
-      `- 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
+      `1. 实现本任务的功能代码。`,
+      `2. 更新 progress.txt 记录本任务。`,
+      `3. 在 link-game 目录执行 npm run lint 与 npm run build，修复直至通过。`,
+      `4. 单元/集成测试：若项目有 vitest / jest 测试，在 link-game 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E。`,
+      `5. 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
+      `6. **以上全部通过后**，才可以修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
+      `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
       ``,
       `实现策略原则：`,
@@ -296,7 +338,7 @@ export class ProjectRuntime {
     this.repoRoot = repoRoot;
     this.dataDir = dataDir;
     this.statePath = path.join(dataDir, `state-${project.id}.json`);
-    this.agentTimeoutMs = config.agentTimeoutMs || 45 * 60 * 1000;
+    this.agentTimeoutMs = resolveAgentTimeoutMs(config.agentTimeoutMs);
     this.maxCliChars = Math.max(50_000, Math.min(4 * 1024 * 1024, config.maxCliChars || 900_000));
 
     this.state = { status: "idle", lastError: null, updatedAt: formatBeijingDateTime(), lastTaskId: null };
@@ -308,10 +350,7 @@ export class ProjectRuntime {
     /** @type {import("node:stream").Writable | null} */
     this.agentStdinStream = null;
     this.lastAgentOutputAt = 0;
-    this.agentIdleTimeoutMs = Math.max(
-      0,
-      Number(process.env.AUTOCODING_AGENT_IDLE_TIMEOUT_MS) || 10 * 60 * 1000,
-    );
+    this.agentIdleTimeoutMs = resolveAgentIdleTimeoutMs();
     /** @type {ReturnType<typeof setInterval> | null} */
     this.idleWatchdog = null;
     this.agentPhase = { phase: "idle", detail: "", updatedAt: formatBeijingDateTime() };
@@ -561,11 +600,13 @@ export class ProjectRuntime {
       `验收步骤：`,
       steps,
       ``,
-      `硬性要求：`,
-      `- 实现完成后：修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
-      `- 在 ${this.project.dir} 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `- 单元/集成测试：若项目有 vitest / jest 测试（检查 package.json 的 test 脚本），在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
-      `- 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+      `硬性要求（必须按顺序执行，且仅在前置步骤全部通过后才进入下一步）：`,
+      `1. 实现本任务的功能代码。`,
+      `2. 在 ${this.project.dir} 目录执行 npm run lint 与 npm run build，修复直至通过。`,
+      `3. 单元/集成测试：若项目有 vitest / jest 测试（检查 package.json 的 test 脚本），在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
+      `4. 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+      `5. **以上全部通过后**，才可以修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
+      `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
       ``,
       `实现策略原则：`,
@@ -659,6 +700,13 @@ export class ProjectRuntime {
 
     const marked = await this.waitUntilTaskMarkedDone(task.id);
     if (!marked) {
+      const tjp = this.getTaskJsonPath();
+      const autoFixed = this.tryAutoVerifyAndMark(tjp, task.id);
+      if (autoFixed) {
+        this.log(`[auto-verify] Agent 漏标 passes，但 lint/build/test 全部通过，已自动标记 id=${task.id} passes: true。`);
+        this.appendCliText(`\n[auto-verify] ✅ Agent 漏标 passes，自动验收通过并标记。\n`);
+        return { ok: true, code: 0 };
+      }
       return {
         ok: false,
         code: 2,
@@ -1171,7 +1219,7 @@ export class ProjectRuntime {
         const raw = fs.readFileSync(tjp, "utf8");
         const data = JSON.parse(raw);
         const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-        const incomplete = tasks.filter((t) => t.passes === false);
+        const incomplete = tasks.filter((t) => isTaskIncomplete(t));
         this.log(`[项目初始化] 完成！task.json 共 ${tasks.length} 个任务，${incomplete.length} 个待执行。`);
       } catch (e) {
         this.state.lastError =
@@ -1319,6 +1367,13 @@ export class ProjectRuntime {
       deriveModuleTaskJsonPath(tjp, targetModule.id),
     );
     try {
+      fs.accessSync(moduleTaskPath);
+    } catch {
+      this.state.lastError = `模块「${targetModule.title}」初始化后未生成 task.json（Agent 未创建文件 ${moduleTaskPath}）。请重试。`;
+      this.log(this.state.lastError);
+      return false;
+    }
+    try {
       const raw = fs.readFileSync(moduleTaskPath, "utf8");
       const data = JSON.parse(raw);
       const tasks = Array.isArray(data.tasks) ? data.tasks : [];
@@ -1381,6 +1436,12 @@ export class ProjectRuntime {
     const moduleTaskJsonPath = deriveModuleTaskJsonPath(tjp, targetModule.id);
     const marked = await this.waitUntilModuleTaskDone(moduleTaskJsonPath, task.id);
     if (!marked) {
+      const autoFixed = this.tryAutoVerifyAndMark(moduleTaskJsonPath, task.id);
+      if (autoFixed) {
+        this.log(`[auto-verify] Agent 漏标 passes，但 lint/build/test 全部通过，已自动标记 id=${task.id} passes: true。`);
+        this.appendCliText(`\n[auto-verify] ✅ Agent 漏标 passes，自动验收通过并标记。\n`);
+        return { ok: true, code: 0 };
+      }
       return {
         ok: false,
         code: 2,
@@ -1391,6 +1452,75 @@ export class ProjectRuntime {
       };
     }
     return { ok: true, code: 0 };
+  }
+
+  /**
+   * 当 Agent 退出码为 0 但未标记 passes 时，自动运行 lint/build/test 验证。
+   * 若全部通过，自动将 passes 标记为 true。
+   * @param {string} moduleTaskJsonRelPath
+   * @param {number} taskId
+   * @returns {boolean} 是否自动标记成功
+   */
+  tryAutoVerifyAndMark(moduleTaskJsonRelPath, taskId) {
+    const projectDir = path.join(this.repoRoot, this.project.dir);
+    const absTaskPath = path.join(this.repoRoot, moduleTaskJsonRelPath);
+    const timeoutMs = 120_000;
+
+    const runNpm = (script) => {
+      try {
+        execFileSync("npm", ["run", script], {
+          cwd: projectDir,
+          stdio: "pipe",
+          shell: true,
+          windowsHide: true,
+          timeout: timeoutMs,
+          maxBuffer: 4 * 1024 * 1024,
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    };
+
+    this.log(`[auto-verify] Agent 未标记 passes，尝试自动验收 lint/build/test…`);
+    this.appendCliText(`\n[auto-verify] 尝试自动验收…\n`);
+
+    if (!runNpm("lint")) {
+      this.log(`[auto-verify] lint 失败，无法自动标记。`);
+      this.appendCliText(`[auto-verify] ❌ lint 失败\n`);
+      return false;
+    }
+    this.appendCliText(`[auto-verify] ✅ lint 通过\n`);
+
+    if (!runNpm("build")) {
+      this.log(`[auto-verify] build 失败，无法自动标记。`);
+      this.appendCliText(`[auto-verify] ❌ build 失败\n`);
+      return false;
+    }
+    this.appendCliText(`[auto-verify] ✅ build 通过\n`);
+
+    if (!runNpm("test")) {
+      this.log(`[auto-verify] test 失败，无法自动标记。`);
+      this.appendCliText(`[auto-verify] ❌ test 失败\n`);
+      return false;
+    }
+    this.appendCliText(`[auto-verify] ✅ test 通过\n`);
+
+    try {
+      const raw = fs.readFileSync(absTaskPath, "utf8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.tasks)) {
+        const task = data.tasks.find((t) => Number(t.id) === Number(taskId));
+        if (task) {
+          task.passes = true;
+          fs.writeFileSync(absTaskPath, JSON.stringify(data, null, 2) + "\n", "utf8");
+          return true;
+        }
+      }
+    } catch (e) {
+      this.log(`[auto-verify] 更新 task.json 失败：${e?.message || e}`);
+    }
+    return false;
   }
 
   async waitUntilModuleTaskDone(moduleTaskJsonRelPath, taskId) {
@@ -1490,6 +1620,9 @@ export class ProjectRuntime {
       }
 
       // Phase 2: Execute module tasks
+      if (mod.status === "failed") {
+        this.log(`[模块] 恢复模块「${mod.title}」：上次为 failed/中断，将按 task.json 中未完成项继续（见下一条日志）。`);
+      }
       this.log(`[模块] 开始执行模块「${mod.title}」的任务…`);
       setModuleStatus(plan, mod.id, "running");
       await saveModulePlan(this.repoRoot, tjp, plan);
@@ -2043,7 +2176,7 @@ export class ProjectRuntime {
         const tasks = Array.isArray(data.tasks) ? data.tasks : [];
         totalTaskCount = tasks.length;
         pending = tasks
-          .filter((t) => t && t.passes === false)
+          .filter((t) => isTaskIncomplete(t))
           .sort((a, b) => Number(a.id) - Number(b.id));
       }
     } catch {
@@ -2093,7 +2226,10 @@ export class ProjectRuntime {
             const raw = fs.readFileSync(mtPath, "utf8");
             const data = JSON.parse(raw);
             const tasks = Array.isArray(data.tasks) ? data.tasks : [];
-            const first = tasks.find((t) => t && t.passes === false);
+            const incompleteMod = tasks
+              .filter((t) => isTaskIncomplete(t))
+              .sort((a, b) => Number(a.id) - Number(b.id));
+            const first = incompleteMod[0];
             if (first) {
               firstModuleTask = { id: `${m.id}/${first.id}`, title: `[${m.id}] ${first.title}` };
             }

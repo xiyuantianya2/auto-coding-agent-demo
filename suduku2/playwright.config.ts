@@ -1,4 +1,11 @@
+import path from "node:path";
+
 import { defineConfig } from "@playwright/test";
+
+/** Playwright 专用数据目录，避免与开发时 `data/` 或外部进程争用导致 Windows 下 rename EPERM */
+const PLAYWRIGHT_DATA_DIR = path.join(process.cwd(), "e2e", ".playwright-data");
+
+const isCI = !!process.env.CI;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -7,18 +14,33 @@ export default defineConfig({
   timeout: 120_000,
   expect: { timeout: 10_000 },
   fullyParallel: true,
-  forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 1,
+  forbidOnly: isCI,
+  /* 本地无 retry 避免失败时翻倍等待 */
+  retries: isCI ? 2 : 0,
   /* Windows 下并发登录/注册会争用 `data/sessions.json` 原子写入（EPERM），单 worker 更稳 */
   workers: 1,
   use: {
     baseURL: "http://127.0.0.1:3003",
     trace: "on-first-retry",
+    launchOptions: {
+      args: ["--disable-gpu"],
+    },
   },
   webServer: {
-    command: "npm run dev",
+    /**
+     * CI 使用生产构建 (next build + next start)：
+     * - 页面预编译，加载速度远快于 dev 模式的按需编译
+     * - 无文件监听 / HMR 开销，进程启停更快（尤其 Windows）
+     *
+     * 本地开发仍用 next dev 配合 reuseExistingServer 复用已有实例。
+     */
+    command: isCI ? "npm run start:e2e" : "npm run dev",
     url: "http://127.0.0.1:3003",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120_000,
+    reuseExistingServer: !isCI,
+    timeout: isCI ? 180_000 : 120_000,
+    env: {
+      ...process.env,
+      SUDUKU2_DATA_DIR: PLAYWRIGHT_DATA_DIR,
+    },
   },
 });

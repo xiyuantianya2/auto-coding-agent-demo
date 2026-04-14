@@ -8,7 +8,7 @@ import { UI_PREFERENCES_BOOTSTRAP_SCRIPT } from "@/app/ui-preferences";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "数独2 | Suduku2",
+  title: "数独2 | Sudoku",
   description: "局域网数独：教学、无尽关卡与笔记提示。",
 };
 

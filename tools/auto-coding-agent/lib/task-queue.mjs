@@ -2,6 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 
 /**
+ * 未完成：未显式标记为 `passes: true`（含缺失/null，避免被队列漏掉从而「跳过」当前任务）。
+ * @param {object | null | undefined} t
+ * @returns {boolean}
+ */
+export function isTaskIncomplete(t) {
+  return !!(t && t.passes !== true);
+}
+
+/**
  * @param {string} repoRoot
  * @param {string} [taskJsonPath] 可选的自定义 task.json 路径，默认为 repoRoot/task.json
  * @returns {{ id: number; title: string; description?: string; steps: string[]; passes: boolean }[]}
@@ -12,7 +21,7 @@ export function loadIncompleteTasks(repoRoot, taskJsonPath) {
   const data = JSON.parse(raw);
   const tasks = Array.isArray(data.tasks) ? data.tasks : [];
   return tasks
-    .filter((t) => t && t.passes === false)
+    .filter((t) => isTaskIncomplete(t))
     .sort((a, b) => Number(a.id) - Number(b.id));
 }
 
