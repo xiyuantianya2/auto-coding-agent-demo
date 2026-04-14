@@ -1,11 +1,27 @@
 import type { TechniqueId } from "./technique-ids";
 
-/** 高亮目标类别（可序列化；`ref` 形状由调用方约定）。 */
+/** 高亮目标类别（可序列化）。 */
 export type HighlightKind = "cell" | "unit" | "candidate";
 
 /**
- * 单步可解释推理（可序列化结构）。
- * `ref` 建议使用 `{ r: number; c: number }`、行/列/宫描述对象等稳定 JSON 友好形状。
+ * 单步可解释推理（可序列化结构），与 `module-plan.json` 中 `solver-engine` 契约一致。
+ *
+ * ### `highlights[].ref`（`unknown`）推荐形状
+ *
+ * 下游 `hint-system`、`puzzle-generator` 等应只依赖这些 JSON 友好结构，避免耦合实现细节：
+ *
+ * - **`kind: "cell"`** → `{ r: number; c: number }`（0–8 行/列下标）
+ * - **`kind: "unit"`** → `{ type: "row" | "col" | "box"; index: number }`（`index` 为 0–8）
+ * - **`kind: "candidate"`** → `{ r: number; c: number; digit: number }`（标出涉及的候选数字）
+ *
+ * ### `eliminations`（可选）
+ *
+ * 仅「删候选」类技巧填写；每项建议为 `{ r: number; c: number; digit: number }`，表示在**当前**
+ * {@link CandidatesGrid} 下应从 `(r,c)` 移除候选 `digit`。填数类步骤（如裸单）通常省略该字段。
+ *
+ * ### `explanationKey`
+ *
+ * 可选 i18n 文案键；与 {@link TechniqueId} 及教学大纲并列使用。
  */
 export type SolveStep = {
   technique: TechniqueId;
