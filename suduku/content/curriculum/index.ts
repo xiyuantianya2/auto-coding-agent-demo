@@ -19,6 +19,13 @@ export function getCurriculumTree(): CurriculumNode[] {
   return [];
 }
 
+export {
+  listKnownTechniqueIds,
+  validateCurriculumTechniqueIds,
+  type CurriculumTechniqueValidationError,
+  type CurriculumTechniqueValidationResult,
+} from "./technique-validation";
+
 const PRACTICE_MODE_PREFIX = "endless-practice:";
 
 /** 占位：与 techniqueId 绑定的稳定 modeId；完整规范见任务 5。 */

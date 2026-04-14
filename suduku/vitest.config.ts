@@ -13,7 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["lib/**/*.test.ts"],
+    include: ["lib/**/*.test.ts", "content/**/*.test.ts"],
     /** `generatePuzzle` + `verifyUniqueSolution` 在部分环境下可略超 5s；避免误杀。 */
     testTimeout: 15_000,
   },

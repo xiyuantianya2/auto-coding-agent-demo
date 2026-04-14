@@ -24,7 +24,7 @@
         "Vitest 用例：故意填入不存在的 techniqueId 时校验失败路径可测；全部使用 TECHNIQUE_IDS 中真实值时通过",
         "不修改 lib/core 以外的无关模块；对 lib/solver 仅通过其公开导出引用"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,
