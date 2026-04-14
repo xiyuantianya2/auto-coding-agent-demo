@@ -50,7 +50,7 @@
         "在 `suduku2` 目录执行 `npm run build` 成功。",
         "补充 Playwright：模拟登录后进入至少一档无尽并验证盘面由给定 `givens` 渲染（可断言非空格数量等），通关或调用保存后进度字段更新；在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,

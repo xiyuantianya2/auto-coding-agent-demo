@@ -46,6 +46,12 @@ export default function Home() {
           >
             对局
           </Link>
+          <Link
+            className="rounded-lg border border-zinc-700 px-4 py-2 text-zinc-200 transition hover:border-emerald-500/60 hover:text-white"
+            href="/game/endless"
+          >
+            无尽
+          </Link>
         </nav>
       </div>
     </div>

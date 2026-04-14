@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-14 - Task: suduku2 client-ui id=4 — 四档无尽模式（全局池选题 + saveProgress）
+
+### What was done:
+- `suduku2/app/progress-api.ts`：`fetchProgress` / `patchProgress`（Bearer、`AbortSignal` 超时、中文错误摘要）与 `isDifficultyTier`。
+- `suduku2/app/game/layout.tsx`：`GameGate` 统一包裹 `/game/*`。
+- `suduku2/app/game/endless/`：四档入口页、`[tier]` 无尽对局页；`endless-tier-view.tsx` 仅从 `getProgress` 返回的 `global[tier].puzzles[nextLevel]` 用 `gameStateFromGivensGrid` 建局（不调用 `generatePuzzle`）；进入关卡写 `draft`、放弃清 `draft`、通关递增 `endless[tier].clearedLevel`；题库未就绪时中文说明 + 手动「刷新进度」避免死循环；请求单次约 8s 超时提示。
+- `suduku2/app/game/page.tsx`、`app/page.tsx`：无尽入口链接。
+- `suduku2/e2e/endless.spec.ts`：登录后入门无尽，断言提示格数与 UI 一致，`保存草稿` 后 `/api/progress` 含 `draft.grid`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e` 全部通过。
+
+### Notes:
+- 放弃本关：`saveProgress` 清除 `draft` 并返回 `/game/endless`；通关后可「进入下一关」重新拉取进度。
+
+---
+
 ## 2026-04-14 - Task: suduku2 client-ui id=2 — 注册、登录与会话（简体中文 + API）
 
 ### What was done:
