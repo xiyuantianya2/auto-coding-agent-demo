@@ -1,0 +1,79 @@
+{
+  "project": "数独2",
+  "module": "tutorial-curriculum",
+  "moduleTitle": "教学大纲与专项映射",
+  "description": "以数据驱动方式组织低/中/高阶章节、技巧清单与顺序（与社区常用命名对齐）、每技巧对应专项无尽模式 id 与解锁条件。内容为 JSON/TS 常量，可含简短讲解文案键与步骤高亮预设；首版可无动画。仅依赖核心类型中的标识符约定，不依赖 UI。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "`content/curriculum` 目录与公开类型、`getTechniqueCatalog`/`getUnlockGraph` 签名骨架",
+      "description": "在 `suduku2/content/curriculum` 建立模块骨架：实现 `module-plan.json` 约定的 `CurriculumTier`（`'low'|'mid'|'high'`）与 `TechniqueModule`（字段仅含 `id`、`tier`、`order`、`practiceEndlessModeId`、`titleKey`，与对外接口一致）。提供入口（如 `index.ts`）导出类型与函数 `getTechniqueCatalog(): TechniqueModule[]`、`getUnlockGraph(): Array<{ techniqueId: string; requires: string[] }>`，首版可返回空数组或最小占位数据，但**函数签名与返回类型**必须与契约一致。在模块级注释中明确：技巧 `id` 的字符串字面量必须与 `@/lib/solver` 的 {@link TechniqueIds} / `TechniqueId` 命名对齐，**禁止**发明与求解器登记不一致的异名 id。本模块为纯数据与查询，不涉及 UI；**不要**引入「最少章节数」「最短解锁路径」等模块未要求的极限目标。目录创建与类型检查应在毫秒级完成。",
+      "steps": [
+        "新增 `suduku2/content/curriculum` 与对外导出，确保可从 `@/content/curriculum`（或项目约定的 `@/*` 路径）引用，并与 `module-plan.json` 中本模块接口描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "技巧目录静态数据：覆盖已登记 `TechniqueIds` 并落地 `getTechniqueCatalog`",
+      "description": "以 TS 常量或 `import` 的 JSON（`resolveJsonModule` 已开启）维护完整技巧清单：为 `technique-ids.ts` 中当前每一个 `TechniqueIds` 条目建立一条 `TechniqueModule`，分配合理的 `CurriculumTier`（与 `lib/generator/tier-profiles` 的低/中/高阶直觉一致即可，**不要求**与出题档位算法最优对齐）、章节内 `order`（同 `tier` 内单调、无重复）、稳定且可读的 `titleKey`（供后续简体中文 UI 使用，例如 `technique.uniqueCandidate.title` 一类命名空间）。为每条记录分配全局唯一的 `practiceEndlessModeId`（建议固定前缀如 `practice-endless:` + 技巧 id，避免与四档无尽关卡 id 冲突）。实现 `getTechniqueCatalog()`：返回**排序后**的只读视图（按 `tier` 再按 `order`），不修改全局可变单例（每次返回新数组或文档说明不可变性）。本任务仅为数据装载与排序，单次调用须同步完成、通常在毫秒级内结束（远小于 5 秒）。性能优先于最优性：**不要**为「最优章节划分」做搜索或随机重试。",
+      "steps": [
+        "数据覆盖所有当前 `TechniqueIds`；用 Vitest 断言 `getTechniqueCatalog()` 长度与 `TechniqueIds` 登记数量一致、`practiceEndlessModeId` 无重复、`id` 无重复。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "解锁依赖图数据与 `getUnlockGraph`（渐进解锁，无环 DAG）",
+      "description": "在独立数据文件或常量中维护解锁关系：实现 `getUnlockGraph()`，使每条边的 `techniqueId` 与 `requires` 均引用**已存在于技巧目录**中的 `id`。首版采用简单渐进策略即可（例如低阶基础技巧无前置，后续技巧依赖前一档或同档前置技巧），形成**有向无环图**；**禁止**要求「最少解锁步数」或「唯一最优解锁顺序」等模块未声明的优化目标。允许 `requires` 为空数组表示默认解锁或教程入口约定（在注释中说明与后续 `server-api` 持久化字段 `techniques[ id ].unlocked` 的衔接意图即可）。图构建与返回应为纯数据操作，单次调用同步完成、通常在毫秒级内结束（远小于 5 秒）。",
+      "steps": [
+        "编写 Vitest：图中所有 `techniqueId`/`requires` 成员均出现在 `getTechniqueCatalog()` 的 `id` 集合中；无自环；通过拓扑排序或 DFS 验证无环；可选：首技巧（或约定入口）解锁语义与注释一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "讲解文案键与步骤高亮预设（可选字段与独立 map，首版可空）",
+      "description": "在**不修改**对外最小 `TechniqueModule` 契约的前提下，以扩展类型或并列导出的方式增加可选数据：例如按 `techniqueId` 索引的 `Record<string, { bodyKey?: string; stepHighlightPresetKey?: string }>`，或并列 JSON 片段，用于后续教学页展示「短讲解」与「步骤高亮预设」；首版允许大部分键空缺，仅要求类型安全与导出路径稳定。内容仍为静态常量，**不要**实现动画或 UI。不引入「最短文案」或「最全高亮」等极限目标。数据访问保持同步、通常在毫秒级内完成（远小于 5 秒）。",
+      "steps": [
+        "新增数据文件与导出；Vitest 做结构冒烟：已填键对应的 `techniqueId` 均存在于目录中；空 map 不报错。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "运行时一致性校验器（开发/测试辅助，供后续服务端或 UI 复用）",
+      "description": "实现 `validateCurriculum()` 或 `assertCurriculumIntegrity()`（名称自定）：在开发与测试中校验（1）`getTechniqueCatalog` 与 `getUnlockGraph` 交叉引用闭合；（2）`practiceEndlessModeId` 唯一；（3）`order` 与 `tier` 的基本合理性（如同 tier 无重复 order）。对失败情况采用明确错误信息或返回值（在 JSDoc 固定）。校验为单次线性扫描，同步完成，通常在毫秒级内结束（远小于 5 秒）；**不要**对解锁图做指数级枚举或随机搜索。性能优先于最优性：不要求「最小化校验开销」的极限优化。",
+      "steps": [
+        "补充 Vitest：故意破坏的 fixture（重复 modeId、缺失边端点）应被检测；正常数据应通过。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "与 `@/lib/solver` 的契约集成测试与公开 API 收口（Vitest，不含 E2E）",
+      "description": "在 `index.ts`（或 barrel）统一导出：`CurriculumTier`、`TechniqueModule`、`getTechniqueCatalog`、`getUnlockGraph`、校验器与可选讲解/高亮 map。补充集成测试：对目录中每个技巧 `id` 调用 `@/lib/solver` 的 `isRegisteredTechniqueId`，应全部为已登记 id（若未来保留扩展位，须在注释与测试中明确「扩展 id」策略，避免静默拼写错误）。可选：从 `@/lib/core` 仅引用类型或 re-export 说明「本模块不依赖具体盘面」以强化边界。本模块不涉及 UI，验收**仅使用 Vitest**；**不要**在 steps 中要求 Playwright E2E。本任务无高计算量路径；若日后校验器扩展变慢，对已知慢路径仅做结构冒烟或合理 `test.timeout`，避免 CI 不稳定。",
+      "steps": [
+        "整理导出与模块头注释（与 `hint-system`/`puzzle-generator` 交叉引用 `TechniqueIds` 的约定一致）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
