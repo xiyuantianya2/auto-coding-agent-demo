@@ -79,7 +79,7 @@
         "执行 npm test，包含 integration.test.ts 新增用例通过",
         "不修改 suduku 以外目录；不实现 app 页面或真实文案 JSON"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

@@ -15,6 +15,9 @@ import type { GameState } from "@/lib/core";
 import { getNextHintImpl } from "./get-next-hint";
 import type { HintResult } from "./types";
 
+/** 与 {@link HintResult.technique} 及 `lib/solver` 的 `TECHNIQUE_IDS` 共用同一命名空间；从本入口一并导出以便应用层只依赖 `@/lib/hint`。 */
+export type { TechniqueId } from "@/lib/solver";
+
 export {
   solveStepHighlightsToHintFields,
   type HintHighlightFields,
