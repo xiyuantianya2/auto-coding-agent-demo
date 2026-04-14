@@ -11,6 +11,7 @@
  * - 函数：`applyNotesCommand`、`syncNotesWithCandidates`、`createUndoStack`（签名见下方导出）。
  *
  * `syncNotesWithCandidates` 已实现：按候选收紧笔记、清理已解格笔记。
+ * `getHighlightCells` / `cellsForRow|Col|Box`：一键筛选高亮坐标（见 `./highlight-filter`）。
  * `applyNotesCommand` 仍为骨架；`createUndoStack` 的 `undo` 在未 `push` 时返回 `null`（占位行为，完整逻辑见后续任务）。
  */
 
@@ -20,6 +21,12 @@ import type { CandidatesGrid } from "@/lib/solver";
 
 import type { NotesCommand } from "./types";
 import { syncNotesWithCandidates as syncNotesWithCandidatesImpl } from "./sync-notes";
+
+export type {
+  HighlightCellCoord,
+  NotesHighlightCells,
+} from "./highlight-filter";
+export { cellsForBox, cellsForCol, cellsForRow, getHighlightCells } from "./highlight-filter";
 
 export type {
   BatchClearNotesPayload,

@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
-import { cloneGameState, createGameStateFromGivens } from "@/lib/core";
+import { cloneGameState, createEmptyGameState, createGameStateFromGivens } from "@/lib/core";
 import { SAMPLE_GIVENS_MINIMAL, SOLVED_GRID_SAMPLE } from "@/lib/core/fixture";
 import { computeCandidates } from "@/lib/solver";
 import {
   applyNotesCommand,
   createUndoStack,
+  getHighlightCells,
   syncNotesWithCandidates,
 } from "@/lib/notes";
 
@@ -51,6 +52,17 @@ test.describe("Suduku notes logic (contract smoke)", () => {
     const state = createGameStateFromGivens(SOLVED_GRID_SAMPLE);
     stack.push(state);
     expect(stack.undo()).toBeNull();
+  });
+
+  test("getHighlightCells row/box/digit matches lib contract (smoke)", () => {
+    const state = createEmptyGameState();
+    const candidates = computeCandidates(state);
+    const row0 = getHighlightCells({ type: "row", index: 0 }, state, candidates);
+    expect(row0.cells).toHaveLength(9);
+    const box4 = getHighlightCells({ type: "box", index: 4 }, state, candidates);
+    expect(box4.cells).toHaveLength(9);
+    const digit = getHighlightCells({ type: "digit", index: 0 }, state, candidates);
+    expect(digit.cells.length).toBeGreaterThan(0);
   });
 
   test("clone isolation after stub apply still holds for callers", () => {

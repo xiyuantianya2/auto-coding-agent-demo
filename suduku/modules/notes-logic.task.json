@@ -35,7 +35,7 @@
         "Vitest 断言 row/col/box/digit 四类 filter 在小型 fixture 上的坐标集合与预期一致",
         "不依赖浏览器 API；逻辑可在 Node 下运行"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
