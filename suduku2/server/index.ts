@@ -3,7 +3,7 @@
  *
  * 对外导出与 `module-plan.json` 中 **server-api** 模块的 interface 一致。
  * 当前进度：`getDataDir()`、`register()`、`login()`、`getUserIdFromToken()`、`getProgress()`（含 `global` 无尽池）、
- * `saveProgress()`、`exportProgress()`、`importProgress()` 已实现。
+ * `saveProgress()`、`exportProgress()`、`importProgress()` 已实现；内网 HTTP 契约见 `app/api/` Route Handlers（委托本模块，错误 JSON 形状见 `http.ts`）。
  *
  * ## 数据目录 `getDataDir()`
  *
