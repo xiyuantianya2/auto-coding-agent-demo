@@ -1,0 +1,91 @@
+{
+  "project": "数独2",
+  "module": "notes-logic",
+  "moduleTitle": "笔记、同步剔除与撤销栈",
+  "description": "实现铅笔笔记切换、与填数规则一致的自动同步（填数后剔除同行列宫笔记等，可参考常见数独游戏行为）；维护与提示步兼容的撤销/重做栈。不负责 UI 绘制，仅输出状态变更与候选同步后的 GameState。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "笔记模块类型、`NotesCommand` 与 `lib/notes` 目录骨架",
+      "description": "在 `suduku2/lib/notes` 建立模块骨架：从 `@/lib/core` 引用 `GameState`、`cloneGameState` 等；从 `@/lib/solver` 引用 `CandidatesGrid`（或等价导出的候选网格类型），**不要**在本模块重复定义候选网格形状。实现对外契约中的 `NotesCommand`（`type` 为 `toggle`|`clearCell`|`fill`|`undo`|`redo`|`setMode`，`payload` 为 `unknown`），在 JSDoc 中写明各 `type` 的**推荐** `payload` 形状（例如 `toggle`/`clearCell`/`fill` 含 `(r,c)` 与数字、`setMode` 含 `fill`|`notes`），并对 `undo`/`redo` 预留与后续任务的 `UndoRedoApi` 集成说明（不在本任务实现具体逻辑）。提供入口文件（如 `index.ts`）导出类型与后续任务将实现的 `applyCommand`、`syncNotesAfterValue`、`createUndoRedo`（可先抛 `Error('not implemented')` 或返回占位值，但函数签名必须与 `module-plan.json` 一致）。本模块为纯逻辑、无 UI；不引入「最少笔记数」「最优撤销压缩」等模块未要求的极限目标。目录与类型创建应在毫秒级完成。",
+      "steps": [
+        "新增 `suduku2/lib/notes` 目录、`NotesCommand` 类型与对外导出，确保可从 `@/lib/notes` 引用，并与 `module-plan.json` 中本模块接口描述一致。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "`syncNotesAfterValue`：填数后的同行/列/宫笔记剔除与候选一致性修剪",
+      "description": "实现 `syncNotesAfterValue(state: GameState, candidates: CandidatesGrid): GameState`：在**已更新** `grid`/`cells` 的生效数字前提下，对铅笔笔记做与常见数独应用一致的同步——至少包含：对已确定数字的格子清除 `notes`；从同行、同列、同宫其它空格的 `notes` 中移除该确定数字。可选但推荐：对仍为空的格子，将 `notes` 与传入的 `candidates[r][c]`（`Set` 或空集）求交，剔除当前规则下已不可能的数字，避免笔记与 `@/lib/solver` 的 `computeCandidates` 结果长期背离（实现需在注释中说明是否做该修剪）。**禁止**在本函数内调用 `findApplicableSteps` 或做高阶技巧搜索；仅做集合运算与坐标遍历，单次调用应在毫秒级完成、通常远小于 5 秒。性能优先于最优性：不要求「最少笔记」或全局最优同步策略。",
+      "steps": [
+        "实现 `syncNotesAfterValue`，对输入使用 `cloneGameState`（或等价深拷贝）避免原地突变破坏调用方快照语义；行为用 Vitest 覆盖至少：填一数后同行/列/宫剔除、已填格笔记清空、可选与 `candidates` 的交集修剪一例。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "`createUndoRedo`：基于 `cloneGameState` 的撤销/重做栈",
+      "description": "实现 `createUndoRedo(): UndoRedoApi`：`push(snapshot)` 将当前盘面快照压入撤销栈（必须使用 `cloneGameState` 深拷贝，避免共享 `Set` 引用导致后续修改污染历史）；`undo()`/`redo()` 返回恢复的 `GameState` 或 `null`（栈空语义在 JSDoc 写明）；`canUndo()`/`canRedo()` 与栈状态一致。新 `push` 后应清空「重做分支」（标准撤销栈语义）。不对栈深做极限优化或压缩；若需防止极端长会话内存增长，可仅作软上限或文档说明，**不要**引入模块未要求的「最小内存」算法目标。全部操作为 O(1) 摊销栈操作加单次克隆成本；单次 `push`/`undo`/`redo` 应在毫秒级完成、通常远小于 5 秒。",
+      "steps": [
+        "实现并导出 `UndoRedoApi` 与 `createUndoRedo`；编写 Vitest：连续 push、undo/redo 往返、`push` 后 redo 不可用、修改当前状态不污染已保存快照（引用隔离）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "`applyCommand`：`setMode`、`toggle` 与 `clearCell`（规则对齐 `@/lib/core`）",
+      "description": "在 `applyCommand` 中实现不修改「历史栈」的命令分支：`setMode` 切换 `state.mode`；`toggle` 在笔记模式下对指定格切换候选数字，落子合法性使用 `@/lib/core` 的 `isLegalToggleNote`（及文档要求的 `grid`/`cells` 同步约定）；`clearCell` 使用 `isLegalClearCell` 清空非给定格的 `value` 并同步 `grid`。对非法命令采取明确策略（忽略并返回克隆后的原状态，或抛出窄域错误——选定一种并在 JSDoc 固定）。**不**在本任务要求实现 `fill`/`undo`/`redo`。单次命令处理为局部常数或 O(9) 级更新；应在毫秒级完成、通常远小于 5 秒。",
+      "steps": [
+        "实现上述分支并补充 Vitest：合法/非法 toggle、clear 对 `grid` 与 `notes` 的影响；必要时使用 `@/lib/core` 已有辅助函数构造初始 `GameState`。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "`applyCommand`：`fill` 与 `syncNotesAfterValue` 串联",
+      "description": "实现 `applyCommand` 的 `fill` 分支：使用 `@/lib/core` 的 `isLegalFill` 校验；合法时更新 `GameState`（保持 `grid` 与 `cells` 不变式一致），然后调用本模块的 `syncNotesAfterValue` 传入**更新后**状态与调用方提供的 `candidates`（通常来自 `computeCandidates(更新前或更新后状态)`——在 JSDoc 中推荐与 UI 一致的调用顺序，避免双实现候选计算）。非法填数不修改逻辑状态（返回克隆原状态或约定错误）。不追求最少步数或唯一填法；单次处理应在毫秒级完成、通常远小于 5 秒。",
+      "steps": [
+        "实现 `fill` 分支与单元测试：合法填数后笔记同步结果符合任务 2；非法填数不改变盘面。测试中可从 `@/lib/solver` 调用 `computeCandidates` 生成传入的 `CandidatesGrid`。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "`applyCommand`：`undo`/`redo` 与 `UndoRedoApi` 的集成约定",
+      "description": "为 `NotesCommand` 中 `type: 'undo'|'redo'` 实现 `applyCommand` 分支：在 JSDoc 中约定 `payload` 为 `UndoRedoApi` 实例（或对 `unknown` 做窄化校验），内部调用 `payload.undo()`/`payload.redo()` 并以返回的 `GameState` 作为 `applyCommand` 的返回值；若返回 `null`，约定返回**未修改的输入 `state` 的克隆**或保持明确一致的一种行为（必须在文档与测试中固定）。**禁止**在 `undo`/`redo` 分支中调用 `findApplicableSteps`。该设计旨在让 UI 层可在同一命令流中调度笔记模块与撤销栈；与 `hint-system` 的兼容体现在「提示步应用前后由调用方 `push` 快照」（见下一任务）。单次调用耗时仅取决于栈深与克隆成本，应在毫秒级、通常远小于 5 秒。",
+      "steps": [
+        "实现 `undo`/`redo` 分支与 Vitest：模拟 `UndoRedoApi`、断言 `null` 与成功返回的语义；确保不修改传入的 `UndoRedoApi` 内部结构以外的对象共享（若适用）。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "对外 API 聚合、与提示步协作约定及模块集成测试（Vitest，不含 E2E）",
+      "description": "在 `suduku2/lib/notes` 入口统一导出：`NotesCommand`、`applyCommand`、`syncNotesAfterValue`、`createUndoRedo`、`UndoRedoApi`。在模块顶部块注释中说明：调用方在应用 `@/lib/hint` 的提示推理（或任意会改变 `GameState` 的外部步）前后，应如何使用 `push`/`undo` 以保证可撤销——本模块不自动拦截 `getNextHint`。补充集成测试：`serializeGameState`/`deserializeGameState` 往返后，`applyCommand` 与 `syncNotesAfterValue` 行为一致；可选：在固定 `GameState` 上调用 `getNextHint` 仅断言不改变原状态（依赖 `@/lib/hint`），用于验证与提示模块共存。本模块不涉及 UI，验收**仅使用 Vitest**；**不要**在 steps 中要求 Playwright E2E。对故意构造的超大撤销栈或极端慢路径仅做结构冒烟或合理 `test.timeout`，避免 CI 不稳定。",
+      "steps": [
+        "整理 `index.ts` 导出与文档注释；补充/扩展 Vitest 集成用例覆盖上述约定。",
+        "在 `suduku2` 目录执行 `npm run lint` 无错误。",
+        "在 `suduku2` 目录执行 `npm run build` 成功。",
+        "在 `suduku2` 目录执行 `npm test` 并确保全部通过。"
+      ],
+      "passes": false
+    }
+  ]
+}
