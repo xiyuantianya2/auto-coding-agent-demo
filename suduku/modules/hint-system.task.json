@@ -68,7 +68,7 @@
         "执行 npm test（Vitest）全部通过",
         "不新增 E2E；本任务仅限 lib 层单元测试"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
