@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-14 - Task: suduku2 client-ui id=6 — 主棋盘（GameState、笔记、提示、计时/暂停、撤销重做）
+
+### What was done:
+- `suduku2/app/game/sudoku-play-surface.tsx`：`computeCandidates` + `applyCommand`/`syncNotesAfterValue` 驱动填数与笔记；`getNextHint` 高亮格与候选（`data-hint-cell`、`sudoku-hint-candidate-r-c-d`）；`createUndoRedo` 与撤销/重做按钮；子网格粗边框、触控最小尺寸；`useSudokuSessionTimer` 向上计时与暂停冻结交互。
+- `suduku2/app/game/use-sudoku-session-timer.ts`：暂停/继续锚时。
+- `endless-tier-view.tsx` / `practice-mode-view.tsx`：改用 `onGameStateChange` + `key` 重挂棋盘；专项页移除重复计时文案。
+- `suduku2/e2e/board.spec.ts`：笔记、提示、暂停计时、撤销一步。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npm run test:e2e` 全部通过。
+
+### Notes:
+- 换题时请为 `SudokuPlaySurface` 设置稳定 `key`（与关卡种子一致），以重置计时与撤销栈。
+
+---
+
 ## 2026-04-14 - Task: suduku2 client-ui id=4 — 四档无尽模式（全局池选题 + saveProgress）
 
 ### What was done:

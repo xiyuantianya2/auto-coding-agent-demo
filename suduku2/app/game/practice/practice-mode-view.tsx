@@ -4,15 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import {
-  cloneGameState,
-  getEffectiveDigitAt,
-  isLegalClearCell,
-  isLegalFill,
-  isVictory,
-  serializeGameState,
-  type GameState,
-} from "@/lib/core";
+import { isVictory, serializeGameState, type GameState } from "@/lib/core";
 import { gameStateFromGivensGrid } from "@/lib/generator/grid-game-state";
 import {
   fetchProgress,
@@ -65,12 +57,10 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [justWon, setJustWon] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
-  const [elapsedSec, setElapsedSec] = useState(0);
 
   const winSavedRef = useRef(false);
   const enterSavedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
-  const timerRef = useRef<ReturnType<typeof globalThis.setInterval> | null>(null);
 
   const title = moduleMeta ? techniqueTitleZh(moduleMeta.titleKey) : "专项练习";
 
@@ -84,12 +74,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     setStatusHint(null);
     setSelected(null);
     setGameState(null);
-    setElapsedSec(0);
     startedAtRef.current = null;
-    if (timerRef.current) {
-      globalThis.clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
 
     setPhase({ kind: "loading" });
     const ctrl = new AbortController();
@@ -162,29 +147,6 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
   }, [loadPuzzle, modeId, moduleMeta]);
 
   useEffect(() => {
-    if (phase.kind !== "playing" || justWon) {
-      if (timerRef.current) {
-        globalThis.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-      return;
-    }
-    timerRef.current = globalThis.setInterval(() => {
-      const t0 = startedAtRef.current;
-      if (t0 === null) {
-        return;
-      }
-      setElapsedSec(Math.floor((Date.now() - t0) / 1000));
-    }, 500);
-    return () => {
-      if (timerRef.current) {
-        globalThis.clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
-    };
-  }, [justWon, phase.kind]);
-
-  useEffect(() => {
     if (!token || !moduleMeta) {
       return;
     }
@@ -252,47 +214,6 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       }
     })();
   }, [apiBase, gameState, modeId, moduleMeta, phase.kind, token]);
-
-  const onDigit = useCallback(
-    (digit: number) => {
-      if (!gameState || phase.kind !== "playing") {
-        return;
-      }
-      if (!selected) {
-        setStatusHint("请先点击一个空格。");
-        return;
-      }
-      const { r, c } = selected;
-      if (!isLegalFill(gameState, r, c, digit)) {
-        setStatusHint("该位置不能填入此数字。");
-        return;
-      }
-      const next = cloneGameState(gameState);
-      next.cells[r][c].value = digit;
-      next.grid[r][c] = digit;
-      if (next.cells[r][c].notes) {
-        next.cells[r][c].notes = undefined;
-      }
-      setGameState(next);
-      setStatusHint(null);
-    },
-    [gameState, phase, selected],
-  );
-
-  const onClear = useCallback(() => {
-    if (!gameState || phase.kind !== "playing" || !selected) {
-      return;
-    }
-    const { r, c } = selected;
-    if (!isLegalClearCell(gameState, r, c)) {
-      return;
-    }
-    const next = cloneGameState(gameState);
-    delete next.cells[r][c].value;
-    delete next.cells[r][c].notes;
-    next.grid[r][c] = getEffectiveDigitAt(next, r, c);
-    setGameState(next);
-  }, [gameState, phase, selected]);
 
   const onSaveDraft = useCallback(async () => {
     if (!token || !gameState || phase.kind !== "playing") {
@@ -413,11 +334,6 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
           </p>
         )}
         {phase.kind === "playing" ? (
-          <p className="text-sm text-zinc-300" data-testid="practice-timer">
-            本局用时：{elapsedSec} 秒
-          </p>
-        ) : null}
-        {phase.kind === "playing" ? (
           <p className="text-xs text-zinc-500" data-testid="practice-meta">
             难度分：{phase.spec.difficultyScore.toFixed(1)} · 种子：{phase.spec.seed}
           </p>
@@ -467,11 +383,19 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
           ) : null}
 
           <SudokuPlaySurface
+            key={`${modeId}-${phase.spec.seed}`}
             gameState={gameState}
+            onGameStateChange={setGameState}
             selected={selected}
-            onSelectCell={setSelected}
-            onDigit={onDigit}
-            onClear={onClear}
+            onSelectCell={(cell) => {
+              setSelected(cell);
+              if (!cell) {
+                return;
+              }
+              setStatusHint(null);
+            }}
+            onPlayRejected={() => setStatusHint("该操作在当前模式下不可用。")}
+            onNeedCellSelection={() => setStatusHint("请先点击一个空格。")}
             disabled={busy || justWon}
             boardTestId="practice-board"
             extraRightColumn={

@@ -75,7 +75,7 @@
         "如有纯 hooks/纯函数可测逻辑，在 `suduku2` 目录执行 `npm test` 并确保全部通过（可选但推荐）。",
         "补充 Playwright：覆盖笔记切换、提示高亮可见、暂停冻结计时、撤销一步等关键路径，并在 `suduku2` 目录执行 `npm run test:e2e` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 7,
