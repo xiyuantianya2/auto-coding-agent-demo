@@ -8,7 +8,7 @@
  * - **难度档**：{@link DifficultyTier}（入门 / 普通 / 困难 / 专家）。
  * - **题目元数据**：{@link PuzzleSpec}（提示盘面、难度分、可选分数区间、解题轨迹上涉及的技巧 id）。
  * - **技巧标识**：{@link TechniqueId} 与 {@link TechniqueIds} 与 `@/lib/solver`、教学大纲一致；勿自行发明异名字符串。
- * - **函数**：{@link generatePuzzle}、{@link verifyUniqueSolution}（当前任务为占位实现，行为见各函数说明）。
+ * - **函数**：{@link generatePuzzle}（占位）、{@link verifyUniqueSolution}（完备回溯计数 + 早停）。
  *
  * `seed` 为可复现/可展示的题面标识（例如由 tier、尝试序号与 `rng` 派生的短摘要），**不要求密码学强度**。
  *
@@ -25,6 +25,7 @@ export {
   gameStateFromSolvedGrid,
 } from "./grid-game-state";
 export { generateRandomCompleteGrid } from "./random-complete-grid";
+export { verifyUniqueSolution } from "./unique-solution";
 
 // Re-export solver technique naming for callers that build or validate PuzzleSpec.requiredTechniques.
 export type { TechniqueId };
@@ -76,15 +77,3 @@ export function generatePuzzle(options: {
   return null;
 }
 
-/**
- * 判断给定提示盘面在标准数独规则下是否**恰有一个**完整解（占位实现）。
- *
- * 后续任务将实现带早停的解计数，与 `findApplicableSteps` 的人类技巧链独立。
- *
- * @param givens - 仅含提示的 9×9 盘面（`0` 为空）。
- * @returns 占位阶段固定为 `false`；实现完成后为是否唯一解。
- */
-export function verifyUniqueSolution(givens: Grid9): boolean {
-  void givens;
-  return false;
-}

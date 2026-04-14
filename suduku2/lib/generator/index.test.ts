@@ -65,10 +65,57 @@ describe("puzzle-generator skeleton (task 1)", () => {
     expect(generatePuzzle({ tier: "entry", rng })).toBeNull();
   });
 
-  it("verifyUniqueSolution placeholder returns false for an empty grid", () => {
+  it("verifyUniqueSolution: empty grid has many solutions → false", () => {
     const empty: Grid9 = Array.from({ length: 9 }, () => Array<number>(9).fill(0));
     expect(verifyUniqueSolution(empty)).toBe(false);
   });
+});
+
+/** 常见报章谜题（唯一解），与任务 2 随机盘无关。 */
+const UNIQUE_FIXTURE: Grid9 = [
+  [5, 3, 0, 0, 7, 0, 0, 0, 0],
+  [6, 0, 0, 1, 9, 5, 0, 0, 0],
+  [0, 9, 8, 0, 0, 0, 0, 6, 0],
+  [8, 0, 0, 0, 6, 0, 0, 0, 3],
+  [4, 0, 0, 8, 0, 3, 0, 0, 1],
+  [7, 0, 0, 0, 2, 0, 0, 0, 6],
+  [0, 6, 0, 0, 0, 0, 2, 8, 0],
+  [0, 0, 0, 4, 1, 9, 0, 0, 5],
+  [0, 0, 0, 0, 8, 0, 0, 7, 9],
+];
+
+describe("verifyUniqueSolution (task 3)", () => {
+  it("returns true for a known uniquely-solvable puzzle", () => {
+    expect(verifyUniqueSolution(UNIQUE_FIXTURE)).toBe(true);
+  });
+
+  it("returns false when givens contradict (duplicate in a row)", () => {
+    const bad: Grid9 = UNIQUE_FIXTURE.map((row) => row.slice());
+    bad[0]![0] = 6;
+    bad[0]![1] = 6;
+    expect(verifyUniqueSolution(bad)).toBe(false);
+  });
+
+  it("returns false for an unsolvable partial assignment (no duplicate hint)", () => {
+    const dead: Grid9 = Array.from({ length: 9 }, () => Array<number>(9).fill(0));
+    dead[0] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    dead[1] = [1, 0, 0, 0, 0, 0, 0, 0, 0];
+    expect(verifyUniqueSolution(dead)).toBe(false);
+  });
+
+  it("returns false for empty grid (non-unique)", () => {
+    const empty: Grid9 = Array.from({ length: 9 }, () => Array<number>(9).fill(0));
+    expect(verifyUniqueSolution(empty)).toBe(false);
+  });
+
+  it(
+    "smoke: heavy-ish search completes with a boolean (no throw)",
+    { timeout: 30_000 },
+    () => {
+      const g = verifyUniqueSolution(UNIQUE_FIXTURE);
+      expect(typeof g).toBe("boolean");
+    },
+  );
 });
 
 describe("Grid9 ↔ GameState helpers & random complete solution (task 2)", () => {
