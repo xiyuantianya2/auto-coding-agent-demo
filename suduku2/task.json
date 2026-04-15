@@ -88,7 +88,7 @@
         "暂停与提示仍可按现有 E2E 契约工作（若改了 `data-testid` 须在本阶段或任务 12 同步 e2e）",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 9,

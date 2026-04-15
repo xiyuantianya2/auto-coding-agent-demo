@@ -245,38 +245,68 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           </div>
         </div>
 
-        <div className="flex w-full min-w-0 shrink-0 flex-col gap-3 md:max-w-xs [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,260px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-sm">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="flex-1 rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
-              data-testid="sudoku-mode-fill"
-              aria-pressed={gameState.mode === "fill"}
-              disabled={interactionLocked}
-              onClick={() => actions.setMode("fill")}
+        <div className="flex w-full min-w-0 shrink-0 flex-col gap-4 md:max-w-sm [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,280px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-sm">
+          <div className="flex flex-col gap-2">
+            <div
+              className="flex w-full overflow-hidden rounded-2xl bg-[var(--s2-card-muted)] p-1 ring-1 ring-[var(--s2-btn-secondary-ring)]"
+              role="group"
+              aria-label="填数与笔记模式"
             >
-              填数
-            </button>
-            <button
-              type="button"
-              className="flex-1 rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
-              data-testid="sudoku-mode-notes"
-              aria-pressed={gameState.mode === "notes"}
-              disabled={interactionLocked}
-              onClick={() => actions.setMode("notes")}
+              <button
+                type="button"
+                className={[
+                  "min-h-[52px] flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 text-base font-semibold transition-colors",
+                  gameState.mode === "fill"
+                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
+                    : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
+                ].join(" ")}
+                data-testid="sudoku-mode-fill"
+                aria-pressed={gameState.mode === "fill"}
+                disabled={interactionLocked}
+                onClick={() => actions.setMode("fill")}
+              >
+                填数
+              </button>
+              <button
+                type="button"
+                className={[
+                  "min-h-[52px] flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 text-base font-semibold transition-colors",
+                  gameState.mode === "notes"
+                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
+                    : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
+                ].join(" ")}
+                data-testid="sudoku-mode-notes"
+                aria-pressed={gameState.mode === "notes"}
+                disabled={interactionLocked}
+                onClick={() => actions.setMode("notes")}
+              >
+                笔记
+              </button>
+            </div>
+            <p
+              className="text-center text-xs leading-snug text-[var(--s2-text-subtle)]"
+              data-testid="sudoku-mode-hint"
+              aria-live="polite"
             >
-              笔记
-            </button>
+              {gameState.mode === "fill"
+                ? "先选空格，再点数字填入"
+                : "先选空格，再点数字切换笔记标记"}
+            </p>
           </div>
 
-          <div className="grid grid-cols-9 gap-2 md:grid-cols-3 [@media(min-width:768px)_and_(orientation:landscape)]:gap-3">
+          <div
+            className="grid grid-cols-3 gap-3"
+            data-testid="sudoku-digit-pad"
+            role="group"
+            aria-label="数字 1 至 9"
+          >
             {Array.from({ length: 9 }, (_, i) => {
               const n = i + 1;
               return (
                 <button
                   key={n}
                   type="button"
-                  className="rounded-lg bg-[var(--s2-digit-pad-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40 min-h-[44px]"
+                  className="min-h-[56px] min-w-0 touch-manipulation select-none rounded-xl bg-[var(--s2-digit-pad-bg)] px-2 py-3 text-lg font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40"
                   data-testid={`digit-pad-${n}`}
                   onClick={() => actions.digit(n)}
                   disabled={interactionLocked}
@@ -287,10 +317,10 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             })}
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="grid w-full grid-cols-3 gap-2">
             <button
               type="button"
-              className="rounded-[var(--s2-r-lg)] px-3 py-2 text-sm font-semibold ring-1 min-h-[44px] bg-[var(--s2-hint-btn-bg)] text-[var(--s2-hint-btn-text)] ring-[var(--s2-hint-btn-ring)] hover:opacity-90 disabled:opacity-40"
+              className="min-h-[48px] touch-manipulation rounded-[var(--s2-r-lg)] px-2 py-2 text-sm font-semibold ring-1 bg-[var(--s2-hint-btn-bg)] text-[var(--s2-hint-btn-text)] ring-[var(--s2-hint-btn-ring)] hover:opacity-90 disabled:opacity-40"
               data-testid="sudoku-hint"
               disabled={interactionLocked}
               onClick={() => actions.requestHint()}
@@ -299,7 +329,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             </button>
             <button
               type="button"
-              className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
+              className="min-h-[48px] touch-manipulation rounded-lg bg-[var(--s2-btn-secondary-bg)] px-2 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
               data-testid="sudoku-undo"
               disabled={interactionLocked || !canUndo}
               onClick={() => actions.undo()}
@@ -308,7 +338,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             </button>
             <button
               type="button"
-              className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
+              className="min-h-[48px] touch-manipulation rounded-lg bg-[var(--s2-btn-secondary-bg)] px-2 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
               data-testid="sudoku-redo"
               disabled={interactionLocked || !canRedo}
               onClick={() => actions.redo()}
@@ -319,7 +349,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
 
           <button
             type="button"
-            className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-4 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px]"
+            className="min-h-[52px] w-full touch-manipulation rounded-xl bg-[var(--s2-btn-secondary-bg)] px-4 py-3 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
             onClick={() => actions.clear()}
             disabled={interactionLocked || !selected}
             data-testid={clearCellTestId}
