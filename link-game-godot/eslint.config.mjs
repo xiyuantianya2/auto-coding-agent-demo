@@ -8,6 +8,15 @@ export default tseslint.config(
     ignores: ["node_modules/**"],
   },
   {
+    files: ["src/**/*.ts", "vitest.config.ts"],
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
+  {
     files: ["e2e/**/*.ts", "playwright.config.ts"],
     languageOptions: {
       parserOptions: {

@@ -5,8 +5,8 @@
   "description": "Godot 4 连连看（桌面 + Android），含 npm/Playwright 基线与 Godot 无头测试入口",
   "scripts": {
     "dev": "serve public -l 3004",
-    "build": "node ./scripts/verify-godot-project.mjs",
-    "lint": "eslint e2e playwright.config.ts",
+    "build": "node ./scripts/verify-godot-project.mjs && tsc -p tsconfig.json",
+    "lint": "eslint e2e playwright.config.ts src",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
@@ -17,6 +17,7 @@
     "eslint": "^9.39.1",
     "serve": "^14.2.5",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.0"
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^3.2.4"
   }
 }

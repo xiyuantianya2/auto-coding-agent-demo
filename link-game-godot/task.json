@@ -24,7 +24,7 @@
         "为边界与空位穿越规则编写单元/场景测试用例并可在 headless 下运行。",
         "代码注释或 architecture 补充说明与 requirements-archive 规则一致。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,

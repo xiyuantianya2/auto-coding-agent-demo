@@ -9,6 +9,8 @@ const required = [
   "project.godot",
   "scenes/main.tscn",
   "scripts/main.gd",
+  "scripts/board_model.gd",
+  "scripts/link_path_finder.gd",
   "run_tests.gd",
   "icon.svg",
 ];
