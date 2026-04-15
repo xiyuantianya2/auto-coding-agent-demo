@@ -1,5 +1,61 @@
 {
   "project": "数独2",
   "description": "",
-  "tasks": []
+  "tasks": [
+    {
+      "id": 1,
+      "title": "全屏 API 封装（Hook/工具）",
+      "description": "在客户端封装对 Fullscreen API 的调用：对目标容器元素提供进入全屏、退出全屏、切换及当前是否全屏的状态；监听 fullscreenchange 与全屏元素变化以保持 React 状态一致。浏览器不支持时返回明确状态（如 isSupported: false），不弹窗阻塞。对 requestFullscreen/exitFullscreen 使用 try/catch，单次调用失败即结束，禁止重试死循环或 setInterval 轮询；不引入无限等待。",
+      "steps": [
+        "在支持全屏的浏览器中，点击触发后目标元素能进入全屏，fullscreenchange 后状态与 document.fullscreenElement 一致",
+        "调用 exitFullscreen 或浏览器 ESC 退出后状态恢复为未全屏",
+        "在不支持或用户拒绝全屏时，应用不崩溃，hook 返回可区分的失败/不支持状态",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "对局界面全屏入口与可访问性",
+      "description": "在共用对局组件 SudokuPlaySurface（或与练习/无尽对局共用的游戏区外层）增加「全屏」控件：仅在客户端、且全屏 API 可用时展示可点击入口；全屏状态下同一入口可改为「退出全屏」或等价文案。使用 data-testid（如 sudoku-fullscreen-toggle）与清晰的中文 aria-label，避免仅依赖 CSS 类名定位。",
+      "steps": [
+        "练习模式与无尽模式进入对局后可见全屏按钮（不支持时表现为禁用或隐藏，行为与任务 1 约定一致）",
+        "按钮可通过键盘聚焦与激活（与现有工具栏交互习惯一致）",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "全屏模式下的布局与可视区域",
+      "description": "为全屏根容器（包住棋盘与主要控件的区域）设置合理的最小高度与内边距，避免全屏后内容贴边或被裁切；采用简单可靠的 flex/网格方案即可，不追求复杂动效。若需 Safari 等前缀，仅在封装层按需处理，不扩大改动面。",
+      "steps": [
+        "全屏后 9×9 棋盘与主要操作区在常见视口（含 16:9 横屏）内完整可见、可交互",
+        "退出全屏后布局与全屏前一致，无残留 class/样式破坏普通模式",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "Playwright E2E：全屏切换验收",
+      "description": "在 e2e 中增加用例：进入可对局页面（如练习或无尽），点击全屏按钮；在支持全屏的 Chromium 下用 page.evaluate 断言 document.fullscreenElement 为预期容器（或项目约定的非空节点）；再触发退出全屏并断言恢复。若测试环境声明不支持全屏，则跳过断言并记录原因（单次检测，不轮询超过合理超时，例如整体用例超时内完成）。",
+      "steps": [
+        "npm run test:e2e 全部通过（含新用例）",
+        "新用例使用 data-testid 或 aria 定位，不依赖易变样式类名"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "回归：lint、build 与现有 E2E",
+      "description": "在完成上述改动后做一次完整回归：确保未破坏现有对局、计时、暂停等流程。全屏相关逻辑不得引入阻塞主线程的长循环；若有异步仅使用事件与单次 Promise，并带合理错误处理。",
+      "steps": [
+        "npm run lint 无错误",
+        "npm run build 成功",
+        "npm run test:e2e 全部通过"
+      ],
+      "passes": false
+    }
+  ]
 }

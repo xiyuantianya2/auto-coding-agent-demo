@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import { isVictory, type GameState } from "@/lib/core";
-import { gameStateFromGivensGrid } from "@/lib/generator/grid-game-state";
+import { isVictory, tryDeserializeGameStateFromUnknown, type GameState } from "@/lib/core";
+import { gameStateFromGivensGrid, gameStateMatchesGivensGrid } from "@/lib/generator/grid-game-state";
 import {
   fetchProgress,
   isDifficultyTier,
@@ -56,6 +56,8 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
   const [statusHint, setStatusHint] = useState<string | null>(null);
 
   const winSavedRef = useRef(false);
+  /** 与专项练习 `loadPuzzle` 相同：忽略过时异步完成，避免双调竞态卸载盘面。 */
+  const loadRunSeqRef = useRef(0);
 
   const tierLabel = tier ? ENDLESS_TIER_LABEL_ZH[tier] : "未知";
 
@@ -63,6 +65,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
     if (!tier || !token) {
       return;
     }
+    const seq = ++loadRunSeqRef.current;
     winSavedRef.current = false;
     setJustWon(false);
     setStatusHint(null);
@@ -73,6 +76,9 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
     const timer = globalThis.setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     try {
       const data = await fetchProgress(apiBase, token, ctrl.signal);
+      if (seq !== loadRunSeqRef.current) {
+        return;
+      }
       setProgress(data);
       const cleared = data.endless[tier].clearedLevel;
       const nextLevel = cleared + 1;
@@ -89,10 +95,16 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
         return;
       }
 
-      const gs = gameStateFromGivensGrid(spec.givens);
-      setGameState(gs);
+      const fresh = gameStateFromGivensGrid(spec.givens);
+      const fromDraft = tryDeserializeGameStateFromUnknown(data.draft);
+      setGameState(
+        fromDraft && gameStateMatchesGivensGrid(spec.givens, fromDraft) ? fromDraft : fresh,
+      );
       setPhase({ kind: "playing", clearedLevel: cleared, nextLevel, spec });
     } catch (e) {
+      if (seq !== loadRunSeqRef.current) {
+        return;
+      }
       const msg =
         e instanceof Error && e.name === "AbortError"
           ? "请求超时（服务器可能在生成题目）。请稍后重试。"

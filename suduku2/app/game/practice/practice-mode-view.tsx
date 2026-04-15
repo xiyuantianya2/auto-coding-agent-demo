@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from "react";
 
-import { isVictory, type GameState } from "@/lib/core";
-import { gameStateFromGivensGrid } from "@/lib/generator/grid-game-state";
+import { isVictory, tryDeserializeGameStateFromUnknown, type GameState } from "@/lib/core";
+import { gameStateFromGivensGrid, gameStateMatchesGivensGrid } from "@/lib/generator/grid-game-state";
 import {
   fetchProgress,
   patchProgress,
@@ -60,6 +60,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
 
   const winSavedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
+  /** 防止 `loadPuzzle` 并发/过时完成写回状态（如 Strict Mode 双调、依赖抖动），避免盘面被意外卸载。 */
+  const loadPuzzleSeqRef = useRef(0);
 
   const title = moduleMeta ? techniqueTitleZh(moduleMeta.titleKey) : "专项练习";
 
@@ -67,6 +69,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     if (!token || !moduleMeta || !modeId) {
       return;
     }
+    const seq = ++loadPuzzleSeqRef.current;
     winSavedRef.current = false;
     setJustWon(false);
     setStatusHint(null);
@@ -78,6 +81,9 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
     const timer = globalThis.setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT_MS);
     try {
       const data = await fetchProgress(apiBase, token, ctrl.signal);
+      if (seq !== loadPuzzleSeqRef.current) {
+        return;
+      }
       setProgress(data);
 
       if (!isUnlocked(data.techniques, moduleMeta.id)) {
@@ -94,6 +100,9 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         signal: ctrl.signal,
       });
       const text = await res.text();
+      if (seq !== loadPuzzleSeqRef.current) {
+        return;
+      }
       if (!res.ok) {
         let msg = "加载题目失败，请稍后重试。";
         try {
@@ -114,11 +123,17 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         return;
       }
 
-      const gs = gameStateFromGivensGrid(spec.givens);
-      setGameState(gs);
+      const fresh = gameStateFromGivensGrid(spec.givens);
+      const fromDraft = tryDeserializeGameStateFromUnknown(data.draft);
+      setGameState(
+        fromDraft && gameStateMatchesGivensGrid(spec.givens, fromDraft) ? fromDraft : fresh,
+      );
       startedAtRef.current = Date.now();
       setPhase({ kind: "playing", spec });
     } catch (e) {
+      if (seq !== loadPuzzleSeqRef.current) {
+        return;
+      }
       const msg =
         e instanceof Error && e.name === "AbortError"
           ? "请求超时，请稍后重试。"

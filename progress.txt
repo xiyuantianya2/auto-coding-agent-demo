@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=1 — 全屏 API 封装（Hook/工具）
+
+### What was done:
+- 确认 `lib/fullscreen/`：`fullscreen-dom.ts`（前缀 API、`try/catch` 封装）、`useFullscreen`（`fullscreenchange` 及前缀事件 + 与 `document` 对齐）、`/fullscreen-smoke` 冒烟页与 `e2e/fullscreen-api.spec.ts` 已满足任务验收。
+- `practice-mode-view` / `endless-tier-view`：为 `loadPuzzle` / `loadRun` 增加序号守卫，忽略过时的异步完成，避免 React Strict Mode 或依赖重跑导致的竞态卸载盘面（修复 `timer-pause` E2E 与 `npm test` 总闸不稳定）。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`、`npx playwright test --headed` 全部通过。
+
+### Notes:
+- 全屏入口 UI 为任务 2；本任务仅封装与冒烟验证。
+
+---
+
 ## 2026-04-15 - Task: suduku2 integration-qa id=4 — 提示、笔记模式与撤销/重做 UI 契约
 
 ### What was done:
