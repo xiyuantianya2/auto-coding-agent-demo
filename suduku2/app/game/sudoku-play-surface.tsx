@@ -88,6 +88,11 @@ function cellAriaLabel(parts: {
   return chunks.join("，");
 }
 
+/** 空格是否已有至少一条铅笔笔记（1–9） */
+function hasAnyPencilNotes(notes: ReadonlySet<number> | Set<number> | undefined): boolean {
+  return notes !== undefined && notes.size > 0;
+}
+
 /** 与选中格同一行、列或 3×3 宫（含选中格自身） */
 function isInSelectedRegion(r: number, c: number, selected: { r: number; c: number } | null): boolean {
   if (!selected) {
@@ -432,6 +437,11 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             const thickR = (c + 1) % 3 === 0 && c < 8;
             const thickB = (r + 1) % 3 === 0 && r < 8;
             const candSet = candHigh.get(`${r},${c}`);
+            const notesSet = gameState.cells[r][c].notes;
+            const hasUserNotes = hasAnyPencilNotes(notesSet);
+            const hasHintCandidates = candSet !== undefined && candSet.size > 0;
+            const showFullNotesPad = gameState.mode === "notes";
+            const showNotesOrHintPad = showFullNotesPad || hasUserNotes || hasHintCandidates;
             const cellBg = isGiven
               ? inRegion
                 ? "bg-[var(--s2-cell-region-given-bg)] text-[var(--s2-cell-given-text)]"
@@ -489,36 +499,52 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 }}
               >
                 {d === EMPTY_CELL ? (
-                  <span className="relative z-[1] grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[clamp(8px,2.2vmin,12px)] font-normal leading-none">
-                    {Array.from({ length: 9 }, (_, k) => {
-                      const n = k + 1;
-                      const has = gameState.cells[r][c].notes?.has(n) ?? false;
-                      const hintCand = candSet?.has(n) === true;
-                      const em = hintCand ? "font-semibold text-[var(--s2-cand-hint)]" : "";
-                      return (
-                        <span
-                          key={n}
-                          className={[
-                            "inline-flex min-h-0 min-w-0 items-center justify-center leading-none",
-                            has
-                              ? "text-[var(--s2-cand-pip-on)]"
-                              : "text-[var(--s2-cand-pip-muted)] opacity-40",
-                            em,
-                          ].join(" ")}
-                          data-testid={
-                            hintCand
-                              ? `sudoku-hint-candidate-${r}-${c}-${n}`
-                              : `sudoku-note-marker-${r}-${c}-${n}`
-                          }
-                          data-s2-note-on={has ? "true" : undefined}
-                          data-hint-candidate={hintCand ? "true" : undefined}
-                          aria-hidden
-                        >
-                          {n}
-                        </span>
-                      );
-                    })}
-                  </span>
+                  showNotesOrHintPad ? (
+                    <span className="relative z-[1] grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[clamp(8px,2.2vmin,12px)] font-normal leading-none">
+                      {Array.from({ length: 9 }, (_, k) => {
+                        const n = k + 1;
+                        const has = notesSet?.has(n) ?? false;
+                        const hintCand = candSet?.has(n) === true;
+                        const em = hintCand ? "font-semibold text-[var(--s2-cand-hint)]" : "";
+                        if (!showFullNotesPad && !has && !hintCand) {
+                          return (
+                            <span
+                              key={n}
+                              className="inline-flex min-h-0 min-w-0 items-center justify-center"
+                              aria-hidden
+                            />
+                          );
+                        }
+                        return (
+                          <span
+                            key={n}
+                            className={[
+                              "inline-flex min-h-0 min-w-0 items-center justify-center leading-none",
+                              has
+                                ? "text-[var(--s2-cand-pip-on)]"
+                                : "text-[var(--s2-cand-pip-muted)] opacity-40",
+                              em,
+                            ].join(" ")}
+                            data-testid={
+                              hintCand
+                                ? `sudoku-hint-candidate-${r}-${c}-${n}`
+                                : `sudoku-note-marker-${r}-${c}-${n}`
+                            }
+                            data-s2-note-on={has ? "true" : undefined}
+                            data-hint-candidate={hintCand ? "true" : undefined}
+                            aria-hidden
+                          >
+                            {n}
+                          </span>
+                        );
+                      })}
+                    </span>
+                  ) : (
+                    <span
+                      className="relative z-[1] flex min-h-0 w-full min-w-0 flex-1"
+                      aria-hidden
+                    />
+                  )
                 ) : (
                   <span className="relative z-[1]">{String(d)}</span>
                 )}

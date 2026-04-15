@@ -1,5 +1,21 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=26 — 空白格：填数模式下不显示 1–9 笔记占位
+
+### What was done:
+- `SudokuPlaySurface`：空格笔记层按 `mode` 与是否已有笔记/提示候选分支；填数模式且无笔记且无提示候选时不渲染 3×3 占位（保留透明 `flex-1` 内层以维持格钮布局）；笔记模式仍渲染完整 9 格；填数模式下若有笔记或提示候选则仅渲染对应数字格（无 muted 全 9 占位）。
+- `e2e/note-placeholder-fill-mode.spec.ts`：覆盖填数无 marker、笔记模式 9 marker、有笔记后填数仍可见。
+- `e2e/fill-all-pencil-notes.spec.ts`：`countNotesOnInCell` 改为按格内 `[data-s2-note-on="true"]` 计数，兼容无笔记时不挂载 9 个 marker。
+- `task.json`：id=26 `passes: true`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（275）、`npx playwright test --headed`（54）均通过。
+
+### Notes:
+- 任务 28 可复核 `cellAriaLabel` 在「无可视 1–9」时的读屏描述；任务 29 可再收紧 E2E 与一键笔记断言。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=19 — Playwright：新交互回归
 
 ### What was done:

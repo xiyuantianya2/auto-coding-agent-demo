@@ -277,6 +277,62 @@
         "`npm run test:e2e` 全部通过（含新增/更新用例）。"
       ],
       "passes": true
+    },
+    {
+      "id": 26,
+      "title": "空白格：填数模式下不显示 1–9 笔记占位",
+      "description": "在 `SudokuPlaySurface`（或等价盘面组件）中调整空白未填格的笔记层渲染：对「当前无有效笔记（notes 为空或未包含任何数字）」的空格，当 `GameState.mode === \"fill\"` 时**不**渲染 3×3 的 1–9 小点占位（可保留透明可点击区域以维持选格）。当切换到笔记模式（`mode === \"notes\"`）后，再显示用于打点/编辑的 1–9 网格。若某格已有至少一条笔记，则无论填数或笔记模式都应可见地展示已记录的笔记点（可仅渲染集合中数字，而不必再展示 9 个 muted 占位）。布局与触控热区不得被破坏；不得引入无超时/无 maxAttempts 的循环。",
+      "steps": [
+        "进入对局，填数模式下观察任意「从未打过笔记」的空白格：不出现 1–9 淡色候选小点。",
+        "切换到笔记模式后，同一类空白格出现可编辑的 1–9 笔记网格（或与产品一致的等价交互）。",
+        "对已手动打过笔记的空格，切回填数模式后仍能看到已记笔记内容（不出现「笔记被清空」回归）。",
+        "`npm run lint` 与 `npm run build` 通过。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 27,
+      "title": "一键笔记：批处理仅写入可行候选并补全单测",
+      "description": "复核并必要时收紧 `@/lib/notes` 中「一键笔记」实现（如 `applyFullBoardPencilNotes`）：对每个非给定、未填写的空格，将笔记集合设为当前盘面下由 `computeCandidates`（或等价、有界 O(81×常数) 扫描）得到的**行/列/宫约束下仍可填**的数字集合，即去除与已有填数冲突的「不可能」候选；给定格与已填格不写入笔记。禁止为追求「终局唯一性证明」而加入无 maxAttempts/无超时的深度回溯搜索；单次调用须在普通设备上明显低于 5 秒。补充或更新 Vitest：覆盖「一键后每格笔记集合与候选网格一致」「某格原有错误/多余笔记被替换为当前约束下可行集合」等场景。",
+      "steps": [
+        "在固定测试盘面上，一键笔记后任意空格的 `notes` 与 `computeCandidates` 该格集合一致（允许空集则清除该格笔记）。",
+        "`npm test`（Vitest）相关用例通过。",
+        "`npm run lint` 与 `npm run build` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 28,
+      "title": "提示高亮、无障碍与笔记展示规则共存",
+      "description": "在任务 26 的展示规则下，确保提示系统对候选/笔记的高亮（如 `data-hint-candidate`、`sudoku-hint-candidate-*`）仍按现有契约工作；`cellAriaLabel` 等在「无可视 1–9 占位」时仍给出合理的格描述（避免读屏信息倒退）。不新增阻塞主线程的无界循环；动效继续尊重 `prefers-reduced-motion`。",
+      "steps": [
+        "触发一次提示后，目标格/候选高亮与说明文案仍可理解，无控制台错误。",
+        "主要格与模式按钮仍具备稳定的 `data-testid` / `aria-*` 语义（若因展示规则调整了结构则同步更新）。",
+        "`npm run lint` 与 `npm run build` 通过。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 29,
+      "title": "Playwright：笔记展示与一键笔记 E2E 更新",
+      "description": "更新或新增 `e2e/` 用例：覆盖「填数模式下空白无笔记格不可见 muted 1–9 占位」「进入笔记模式后可断言笔记打点交互」「一键笔记后各格仅出现可行候选对应的笔记点（`data-s2-note-on` 等）」。使用稳定 `data-testid`/role 定位；单用例超时不超过 2 分钟；不通过 Vitest 嵌套执行完整 Playwright 套件。",
+      "steps": [
+        "`npm run test:e2e` 全部通过（含更新/新增用例）。",
+        "必要时在 `e2e` 中说明对 `hint-notes-undo`、`fill-all-pencil-notes` 等文件的同步修改点。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 30,
+      "title": "全量回归：lint、build、Vitest 与 E2E",
+      "description": "在完成任务 26–29 后执行完整回归：`npm run lint`、`npm run build`、`npm test`、`npm run test:e2e`。确保未破坏全屏、暂停、撤销/重做、快速游戏等既有流程。",
+      "steps": [
+        "`npm run lint` 无错误。",
+        "`npm run build` 成功。",
+        "`npm test` 通过。",
+        "`npm run test:e2e` 全部通过。"
+      ],
+      "passes": false
     }
   ]
 }

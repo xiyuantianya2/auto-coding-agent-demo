@@ -106,14 +106,8 @@ test("一键笔记：填满候选后可撤销恢复", async ({ page, request }) 
   expect(expectedCandidateCount).toBeGreaterThan(0);
 
   const countNotesOnInCell = async (): Promise<number> => {
-    let on = 0;
-    for (let n = 1; n <= 9; n++) {
-      const el = page.getByTestId(`sudoku-note-marker-${r}-${c}-${n}`);
-      if ((await el.getAttribute("data-s2-note-on")) === "true") {
-        on += 1;
-      }
-    }
-    return on;
+    /* 填数模式下无笔记格可能不挂载 9 个 marker DOM，按 data-s2-note-on 计数即可 */
+    return firstEmpty.locator('[data-s2-note-on="true"]').count();
   };
 
   await expect(countNotesOnInCell()).resolves.toBe(0);
