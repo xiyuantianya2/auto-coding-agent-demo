@@ -471,11 +471,18 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   : "text-xs [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(0.8rem,min(2vmin,2.2vh),1.05rem)]",
               ].join(" ")}
               data-testid="sudoku-mode-hint"
+              data-s2-input-mode={gameState.mode}
               aria-live="polite"
             >
-              {gameState.mode === "fill"
-                ? "先选空格，再点数字填入"
-                : "先选空格，再点数字切换笔记标记"}
+              <span className="font-semibold text-[var(--s2-text)]">
+                当前：{gameState.mode === "fill" ? "填数" : "笔记"}
+              </span>
+              <span className="mx-1 text-[var(--s2-text-subtle)]">·</span>
+              <span>
+                {gameState.mode === "fill"
+                  ? "同一空格再点一次可切到笔记"
+                  : "同一空格再点一次可切到填数"}
+              </span>
             </p>
           </div>
 

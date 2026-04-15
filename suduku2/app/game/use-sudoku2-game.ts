@@ -4,6 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import {
   cloneGameState,
+  EMPTY_CELL,
   getEffectiveDigitAt,
   serializeGameState,
   type GameState,
@@ -139,9 +140,27 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
 
   const selectCell = useCallback(
     (cell: { r: number; c: number } | null) => {
-      setSelected(cell);
+      if (cell === null) {
+        setSelected(null);
+        return;
+      }
+      if (interactionLocked) {
+        return;
+      }
+      const { r, c } = cell;
+      const isEmpty = getEffectiveDigitAt(gameState, r, c) === EMPTY_CELL;
+      const wasSame = selected?.r === r && selected?.c === c;
+      /** 空白格二次点击：在填数 / 笔记间切换（与工具栏一致，走同一 `setMode` 状态）。 */
+      if (isEmpty && wasSame) {
+        const nextMode = gameState.mode === "fill" ? "notes" : "fill";
+        if (gameState.mode !== nextMode) {
+          apply({ type: "setMode", payload: { mode: nextMode } });
+        }
+        return;
+      }
+      setSelected({ r, c });
     },
-    [],
+    [apply, gameState, interactionLocked, selected],
   );
 
   const setMode = useCallback(
