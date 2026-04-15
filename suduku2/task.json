@@ -209,7 +209,7 @@
         "npm run build 成功。",
         "npm run test:e2e（或项目约定命令）中新增/更新的用例全部通过。"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

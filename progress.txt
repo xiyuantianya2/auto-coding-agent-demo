@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=19 — Playwright：新交互回归
+
+### What was done:
+- 新增 `e2e/new-interaction-regression.spec.ts`：在专项练习 `practice-endless:unique-candidate` 下单会话串联任务 14（同数字高亮）、15（数字键盘关注）、16（空白格二次点击填数/笔记）、17（单候选键盘锁与快速切换、笔记不锁）；任务 17 坐标通过点击空格读取 `data-s2-single-candidate-lock` 与 `SudokuPlaySurface` 一致，必要时 `reload` 换题（至多 4 次）避免随机题无单候选起点导致假失败。
+- `task.json`：id=19 `passes: true`。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（270）、`npx playwright test --headed`（50，含既有 `digit-pad-single-candidate` 1 次 flaky 重试通过）均通过。
+
+### Notes:
+- 与任务 14–17 的既有分文件用例并存；本文件为整合回归路径。若需进一步降 flake，可考虑给 `digit-pad-single-candidate` 同样采用 UI 探测或换题重试。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=15 — 数字键盘：与关注数字联动高亮
 
 ### What was done:
