@@ -27,3 +27,13 @@ func get_pattern(row: int, col: int) -> Variant:
 
 func set_pattern(row: int, col: int, pattern: Variant) -> void:
 	cells[row][col] = pattern
+
+
+## 非空格子数量；为 0 表示已全部消除（胜利条件）。
+func count_nonempty_tiles() -> int:
+	var n := 0
+	for r in range(ROWS):
+		for c in range(COLS):
+			if cells[r][c] != null:
+				n += 1
+	return n

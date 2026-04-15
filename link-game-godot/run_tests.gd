@@ -31,6 +31,7 @@ func _init() -> void:
 	_test_layout_multiple_solvable()
 	_test_hint_pair_exists()
 	_test_reshuffle_preserves_multiset()
+	_test_victory_all_cleared_has_zero_tiles()
 	print("link-game-godot: run_tests — board + path + layout OK")
 	quit(0)
 
@@ -173,3 +174,18 @@ func _test_reshuffle_preserves_multiset() -> void:
 			_fail("reshuffle should preserve multiset counts")
 	if not _SolvScript.is_board_fully_solvable(board, 3000000):
 		_fail("reshuffled board should remain fully solvable")
+
+
+func _test_victory_all_cleared_has_zero_tiles() -> void:
+	var empty = _BoardModelScript.new()
+	if empty.count_nonempty_tiles() != 0:
+		_fail("fresh cleared board should have 0 nonempty tiles (victory-style empty)")
+	var gen = _BoardLayoutGeneratorScript.new()
+	var board = gen.call("restart_new_game", 424242)
+	if board.count_nonempty_tiles() != _EXPECT_ROWS * _EXPECT_COLS:
+		_fail("full layout should fill every cell")
+	for r in range(_EXPECT_ROWS):
+		for c in range(_EXPECT_COLS):
+			board.cells[r][c] = null
+	if board.count_nonempty_tiles() != 0:
+		_fail("all cells cleared should yield 0 tiles (victory condition)")

@@ -52,6 +52,10 @@ var _busy: bool = false
 var _sel_r: int = -1
 var _sel_c: int = -1
 
+var _result_layer: CanvasLayer
+var _result_title: Label
+var _result_message: Label
+
 
 func _ready() -> void:
 	set_process(true)
@@ -79,6 +83,7 @@ func restart_new_game(rng_seed: int = -1):
 	remaining_tiles = COLS * ROWS
 	_time_left_sec = MATCH_TIME_SEC
 	_game_over = false
+	_hide_result_overlay()
 	_clear_hint_visual()
 	_hide_path_line()
 	_sync_cells_from_board()
@@ -219,6 +224,8 @@ func _build_ui() -> void:
 	_update_hud()
 	_update_timer_label()
 
+	_build_result_overlay()
+
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 
@@ -237,10 +244,105 @@ func _trigger_time_up() -> void:
 	_game_over = true
 	_clear_hint_visual()
 	_set_status(
-		"时间到：本局失败。可点击「重新开始」重开新局（120 秒倒计时将重置）。",
+		"时间到：本局结束。可点击「再来一局」或「重新开始」重开（120 秒倒计时将重置）。",
 		Color(1.0, 0.45, 0.45),
 	)
+	_show_result_overlay(false)
 	print("link-game-godot: time up — game over")
+
+
+func _trigger_victory() -> void:
+	if _game_over:
+		return
+	_game_over = true
+	_clear_hint_visual()
+	_hide_path_line()
+	_set_status("胜利：已全部消除。点击「再来一局」继续。", Color(0.65, 0.95, 0.75))
+	_show_result_overlay(true)
+	print("link-game-godot: victory — board cleared")
+
+
+func _build_result_overlay() -> void:
+	_result_layer = CanvasLayer.new()
+	_result_layer.name = "ResultLayer"
+	_result_layer.layer = 90
+	_result_layer.visible = false
+	add_child(_result_layer)
+
+	var backdrop := ColorRect.new()
+	backdrop.name = "ResultBackdrop"
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.offset_right = 0.0
+	backdrop.offset_bottom = 0.0
+	backdrop.color = Color(0.05, 0.06, 0.08, 0.78)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_STOP
+	_result_layer.add_child(backdrop)
+
+	var center := CenterContainer.new()
+	center.name = "ResultCenter"
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_result_layer.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.name = "ResultPanel"
+	panel.add_theme_constant_override("margin_left", 22)
+	panel.add_theme_constant_override("margin_top", 18)
+	panel.add_theme_constant_override("margin_right", 22)
+	panel.add_theme_constant_override("margin_bottom", 18)
+	center.add_child(panel)
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 14)
+	panel.add_child(vbox)
+
+	var title := Label.new()
+	title.name = "ResultTitle"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_font_size_override("font_size", 26)
+	vbox.add_child(title)
+	_result_title = title
+
+	var msg := Label.new()
+	msg.name = "ResultMessage"
+	msg.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.custom_minimum_size = Vector2(340, 0)
+	msg.add_theme_font_size_override("font_size", 16)
+	vbox.add_child(msg)
+	_result_message = msg
+
+	var again := Button.new()
+	again.name = "PlayAgainButton"
+	again.text = "再来一局"
+	again.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	again.pressed.connect(_on_play_again_pressed)
+	vbox.add_child(again)
+
+
+func _show_result_overlay(is_win: bool) -> void:
+	if _result_layer == null or _result_title == null or _result_message == null:
+		return
+	if is_win:
+		_result_title.text = "胜利"
+		_result_title.remove_theme_color_override("font_color")
+		_result_title.add_theme_color_override("font_color", Color(0.55, 0.98, 0.78))
+		_result_message.text = "你已清空全部牌面，本局胜利！"
+	else:
+		_result_title.text = "时间到"
+		_result_title.remove_theme_color_override("font_color")
+		_result_title.add_theme_color_override("font_color", Color(1.0, 0.55, 0.5))
+		_result_message.text = "未能在 120 秒内清空盘面。可以再来一局挑战。"
+	_result_layer.visible = true
+
+
+func _hide_result_overlay() -> void:
+	if _result_layer != null:
+		_result_layer.visible = false
+
+
+func _on_play_again_pressed() -> void:
+	restart_new_game(-1)
 
 
 func _on_hint_pressed() -> void:
@@ -395,6 +497,8 @@ func _begin_match_resolve(ar: int, ac: int, br: int, bc: int, path_res: Dictiona
 		Color(0.65, 0.95, 0.75),
 	)
 	_busy = false
+	if remaining_tiles <= 0:
+		_trigger_victory()
 
 
 func _make_cell_panel(r: int, c: int) -> Panel:
@@ -443,7 +547,7 @@ func _on_cell_clicked(r: int, c: int) -> void:
 	if _busy:
 		return
 	if _game_over:
-		_set_status("本局已结束（时间到）。请点击「重新开始」。", Color(1.0, 0.55, 0.45))
+		_set_status("本局已结束。请点击弹窗中的「再来一局」或工具栏「重新开始」。", Color(1.0, 0.55, 0.45))
 		return
 	_clear_hint_visual()
 	var v: Variant = current_board.cells[r][c]
