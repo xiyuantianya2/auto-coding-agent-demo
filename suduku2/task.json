@@ -23,7 +23,7 @@
         "按钮可通过键盘聚焦与激活（与现有工具栏交互习惯一致）",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 3,

@@ -1,9 +1,10 @@
 "use client";
 
 import type { JSX, ReactNode } from "react";
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 
 import { EMPTY_CELL, getEffectiveDigitAt, type GameState } from "@/lib/core";
+import { useFullscreen } from "@/lib/fullscreen";
 import type { HintResult } from "@/lib/hint";
 import { techniqueIdToZh } from "@/app/tutorial/technique-titles-zh";
 
@@ -85,8 +86,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
   const hintCells = useMemo(() => hintCellSet(hint), [hint]);
   const candHigh = useMemo(() => candidateHighlightMap(hint), [hint]);
 
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
+  const { isSupported, isFullscreen, toggle } = useFullscreen(surfaceRef);
+
   return (
-    <div className="flex flex-col gap-4 [@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]">
+    <div
+      ref={surfaceRef}
+      className="flex flex-col gap-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] [@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]"
+      data-fullscreen={isFullscreen ? "true" : "false"}
+      data-testid="sudoku-play-surface-root"
+    >
       {showTimer ? (
         <div
           className="flex flex-wrap items-center gap-3 text-sm text-[var(--s2-timer-text)]"
@@ -106,12 +115,43 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           >
             {paused ? "继续" : "暂停"}
           </button>
+          {isSupported ? (
+            <button
+              type="button"
+              className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px] min-w-[88px]"
+              data-testid="sudoku-fullscreen-toggle"
+              aria-pressed={isFullscreen}
+              aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
+              disabled={disabled}
+              onClick={() => void toggle()}
+            >
+              {isFullscreen ? "退出全屏" : "全屏"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+      {!showTimer && isSupported ? (
+        <div
+          className="flex flex-wrap items-center gap-3 text-sm text-[var(--s2-timer-text)]"
+          data-testid="sudoku-fullscreen-row"
+        >
+          <button
+            type="button"
+            className="rounded-lg bg-[var(--s2-btn-secondary-bg)] px-3 py-2 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40 min-h-[44px] min-w-[88px]"
+            data-testid="sudoku-fullscreen-toggle"
+            aria-pressed={isFullscreen}
+            aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
+            disabled={disabled}
+            onClick={() => void toggle()}
+          >
+            {isFullscreen ? "退出全屏" : "全屏"}
+          </button>
         </div>
       ) : null}
 
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-10">
         <div
-          className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-9 gap-px overflow-hidden rounded-xl border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(88vmin,560px)] [@media(min-width:1024px)_and_(orientation:portrait)]:max-w-[min(92vw,480px)]"
+          className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-xl border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(88vmin,560px)] [@media(min-width:1024px)_and_(orientation:portrait)]:max-w-[min(92vw,480px)]"
           data-testid={boardTestId}
           role="grid"
           aria-label="数独棋盘"
@@ -131,7 +171,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 key={`${r}-${c}`}
                 type="button"
                 className={[
-                  "relative flex aspect-square min-h-[36px] min-w-[36px] flex-col items-center justify-center p-0.5 text-base font-semibold md:min-h-[44px] md:min-w-[44px] md:text-lg [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[40px] [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[40px]",
+                  "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-base font-semibold md:text-lg",
                   isGiven
                     ? "bg-[var(--s2-cell-given-bg)] text-[var(--s2-cell-given-text)]"
                     : "bg-[var(--s2-cell-empty-bg)] text-[var(--s2-cell-fill-text)]",
@@ -158,7 +198,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 }}
               >
                 {d === EMPTY_CELL ? (
-                  <span className="grid w-full grid-cols-3 gap-px px-0.5 text-[9px] font-normal leading-none md:text-[10px] [@media(min-width:768px)_and_(orientation:landscape)]:text-[11px]">
+                  <span className="grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[9px] font-normal leading-none md:text-[10px]">
                     {Array.from({ length: 9 }, (_, k) => {
                       const n = k + 1;
                       const has = gameState.cells[r][c].notes?.has(n) ?? false;
@@ -168,7 +208,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                         <span
                           key={n}
                           className={[
-                            "flex h-3 w-3 items-center justify-center md:h-3.5 md:w-3.5 [@media(min-width:768px)_and_(orientation:landscape)]:h-4 [@media(min-width:768px)_and_(orientation:landscape)]:w-4",
+                            "inline-flex min-h-0 min-w-0 items-center justify-center leading-none",
                             has
                               ? "text-[var(--s2-cand-pip-on)]"
                               : "text-[var(--s2-cand-pip-muted)] opacity-40",
