@@ -55,7 +55,7 @@
         "npm run build 成功",
         "npm run test:e2e 全部通过"
       ],
-      "passes": false
+      "passes": true
     }
   ]
 }

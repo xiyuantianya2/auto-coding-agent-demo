@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=5 — 回归：lint、build 与现有 E2E
+
+### What was done:
+- 全屏相关实现复查：`useFullscreen` / `fullscreen-dom` 仅事件监听与单次 `await Promise`（`requestFullscreen`/`exitFullscreen`），无 `setInterval` 轮询或阻塞主线程长循环。
+- 本地曾出现 `.next/dev/types/validator.ts` 生成不完整导致 `next build` 报 `AppRoutes` 未定义；删除 `suduku2/.next` 后重新 `npm run build` 通过（属缓存/生成物损坏，非业务代码缺陷）。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（266 tests）、`npm run test:e2e`（38 E2E，`CI=1` + `next start`）全部通过。
+
+### Notes:
+- 若 TypeScript 校验报 `.next/dev/types` 内符号缺失，可先清理 `suduku2/.next` 再构建。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=1 — 全屏 API 封装（Hook/工具）
 
 ### What was done:
