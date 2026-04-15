@@ -265,7 +265,7 @@
         "连续多次点击提示时，说明与高亮同步更新且无控制台错误。",
         "`npm run lint` 与 `npm run build` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 25,

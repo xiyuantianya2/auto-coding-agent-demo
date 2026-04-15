@@ -124,6 +124,47 @@ const timerSizeLandscape =
   "[@media(min-width:768px)_and_(orientation:landscape)]:text-lg [@media(min-width:768px)_and_(orientation:landscape)]:font-semibold";
 
 /**
+ * 提示正文：紧挨对局 HUD 卡片下方，与棋盘高亮同屏可读；小屏限制高度并可滚动；勿改动 `sudoku-timer-row` 内部 flex 结构（E2E 16:9 契约）。
+ */
+function HintHudCallout(props: {
+  hint: HintResult | null;
+  noHintAvailable: boolean;
+  isFullscreen: boolean;
+}): JSX.Element | null {
+  const { hint, noHintAvailable, isFullscreen } = props;
+  if (!hint && !noHintAvailable) {
+    return null;
+  }
+  return (
+    <div
+      className={[
+        "w-full min-w-0 rounded-[var(--s2-r-lg)] bg-[var(--s2-card-muted)] px-3 py-2.5",
+        "ring-1 ring-[var(--s2-border)]",
+        "max-h-[min(42vh,15rem)] overflow-y-auto overscroll-y-contain",
+        "text-[var(--s2-hint-banner)]",
+        isFullscreen
+          ? "text-[clamp(0.68rem,min(1.65vmin,1.9vh),0.85rem)] leading-snug"
+          : "text-sm leading-snug sm:max-h-[min(36vh,13rem)]",
+      ].join(" ")}
+      data-testid={hint ? "sudoku-hint-banner" : "sudoku-hint-empty-banner"}
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      {hint ? (
+        <p className="m-0 break-words">
+          <span className="font-semibold text-[var(--s2-text)]">{techniqueIdToZh(hint.technique)}</span>
+          <span className="mx-1 text-[var(--s2-text-subtle)]">·</span>
+          <span>{hint.explanation}</span>
+        </p>
+      ) : (
+        <p className="m-0 break-words">暂无可用提示：当前盘面未发现可展示的人类技巧步（或已达终盘）。</p>
+      )}
+    </div>
+  );
+}
+
+/**
  * 无尽与专项等模式共用的 9×9 盘面：`GameState` 驱动、笔记/填数模式、提示高亮、撤销重做、计时与暂停。
  */
 export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
@@ -250,52 +291,91 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
       data-testid="sudoku-play-surface-root"
     >
       {showTimer ? (
-        <div
-          className={[
-            "flex rounded-[var(--s2-r-xl)] bg-[var(--s2-card-muted)] ring-1 ring-[var(--s2-btn-secondary-ring)]",
-            isFullscreen ? "shrink-0" : "",
-            isFullscreen
-              ? "flex-row items-stretch gap-3 p-2 [&_button]:min-h-[2.75rem] [&_button]:py-1.5"
-              : ["flex-col gap-3 p-3", hudLandscape].join(" "),
-          ].join(" ")}
-          data-testid="sudoku-timer-row"
-        >
-          <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
-            <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
-            <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-              <span className="text-xs font-medium text-[var(--s2-text-subtle)]">用时</span>
-              <span
-                className={[
-                  "tabular-nums font-semibold tracking-tight text-[var(--s2-timer-text)]",
-                  isFullscreen ? "text-lg" : "text-xl",
-                  isFullscreen ? "" : timerSizeLandscape,
-                ].join(" ")}
-                data-testid="sudoku-timer"
-                aria-live="polite"
-              >
-                {elapsedSec} 秒
-              </span>
+        <div className="flex w-full min-w-0 flex-col gap-2">
+          <div
+            className={[
+              "flex rounded-[var(--s2-r-xl)] bg-[var(--s2-card-muted)] ring-1 ring-[var(--s2-btn-secondary-ring)]",
+              isFullscreen ? "shrink-0" : "",
+              isFullscreen
+                ? "flex-row items-stretch gap-3 p-2 [&_button]:min-h-[2.75rem] [&_button]:py-1.5"
+                : ["flex-col gap-3 p-3", hudLandscape].join(" "),
+            ].join(" ")}
+            data-testid="sudoku-timer-row"
+          >
+            <div className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+              <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-2">
+                <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                  <span className="text-xs font-medium text-[var(--s2-text-subtle)]">用时</span>
+                  <span
+                    className={[
+                      "tabular-nums font-semibold tracking-tight text-[var(--s2-timer-text)]",
+                      isFullscreen ? "text-lg" : "text-xl",
+                      isFullscreen ? "" : timerSizeLandscape,
+                    ].join(" ")}
+                    data-testid="sudoku-timer"
+                    aria-live="polite"
+                  >
+                    {elapsedSec} 秒
+                  </span>
+                </div>
+                <div
+                  className="flex w-full min-w-0 flex-[1_1_12rem] flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-none"
+                  role="toolbar"
+                  aria-label="暂停与全屏"
+                >
+                  <button
+                    type="button"
+                    className={[hudBtnSecondary, "min-w-[5.5rem]"].join(" ")}
+                    data-testid="sudoku-pause"
+                    aria-pressed={paused}
+                    aria-label={paused ? "继续对局" : "暂停对局"}
+                    disabled={disabled}
+                    onClick={() => actions.togglePause()}
+                  >
+                    {paused ? "继续" : "暂停"}
+                  </button>
+                  {isSupported ? (
+                    <button
+                      type="button"
+                      className={[hudBtnSecondary, "min-w-[5.5rem] shrink-0"].join(" ")}
+                      data-testid="sudoku-fullscreen-toggle"
+                      aria-pressed={isFullscreen}
+                      aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
+                      disabled={disabled}
+                      onClick={() => void toggle()}
+                    >
+                      {isFullscreen ? "退出全屏" : "全屏"}
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             </div>
+
             <div
-              className="flex w-full min-w-0 flex-[1_1_12rem] flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-none"
-              role="toolbar"
-              aria-label="暂停与全屏"
+              className={[
+                "border-[var(--s2-border)]",
+                isFullscreen
+                  ? "w-[min(100%,22rem)] shrink-0 border-l border-t-0 pl-3 pt-0"
+                  : ["border-t pt-3", hudHintSplitLandscape].join(" "),
+              ].join(" ")}
             >
-              <button
-                type="button"
-                className={[hudBtnSecondary, "min-w-[5.5rem]"].join(" ")}
-                data-testid="sudoku-pause"
-                aria-pressed={paused}
-                aria-label={paused ? "继续对局" : "暂停对局"}
-                disabled={disabled}
-                onClick={() => actions.togglePause()}
-              >
-                {paused ? "继续" : "暂停"}
-              </button>
-              {isSupported ? (
+              {hintUndoRedoToolbar}
+            </div>
+          </div>
+          <HintHudCallout hint={hint} noHintAvailable={noHintAvailable} isFullscreen={isFullscreen} />
+        </div>
+      ) : null}
+      {!showTimer ? (
+        <div className="flex w-full min-w-0 flex-col gap-2">
+          <div
+            className="flex flex-col gap-3 rounded-[var(--s2-r-xl)] bg-[var(--s2-card-muted)] p-3 ring-1 ring-[var(--s2-btn-secondary-ring)]"
+            data-testid={isSupported ? "sudoku-fullscreen-row" : "sudoku-aux-hud"}
+          >
+            {isSupported ? (
+              <div className="flex flex-wrap items-center justify-end gap-2" role="toolbar" aria-label="全屏">
                 <button
                   type="button"
-                  className={[hudBtnSecondary, "min-w-[5.5rem] shrink-0"].join(" ")}
+                  className={[hudBtnSecondary, "min-w-[5.5rem]"].join(" ")}
                   data-testid="sudoku-fullscreen-toggle"
                   aria-pressed={isFullscreen}
                   aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
@@ -304,46 +384,13 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 >
                   {isFullscreen ? "退出全屏" : "全屏"}
                 </button>
-              ) : null}
+              </div>
+            ) : null}
+            <div className={isSupported ? "border-t border-[var(--s2-border)] pt-3" : undefined}>
+              {hintUndoRedoToolbar}
             </div>
           </div>
-          </div>
-
-          <div
-            className={[
-              "border-[var(--s2-border)]",
-              isFullscreen
-                ? "w-[min(100%,22rem)] shrink-0 border-l border-t-0 pl-3 pt-0"
-                : ["border-t pt-3", hudHintSplitLandscape].join(" "),
-            ].join(" ")}
-          >
-            {hintUndoRedoToolbar}
-          </div>
-        </div>
-      ) : null}
-      {!showTimer ? (
-        <div
-          className="flex flex-col gap-3 rounded-[var(--s2-r-xl)] bg-[var(--s2-card-muted)] p-3 ring-1 ring-[var(--s2-btn-secondary-ring)]"
-          data-testid={isSupported ? "sudoku-fullscreen-row" : "sudoku-aux-hud"}
-        >
-          {isSupported ? (
-            <div className="flex flex-wrap items-center justify-end gap-2" role="toolbar" aria-label="全屏">
-              <button
-                type="button"
-                className={[hudBtnSecondary, "min-w-[5.5rem]"].join(" ")}
-                data-testid="sudoku-fullscreen-toggle"
-                aria-pressed={isFullscreen}
-                aria-label={isFullscreen ? "退出全屏" : "进入全屏"}
-                disabled={disabled}
-                onClick={() => void toggle()}
-              >
-                {isFullscreen ? "退出全屏" : "全屏"}
-              </button>
-            </div>
-          ) : null}
-          <div className={isSupported ? "border-t border-[var(--s2-border)] pt-3" : undefined}>
-            {hintUndoRedoToolbar}
-          </div>
+          <HintHudCallout hint={hint} noHintAvailable={noHintAvailable} isFullscreen={isFullscreen} />
         </div>
       ) : null}
 
@@ -711,30 +758,6 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           >
             清除所选格
           </button>
-
-          {hint ? (
-            <p
-              className={["text-[var(--s2-hint-banner)]", isFullscreen ? "shrink-0 text-[clamp(0.65rem,min(1.8vmin,2vh),0.85rem)]" : "text-xs"].join(
-                " ",
-              )}
-              data-testid="sudoku-hint-banner"
-              aria-live="polite"
-            >
-              <span className="font-semibold">{techniqueIdToZh(hint.technique)}</span>
-              <span className="mx-1">·</span>
-              <span>{hint.explanation}</span>
-            </p>
-          ) : noHintAvailable ? (
-            <p
-              className={["text-[var(--s2-hint-banner)]", isFullscreen ? "shrink-0 text-[clamp(0.65rem,min(1.8vmin,2vh),0.85rem)]" : "text-xs"].join(
-                " ",
-              )}
-              data-testid="sudoku-hint-empty-banner"
-              aria-live="polite"
-            >
-              暂无可用提示：当前盘面未发现可展示的人类技巧步（或已达终盘）。
-            </p>
-          ) : null}
 
           {extraRightColumn ? (
             <div

@@ -108,6 +108,52 @@ test("提示：请求后出现 data-hint-cell / data-hint-candidate 或提示条
   expect(hintDom.hintCandByTestIdCount).toBe(hintDom.hintCandCount);
 });
 
+test("提示：连续多次点击时 HUD 说明仍可见且无控制台 error", async ({ page, request }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+
+  const consoleErrors: string[] = [];
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      consoleErrors.push(msg.text());
+    }
+  });
+
+  const { token } = await apiRegisterAndLogin(request);
+  await injectAuth(page, token);
+
+  await request.patch("http://127.0.0.1:3003/api/progress", {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json; charset=utf-8",
+    },
+    data: {
+      techniques: {
+        [TID]: { unlocked: true },
+      },
+    },
+  });
+
+  await gotoPracticeWithBoard(page, MODE);
+
+  const hintBtn = page.getByTestId("sudoku-hint");
+  const banner = page.getByTestId("sudoku-hint-banner");
+
+  await hintBtn.click();
+  await expect(banner).toBeVisible({ timeout: 8_000 });
+  const text1 = (await banner.textContent())?.trim() ?? "";
+  expect(text1.length).toBeGreaterThan(10);
+
+  await hintBtn.click();
+  await expect(banner).toBeVisible({ timeout: 8_000 });
+  const text2 = (await banner.textContent())?.trim() ?? "";
+  expect(text2.length).toBeGreaterThan(10);
+
+  expect(
+    consoleErrors,
+    consoleErrors.length > 0 ? consoleErrors.join("\n") : "",
+  ).toHaveLength(0);
+});
+
 test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 一致", async ({ page, request }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
 
