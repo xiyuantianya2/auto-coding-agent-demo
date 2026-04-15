@@ -72,6 +72,15 @@ godot --path . --headless --export-release "Windows Desktop" "export/windows/lin
 
 本目录使用 **自定义 GDScript 断言套件**（`run_tests.gd`），**不依赖 GUT** 插件；若你希望改用 [GUT](https://github.com/bitwes/Gut)，可自行加入 `addons/gut` 并在 `project.godot` 启用插件，但本仓库的 CI/本地一键命令仍以 `run_tests.gd` 为准。
 
+### 测试职责：Godot 内测试 vs Playwright 冒烟
+
+| 层级 | 典型命令 | 职责 |
+|------|-----------|------|
+| **Godot 内自动化测试** | `godot --headless -s run_tests.gd` 或 `npm run test:godot` | 在引擎内验证 **GDScript 游戏逻辑**（路径判定、布局生成、提示/洗牌、选牌-消除与胜负等）。**这是本项目的功能正确性主测试。** |
+| **Playwright 浏览器冒烟** | `npm run test:e2e`（由 `playwright.config.ts` 的 `webServer` 拉起 `npm run dev`） | 验证 **Node/npm 工具链** 与 **`public/` 静态占位页** 可访问；**不加载 Godot Web 运行时**，**不能替代** 上表的 Godot 内测试。 |
+
+两者在 CI 中建议**都跑**：先 Godot 无头测试，再 Playwright（见下文 GitHub Actions 示例）。
+
 ### 一键运行（推荐）
 
 在 `link-game-godot/` 下：
@@ -89,6 +98,24 @@ npm run test:godot
 godot --headless -s run_tests.gd
 ```
 
+### GitHub Actions 示例（`windows-latest`）
+
+本仓库提供可复用的工作流：在 **Windows runner** 上下载 **Godot 4.3**（与 `project.godot` 的 `config/features` 对齐）、执行 `npm ci`、安装 Chromium、再依次 `npm run lint`、`npm run build`、**`godot --headless -s run_tests.gd`**、`npm run test:e2e`。
+
+- 工作流文件：[`link-game-godot-ci.yml`](../.github/workflows/link-game-godot-ci.yml)（位于 monorepo 根目录的 `.github/workflows/`）。
+
+若你在其它流水线中手写步骤，核心命令与本地一致（请将 `godot` 换成本机 Godot 可执行文件路径，或先加入 `PATH`）：
+
+```powershell
+cd link-game-godot
+npm ci
+npx playwright install chromium
+godot --headless -s run_tests.gd
+npm run test:e2e
+```
+
+（安装 npm 依赖时仍建议使用 `PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1`，再单独 `npx playwright install chromium`，与上文「浏览器共享」一致。）
+
 ### 覆盖范围（摘要）
 
 - 路径判定（≤2 弯 / ≤3 段）与边界用例
@@ -100,8 +127,9 @@ godot --headless -s run_tests.gd
 
 为与仓库其他子项目一致，本目录包含 `package.json`，用于：
 
-- `npm run dev`：在 **http://localhost:3004** 提供 `public/` 静态占位页（与现有项目端口错开）。
-- `npm run test:e2e`：启动上述 dev server 并运行 Playwright（**headless**）。
+- `npm run dev`：在 **http://localhost:3004** 提供 `public/` **静态占位页**（与现有项目端口错开）。**默认不依赖 Godot Web 导出**；Playwright 冒烟验证的是该占位页与 dev server 管线。
+- `npm run dev:web`（可选）：若你已启用 **Web（HTML5）导出** 并将产物输出到 `export/web/`（需在编辑器中新增 HTML5 预设并导出；当前 [`export_presets.cfg`](./export_presets.cfg) 仅为 Windows/Android），可用本命令对该目录启动静态服务（**需目录已存在**，否则 `serve` 会报错）。未启用 Web 导出时，请继续使用 `npm run dev`。
+- `npm run test:e2e`：启动上述 dev server（默认 `npm run dev`）并运行 Playwright **冒烟**（**headless**；见上文「测试职责」）。
 - `npm run test:e2e:headed`：有界面浏览器运行 E2E。
 
 首次在本机安装 Playwright 浏览器（**全仓库共享缓存**，只需一次）：
@@ -125,6 +153,7 @@ npm install
 |------|------|
 | `npm run build` | 校验关键 Godot 文件是否存在 + TypeScript `tsc` |
 | `npm run lint` | 对 `e2e/` 与 `playwright.config.ts` 运行 ESLint |
+| `npm run dev:web` | （可选）对 `export/web/` 启动静态服务（需已完成 HTML5 导出） |
 | `npm run test:godot` | 无头运行 `run_tests.gd`（需本机安装 Godot 4 并可执行） |
 
 ## 架构与任务

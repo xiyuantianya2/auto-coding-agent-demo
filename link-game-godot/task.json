@@ -112,7 +112,7 @@
         "npm run test:e2e 在干净环境下可通过（含 webServer）。",
         "README 区分「Godot 内测试」与「Playwright 冒烟」职责。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 11,

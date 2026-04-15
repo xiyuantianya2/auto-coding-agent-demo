@@ -1,0 +1,67 @@
+# link-game-godot：Windows runner 上安装 Godot、运行无头 GDScript 测试，并保留 npm/Playwright 冒烟。
+# 与工程 `project.godot` 的 config/features（4.3）对齐；若升级引擎请同步更新下载 URL。
+name: link-game-godot CI
+
+on:
+  push:
+    paths:
+      - "link-game-godot/**"
+      - ".github/workflows/link-game-godot-ci.yml"
+  pull_request:
+    paths:
+      - "link-game-godot/**"
+      - ".github/workflows/link-game-godot-ci.yml"
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: link-game-godot
+    env:
+      CI: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: link-game-godot/package-lock.json
+
+      - name: Install npm dependencies
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install chromium
+
+      - name: Install Godot 4.3 (win64)
+        shell: pwsh
+        run: |
+          $url = "https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_win64.exe.zip"
+          $zip = Join-Path $env:RUNNER_TEMP "Godot_v4.3-stable_win64.exe.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zip
+          $dest = Join-Path $env:RUNNER_TEMP "godot"
+          New-Item -ItemType Directory -Force -Path $dest | Out-Null
+          Expand-Archive -LiteralPath $zip -DestinationPath $dest -Force
+          $exe = Join-Path $dest "Godot_v4.3-stable_win64.exe"
+          if (-not (Test-Path $exe)) {
+            throw "Expected Godot binary not found: $exe"
+          }
+          "GODOT=$exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build (tsc + Godot project check)
+        run: npm run build
+
+      - name: Godot headless tests (run_tests.gd)
+        shell: pwsh
+        run: |
+          & $env:GODOT --headless -s run_tests.gd
+
+      - name: Playwright E2E (smoke, webServer)
+        run: npm run test:e2e
