@@ -3,6 +3,11 @@ class_name LinkPathFinder
 
 ## 路径判定：四连通、转弯 ≤2（≤3 段直线）、不斜连；中间须为空；外侧 padding 为空。
 ## 算法与 `src/link_path.ts` 保持一致，供 UI 与自动化共用。
+##
+## 棋盘尺寸与 `board_model.gd` 一致（CLI 无 `.godot` 缓存时不依赖全局 `class_name` 顺序）。
+
+const ROWS: int = 12
+const COLS: int = 8
 
 const _DR: Array[int] = [-1, 0, 1, 0]
 const _DC: Array[int] = [0, 1, 0, -1]
@@ -35,7 +40,7 @@ static func _simplify_orthogonal(points: Array) -> Array:
 ## `cell_a`, `cell_b`：字典 `{"row": int, "col": int}`，零基棋盘坐标。
 ## 返回：`{"ok": bool, "polyline": Array[Dictionary], "bend_points": Array[Dictionary]}`，
 ## 每项为 `{"row": int, "col": int}`（逻辑坐标，含外侧通道 -1 或 ROWS/COLS）。
-static func find_link_path(cell_a: Dictionary, cell_b: Dictionary, board: BoardModel) -> Dictionary:
+static func find_link_path(cell_a: Dictionary, cell_b: Dictionary, board) -> Dictionary:
 	var empty_result := {"ok": false, "polyline": [], "bend_points": []}
 
 	var ar: int = int(cell_a["row"])
@@ -45,9 +50,9 @@ static func find_link_path(cell_a: Dictionary, cell_b: Dictionary, board: BoardM
 
 	if ar == br and ac == bc:
 		return empty_result
-	if ar < 0 or ar >= BoardModel.ROWS or ac < 0 or ac >= BoardModel.COLS:
+	if ar < 0 or ar >= ROWS or ac < 0 or ac >= COLS:
 		return empty_result
-	if br < 0 or br >= BoardModel.ROWS or bc < 0 or bc >= BoardModel.COLS:
+	if br < 0 or br >= ROWS or bc < 0 or bc >= COLS:
 		return empty_result
 
 	var pa: Variant = board.cells[ar][ac]
@@ -55,8 +60,8 @@ static func find_link_path(cell_a: Dictionary, cell_b: Dictionary, board: BoardM
 	if pa == null or pb == null or int(pa) != int(pb):
 		return empty_result
 
-	var rows: int = BoardModel.ROWS
-	var cols: int = BoardModel.COLS
+	var rows: int = ROWS
+	var cols: int = COLS
 	var pr: int = rows + 2
 	var pc: int = cols + 2
 

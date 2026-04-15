@@ -1,7 +1,20 @@
 extends SceneTree
 
-## 无头自检：路径判定与棋盘模型（与 `src/link_path.test.ts` 场景对齐的子集）。
+## 无头自检：路径判定、棋盘模型与可解布局生成。
 ## 运行：godot --headless -s run_tests.gd
+##
+## 使用 `preload` 取脚本资源，避免无 `.godot` 时全局 `class_name` 未索引。
+
+const _BoardModelScript = preload("res://scripts/board_model.gd")
+const _LinkPathFinderScript = preload("res://scripts/link_path_finder.gd")
+const _BoardLayoutGeneratorScript = preload("res://scripts/board_layout_generator.gd")
+const _SolvScript = preload("res://scripts/link_game_solvability.gd")
+
+## 与 `board_model.gd` / `board_layout_generator.gd` 常量一致
+const _EXPECT_ROWS := 12
+const _EXPECT_COLS := 8
+const _EXPECT_PATTERN_KINDS := 8
+const _EXPECT_TILES_PER_PATTERN := 12
 
 func _fail(msg: String) -> void:
 	push_error("run_tests.gd: %s" % msg)
@@ -11,14 +24,17 @@ func _init() -> void:
 	_test_adjacent()
 	_test_detour_when_straight_blocked()
 	_test_horizontal_through_empty()
-	print("link-game-godot: run_tests — board + path OK")
+	_test_layout_board_shape_and_pairs()
+	_test_layout_deterministic_seed()
+	_test_layout_multiple_solvable()
+	print("link-game-godot: run_tests — board + path + layout OK")
 	quit(0)
 
 func _test_adjacent() -> void:
-	var board := BoardModel.new()
+	var board = _BoardModelScript.new()
 	board.set_pattern(0, 0, 7)
 	board.set_pattern(0, 1, 7)
-	var r := LinkPathFinder.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 1}, board)
+	var r = _LinkPathFinderScript.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 1}, board)
 	if not bool(r["ok"]):
 		_fail("adjacent same pattern should connect")
 	var bends: Array = r["bend_points"]
@@ -26,11 +42,11 @@ func _test_adjacent() -> void:
 		_fail("adjacent pair should have zero bend points")
 
 func _test_detour_when_straight_blocked() -> void:
-	var board := BoardModel.new()
+	var board = _BoardModelScript.new()
 	board.set_pattern(0, 0, 2)
 	board.set_pattern(0, 2, 2)
 	board.set_pattern(0, 1, 99)
-	var r := LinkPathFinder.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 2}, board)
+	var r = _LinkPathFinderScript.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 2}, board)
 	if not bool(r["ok"]):
 		_fail("should detour via padding when straight is blocked")
 	var bends: Array = r["bend_points"]
@@ -38,12 +54,50 @@ func _test_detour_when_straight_blocked() -> void:
 		_fail("detour should introduce at least one bend point")
 
 func _test_horizontal_through_empty() -> void:
-	var board := BoardModel.new()
+	var board = _BoardModelScript.new()
 	board.set_pattern(0, 0, 5)
 	board.set_pattern(0, 4, 5)
-	var r := LinkPathFinder.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 4}, board)
+	var r = _LinkPathFinderScript.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 4}, board)
 	if not bool(r["ok"]):
 		_fail("line through empty cells should connect")
 	var bends: Array = r["bend_points"]
 	if bends.size() != 0:
 		_fail("straight line should have no bends")
+
+func _test_layout_board_shape_and_pairs() -> void:
+	var gen = _BoardLayoutGeneratorScript.new()
+	var b = gen.call("restart_new_game", 424242)
+	if b.cells.size() != _EXPECT_ROWS:
+		_fail("layout rows mismatch")
+	if b.cells[0].size() != _EXPECT_COLS:
+		_fail("layout cols mismatch")
+	var counts: Dictionary = {}
+	for r in range(_EXPECT_ROWS):
+		for c in range(_EXPECT_COLS):
+			var v: Variant = b.cells[r][c]
+			if v == null:
+				_fail("layout should be full")
+			var pid: int = int(v)
+			counts[pid] = int(counts.get(pid, 0)) + 1
+	if counts.size() != _EXPECT_PATTERN_KINDS:
+		_fail("pattern kind count mismatch")
+	for pid in counts:
+		if int(counts[pid]) != _EXPECT_TILES_PER_PATTERN:
+			_fail("tiles per pattern mismatch")
+
+func _test_layout_deterministic_seed() -> void:
+	var g1 = _BoardLayoutGeneratorScript.new()
+	var g2 = _BoardLayoutGeneratorScript.new()
+	var a = g1.call("restart_new_game", 777888)
+	var b = g2.call("restart_new_game", 777888)
+	for r in range(_EXPECT_ROWS):
+		for c in range(_EXPECT_COLS):
+			if a.cells[r][c] != b.cells[r][c]:
+				_fail("deterministic seed should yield identical boards")
+
+func _test_layout_multiple_solvable() -> void:
+	for i in range(5):
+		var gen = _BoardLayoutGeneratorScript.new()
+		var board = gen.call("restart_new_game", 10000 + i)
+		if not _SolvScript.is_board_fully_solvable(board, 3000000):
+			_fail("generated layout should be fully solvable")

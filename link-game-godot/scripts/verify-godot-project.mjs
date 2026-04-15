@@ -11,6 +11,8 @@ const required = [
   "scripts/main.gd",
   "scripts/board_model.gd",
   "scripts/link_path_finder.gd",
+  "scripts/link_game_solvability.gd",
+  "scripts/board_layout_generator.gd",
   "run_tests.gd",
   "icon.svg",
 ];
