@@ -93,7 +93,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     <div
       ref={surfaceRef}
       className={[
-        "flex flex-col gap-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
+        "flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
         "[@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]",
         /* 全屏：铺满视口、四边安全区内边距，避免贴边裁切；内容过高时可纵向滚动 */
         "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
@@ -155,13 +155,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-10">
-        <div
-          className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-[var(--s2-r-xl)] border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(88vmin,560px)] [@media(min-width:1024px)_and_(orientation:portrait)]:max-w-[min(92vw,480px)]"
-          data-testid={boardTestId}
-          role="grid"
-          aria-label="数独棋盘"
-        >
+      <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5 lg:gap-8 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-10">
+        <div className="mx-auto flex w-full min-w-0 justify-center md:mx-0 [@media(min-width:768px)_and_(orientation:landscape)]:min-w-0 [@media(min-width:768px)_and_(orientation:landscape)]:flex-1 [@media(min-width:768px)_and_(orientation:landscape)]:justify-center">
+          <div
+            className={[
+              "s2-play-board grid aspect-square w-full grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-[var(--s2-r-xl)] border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2",
+            ].join(" ")}
+            data-testid={boardTestId}
+            role="grid"
+            aria-label="数独棋盘"
+          >
           {Array.from({ length: 81 }, (_, i) => {
             const r = Math.floor(i / 9);
             const c = i % 9;
@@ -177,7 +180,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 key={`${r}-${c}`}
                 type="button"
                 className={[
-                  "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-base font-semibold md:text-lg",
+                  "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-[clamp(0.95rem,3.6vmin,1.35rem)] font-semibold",
                   isGiven
                     ? "bg-[var(--s2-cell-given-bg)] text-[var(--s2-cell-given-text)]"
                     : "bg-[var(--s2-cell-empty-bg)] text-[var(--s2-cell-fill-text)]",
@@ -204,7 +207,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 }}
               >
                 {d === EMPTY_CELL ? (
-                  <span className="grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[9px] font-normal leading-none md:text-[10px]">
+                  <span className="grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[clamp(8px,2.2vmin,12px)] font-normal leading-none">
                     {Array.from({ length: 9 }, (_, k) => {
                       const n = k + 1;
                       const has = gameState.cells[r][c].notes?.has(n) ?? false;
@@ -239,9 +242,10 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               </button>
             );
           })}
+          </div>
         </div>
 
-        <div className="flex w-full flex-col gap-3 md:max-w-xs [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,280px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-sm">
+        <div className="flex w-full min-w-0 shrink-0 flex-col gap-3 md:max-w-xs [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,260px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-sm">
           <div className="flex gap-2">
             <button
               type="button"

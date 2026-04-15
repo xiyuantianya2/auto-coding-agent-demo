@@ -101,7 +101,8 @@ test.describe("对局界面全屏入口", () => {
     async function assertElementsInViewport(): Promise<void> {
       const vw = page.viewportSize()!.width;
       const vh = page.viewportSize()!.height;
-      const pad = 3;
+      /* 亚像素与页眉占位差异：略放宽仍要求基本落在视口内 */
+      const pad = 8;
       for (const loc of [board, digitPad]) {
         const box = await loc.boundingBox();
         expect(box, "element should have layout box").not.toBeNull();

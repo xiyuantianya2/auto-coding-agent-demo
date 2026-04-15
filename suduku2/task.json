@@ -77,7 +77,7 @@
         "全屏与普通模式下棋盘与侧栏不重叠、不出现横向溢出滚动条（除非内容有意允许纵向滚动）",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 8,

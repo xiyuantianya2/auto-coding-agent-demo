@@ -207,3 +207,45 @@ body {
   background: var(--s2-page-bg);
   color: var(--s2-text);
 }
+
+/* SudokuPlaySurface：9×9 棋盘响应式宽度 — 放在 @layer 中以免被 Tailwind 丢弃 */
+@layer components {
+  .s2-play-board {
+    max-width: min(100%, 560px);
+  }
+
+  @media (max-width: 767px) and (orientation: landscape) {
+    .s2-play-board {
+      max-width: min(100%, min(94vmin, 560px));
+    }
+  }
+
+  @media (min-width: 768px) and (orientation: landscape) {
+    .s2-play-board {
+      /* 预留页眉/关卡信息/计时行等非棋盘区域，避免首屏裁切（E2E 以视口框断言） */
+      max-width: min(100%, 92vmin, 96vw, calc(100dvh - 18rem), 780px);
+    }
+  }
+
+  @media (min-width: 1280px) and (orientation: landscape) {
+    .s2-play-board {
+      max-width: min(100%, 88vmin, 94vw, calc(100dvh - 16rem), 880px);
+    }
+  }
+
+  @media (min-width: 1024px) and (orientation: portrait) {
+    .s2-play-board {
+      max-width: min(100%, 640px);
+    }
+  }
+
+  [data-fullscreen="true"] .s2-play-board {
+    max-width: min(100%, 76dvw, calc(100dvh - 8rem), 680px);
+  }
+
+  @media (min-width: 768px) and (orientation: landscape) {
+    [data-fullscreen="true"] .s2-play-board {
+      max-width: min(100%, 82dvw, calc(100dvh - 7rem), 780px);
+    }
+  }
+}
