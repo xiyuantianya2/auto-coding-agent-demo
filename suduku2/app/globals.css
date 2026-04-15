@@ -221,9 +221,48 @@ body {
 
 /* SudokuPlaySurface：9×9 棋盘响应式宽度 — 放在 @layer 中以免被 Tailwind 丢弃 */
 @layer components {
+  /* 行/列/宫：除底色外叠加淡斜纹，灰度/高对比下仍可辨认区域 */
+  .s2-play-board > button[data-s2-in-region="true"]::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    opacity: 0.38;
+    background-image: repeating-linear-gradient(
+      -28deg,
+      transparent,
+      transparent 5px,
+      color-mix(in srgb, var(--s2-border-strong) 50%, transparent) 5px,
+      color-mix(in srgb, var(--s2-border-strong) 50%, transparent) 6px
+    );
+  }
+
+  html.dark .s2-play-board > button[data-s2-in-region="true"]::before {
+    opacity: 0.42;
+    background-image: repeating-linear-gradient(
+      -28deg,
+      transparent,
+      transparent 5px,
+      color-mix(in srgb, var(--s2-border) 45%, transparent) 5px,
+      color-mix(in srgb, var(--s2-border) 45%, transparent) 6px
+    );
+  }
+
+  /* 选中格已有粗环，略减弱斜纹以免杂乱 */
+  .s2-play-board > button[data-s2-selected="true"][data-s2-in-region="true"]::before {
+    opacity: 0.18;
+  }
+
   /* 行/列/宫高亮为即时背景色切换，刻意不为格钮添加 transition，避免切换焦点时闪烁或位移动画 */
   @media (prefers-reduced-motion: reduce) {
     .s2-play-board > button {
+      transition: none !important;
+    }
+
+    /* 对局面板内控件关闭颜色过渡，避免减少动效用户仍感到界面「滑动」 */
+    [data-testid="sudoku-play-surface-root"] button {
       transition: none !important;
     }
   }

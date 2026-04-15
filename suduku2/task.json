@@ -198,7 +198,7 @@
         "减少动效开启时，无违反习惯的剧烈动画。",
         "验收清单中列出的测试点可通过 data-testid/role/label 稳定定位。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 19,

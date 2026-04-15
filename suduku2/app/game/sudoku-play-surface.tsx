@@ -54,6 +54,39 @@ function candidateHighlightMap(h: HintResult | null): Map<string, Set<number>> {
   return m;
 }
 
+/** 棋盘格：供屏幕阅读器读取的位置与状态（不单独依赖颜色区分）。 */
+function cellAriaLabel(parts: {
+  r: number;
+  c: number;
+  isGiven: boolean;
+  isSel: boolean;
+  inRegion: boolean;
+  isSameDigitPeer: boolean;
+  digit: number;
+}): string {
+  const { r, c, isGiven, isSel, inRegion, isSameDigitPeer, digit } = parts;
+  const pos = `第 ${r + 1} 行第 ${c + 1} 列`;
+  const chunks = [pos];
+  if (isGiven) {
+    chunks.push("题目给定");
+  }
+  if (digit !== EMPTY_CELL) {
+    chunks.push(`已填数字 ${digit}`);
+  } else {
+    chunks.push("空格");
+  }
+  if (isSel) {
+    chunks.push("已选中");
+  }
+  if (!isSel && inRegion) {
+    chunks.push("与当前选中格同一行、列或宫");
+  }
+  if (isSameDigitPeer && !isSel) {
+    chunks.push("与当前关注数字相同");
+  }
+  return chunks.join("，");
+}
+
 /** 与选中格同一行、列或 3×3 宫（含选中格自身） */
 function isInSelectedRegion(r: number, c: number, selected: { r: number; c: number } | null): boolean {
   if (!selected) {
@@ -380,10 +413,19 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 data-testid={`sudoku-cell-${r}-${c}`}
                 data-s2-empty={d === EMPTY_CELL ? "true" : undefined}
                 data-s2-given={isGiven ? "true" : undefined}
+                data-s2-selected={isSel ? "true" : undefined}
                 data-s2-in-region={inRegion ? "true" : undefined}
                 data-s2-same-digit={isSameDigitPeer ? "true" : undefined}
                 data-hint-cell={hintHere ? "true" : undefined}
-                aria-label={`单元格 ${r + 1} 行 ${c + 1} 列`}
+                aria-label={cellAriaLabel({
+                  r,
+                  c,
+                  isGiven,
+                  isSel,
+                  inRegion,
+                  isSameDigitPeer,
+                  digit: d,
+                })}
                 disabled={interactionLocked}
                 onClick={() => {
                   if (interactionLocked) {
@@ -393,7 +435,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 }}
               >
                 {d === EMPTY_CELL ? (
-                  <span className="grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[clamp(8px,2.2vmin,12px)] font-normal leading-none">
+                  <span className="relative z-[1] grid min-h-0 w-full min-w-0 flex-1 grid-cols-3 grid-rows-3 gap-px px-px text-[clamp(8px,2.2vmin,12px)] font-normal leading-none">
                     {Array.from({ length: 9 }, (_, k) => {
                       const n = k + 1;
                       const has = gameState.cells[r][c].notes?.has(n) ?? false;
@@ -423,7 +465,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                     })}
                   </span>
                 ) : (
-                  <span>{String(d)}</span>
+                  <span className="relative z-[1]">{String(d)}</span>
                 )}
               </button>
             );
@@ -447,6 +489,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               ].join(" ")}
               role="group"
               aria-label="填数与笔记模式"
+              data-testid="sudoku-input-mode-group"
             >
               <button
                 type="button"
@@ -456,15 +499,27 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                     ? "min-h-[clamp(3.5rem,min(10vmin,12vh),7rem)] text-[clamp(1.15rem,min(3.6vmin,4vh),2rem)]"
                     : "min-h-[52px] text-base [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.35rem,min(9vmin,10vh),6.5rem)] [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(1.1rem,min(3.2vmin,3.6vh),1.75rem)]",
                   gameState.mode === "fill"
-                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
-                    : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
+                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm ring-2 ring-[var(--s2-on-accent)] ring-offset-2 ring-offset-[var(--s2-card-muted)]"
+                    : "text-[var(--s2-text-muted)] ring-1 ring-transparent hover:bg-[var(--s2-btn-secondary-bg)]",
                 ].join(" ")}
                 data-testid="sudoku-mode-fill"
                 aria-pressed={gameState.mode === "fill"}
+                aria-label={gameState.mode === "fill" ? "填数模式（当前）" : "填数模式"}
                 disabled={interactionLocked}
                 onClick={() => actions.setMode("fill")}
               >
-                填数
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span
+                    aria-hidden
+                    className={[
+                      "inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                      gameState.mode === "fill"
+                        ? "border-[var(--s2-on-accent)] bg-[var(--s2-on-accent)]"
+                        : "border-[var(--s2-text-muted)] bg-transparent",
+                    ].join(" ")}
+                  />
+                  填数
+                </span>
               </button>
               <button
                 type="button"
@@ -474,15 +529,27 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                     ? "min-h-[clamp(3.5rem,min(10vmin,12vh),7rem)] text-[clamp(1.15rem,min(3.6vmin,4vh),2rem)]"
                     : "min-h-[52px] text-base [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.35rem,min(9vmin,10vh),6.5rem)] [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(1.1rem,min(3.2vmin,3.6vh),1.75rem)]",
                   gameState.mode === "notes"
-                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
-                    : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
+                    ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm ring-2 ring-[var(--s2-on-accent)] ring-offset-2 ring-offset-[var(--s2-card-muted)]"
+                    : "text-[var(--s2-text-muted)] ring-1 ring-transparent hover:bg-[var(--s2-btn-secondary-bg)]",
                 ].join(" ")}
                 data-testid="sudoku-mode-notes"
                 aria-pressed={gameState.mode === "notes"}
+                aria-label={gameState.mode === "notes" ? "笔记模式（当前）" : "笔记模式"}
                 disabled={interactionLocked}
                 onClick={() => actions.setMode("notes")}
               >
-                笔记
+                <span className="inline-flex items-center justify-center gap-2">
+                  <span
+                    aria-hidden
+                    className={[
+                      "inline-block h-2.5 w-2.5 shrink-0 rounded-full border-2",
+                      gameState.mode === "notes"
+                        ? "border-[var(--s2-on-accent)] bg-[var(--s2-on-accent)]"
+                        : "border-[var(--s2-text-muted)] bg-transparent",
+                    ].join(" ")}
+                  />
+                  笔记
+                </span>
               </button>
             </div>
             <p
@@ -494,6 +561,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               ].join(" ")}
               data-testid="sudoku-mode-hint"
               data-s2-input-mode={gameState.mode}
+              role="status"
               aria-live="polite"
             >
               <span className="font-semibold text-[var(--s2-text)]">
@@ -507,6 +575,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               </span>
             </p>
           </div>
+
+          {digitPadSingleCandidateLock && singlePlacementDigit !== null ? (
+            <p
+              id="sudoku-digit-pad-lock-help"
+              className="sr-only"
+              data-testid="sudoku-single-candidate-help"
+            >
+              当前空格根据规则只能填入数字 {singlePlacementDigit}，其余数字键已禁用。
+            </p>
+          ) : null}
 
           <div
             className={[
@@ -523,12 +601,19 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             data-s2-single-candidate-lock={digitPadSingleCandidateLock ? "true" : undefined}
             role="group"
             aria-label="数字 1 至 9"
+            aria-describedby={digitPadSingleCandidateLock ? "sudoku-digit-pad-lock-help" : undefined}
           >
             {Array.from({ length: 9 }, (_, i) => {
               const n = i + 1;
               const isFocusDigitKey = focusDigit === n;
               const digitKeyDisabled =
                 interactionLocked || (digitPadSingleCandidateLock && n !== singlePlacementDigit);
+              const digitKeyAriaLabel =
+                digitKeyDisabled && digitPadSingleCandidateLock && n !== singlePlacementDigit
+                  ? `数字 ${n}，当前格不可用`
+                  : isFocusDigitKey
+                    ? `数字 ${n}，当前关注数字`
+                    : `数字 ${n}`;
               return (
                 <button
                   key={n}
@@ -547,8 +632,11 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   ].join(" ")}
                   data-testid={`digit-pad-${n}`}
                   data-s2-focus-digit={isFocusDigitKey ? "true" : undefined}
+                  data-s2-disabled-by-single-candidate={
+                    digitPadSingleCandidateLock && n !== singlePlacementDigit ? "true" : undefined
+                  }
                   aria-pressed={isFocusDigitKey}
-                  aria-label={`数字 ${n}`}
+                  aria-label={digitKeyAriaLabel}
                   onClick={() => actions.digit(n)}
                   disabled={digitKeyDisabled}
                 >
@@ -569,6 +657,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             onClick={() => actions.clear()}
             disabled={interactionLocked || !selected}
             data-testid={clearCellTestId}
+            aria-label="清除所选格的数字或笔记"
           >
             清除所选格
           </button>
