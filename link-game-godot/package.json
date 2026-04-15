@@ -7,6 +7,7 @@
     "dev": "serve public -l 3004",
     "build": "node ./scripts/verify-godot-project.mjs && tsc -p tsconfig.json",
     "lint": "eslint e2e playwright.config.ts src",
+    "test:godot": "node ./scripts/run-godot-tests.mjs",
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed"
   },
