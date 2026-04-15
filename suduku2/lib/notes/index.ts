@@ -5,7 +5,7 @@
  *
  * ## 公开 API
  *
- * 本模块导出：{@link NotesCommand}、{@link applyCommand}、{@link syncNotesAfterValue}、{@link createUndoRedo}、{@link UndoRedoApi}。
+ * 本模块导出：{@link NotesCommand}、{@link applyCommand}、{@link syncNotesAfterValue}、{@link applyFullBoardPencilNotes}、{@link createUndoRedo}、{@link UndoRedoApi}。
  *
  * ## 依赖
  *
@@ -39,6 +39,8 @@ import {
   type GameState,
 } from "@/lib/core";
 import type { CandidatesGrid } from "@/lib/solver";
+
+export { applyFullBoardPencilNotes } from "./fill-all-pencil-notes";
 
 /**
  * 统一笔记与输入模式的命令；`payload` 在运行时为 `unknown`，由 {@link applyCommand} 按 `type` 做窄化。
