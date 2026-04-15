@@ -155,7 +155,7 @@ function HintHudCallout(props: {
         <p className="m-0 break-words">
           <span className="font-semibold text-[var(--s2-text)]">{techniqueIdToZh(hint.technique)}</span>
           <span className="mx-1 text-[var(--s2-text-subtle)]">·</span>
-          <span>{hint.explanation}</span>
+          <span data-testid="sudoku-hint-explanation">{hint.explanation}</span>
         </p>
       ) : (
         <p className="m-0 break-words">暂无可用提示：当前盘面未发现可展示的人类技巧步（或已达终盘）。</p>
@@ -510,6 +510,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                               ? `sudoku-hint-candidate-${r}-${c}-${n}`
                               : `sudoku-note-marker-${r}-${c}-${n}`
                           }
+                          data-s2-note-on={has ? "true" : undefined}
                           data-hint-candidate={hintCand ? "true" : undefined}
                           aria-hidden
                         >

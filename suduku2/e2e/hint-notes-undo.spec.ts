@@ -91,6 +91,8 @@ test("提示：请求后出现 data-hint-cell / data-hint-candidate 或提示条
 
   await page.getByTestId("sudoku-hint").click();
   await expect(page.getByTestId("sudoku-hint-banner")).toBeVisible({ timeout: 8_000 });
+  await expect(page.getByTestId("sudoku-hint-explanation")).toBeVisible();
+  await expect(page.getByTestId("sudoku-hint-explanation")).not.toHaveText("");
 
   const hintDom = await page.evaluate(() => {
     const hintedCells = [...document.querySelectorAll('[data-testid^="sudoku-cell-"]')].filter(
@@ -140,13 +142,17 @@ test("提示：连续多次点击时 HUD 说明仍可见且无控制台 error", 
 
   await hintBtn.click();
   await expect(banner).toBeVisible({ timeout: 8_000 });
-  const text1 = (await banner.textContent())?.trim() ?? "";
-  expect(text1.length).toBeGreaterThan(10);
+  const expl1 = page.getByTestId("sudoku-hint-explanation");
+  await expect(expl1).toBeVisible();
+  const text1 = (await expl1.textContent())?.trim() ?? "";
+  expect(text1.length).toBeGreaterThan(8);
 
   await hintBtn.click();
   await expect(banner).toBeVisible({ timeout: 8_000 });
-  const text2 = (await banner.textContent())?.trim() ?? "";
-  expect(text2.length).toBeGreaterThan(10);
+  const expl2 = page.getByTestId("sudoku-hint-explanation");
+  await expect(expl2).toBeVisible();
+  const text2 = (await expl2.textContent())?.trim() ?? "";
+  expect(text2.length).toBeGreaterThan(8);
 
   expect(
     consoleErrors,
