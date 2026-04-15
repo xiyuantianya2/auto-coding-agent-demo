@@ -92,7 +92,13 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
   return (
     <div
       ref={surfaceRef}
-      className="flex flex-col gap-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] [@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]"
+      className={[
+        "flex flex-col gap-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
+        "[@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]",
+        /* 全屏：铺满视口、四边安全区内边距，避免贴边裁切；内容过高时可纵向滚动 */
+        "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
+        "data-[fullscreen=true]:pt-[calc(0.75rem+env(safe-area-inset-top,0px))] data-[fullscreen=true]:pr-[calc(0.75rem+env(safe-area-inset-right,0px))] data-[fullscreen=true]:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] data-[fullscreen=true]:pl-[calc(0.75rem+env(safe-area-inset-left,0px))]",
+      ].join(" ")}
       data-fullscreen={isFullscreen ? "true" : "false"}
       data-testid="sudoku-play-surface-root"
     >

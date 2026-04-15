@@ -79,4 +79,47 @@ test.describe("对局界面全屏入口", () => {
     await toggle.focus();
     await expect(toggle).toBeFocused();
   });
+
+  test("全屏后 16:9 视口内棋盘与数字区完整可见；退出后恢复", async ({ page, request }) => {
+    const supported = await probeFullscreenSupported(page);
+    if (!supported) {
+      test.skip(true, "当前环境不支持 Fullscreen API");
+    }
+
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const { token } = await apiRegisterAndLogin(request);
+    await injectAuth(page, token);
+
+    await page.goto("/game/endless/entry", { waitUntil: "domcontentloaded" });
+    await expect(page.getByTestId("endless-board")).toBeVisible({ timeout: 60_000 });
+
+    const root = page.getByTestId("sudoku-play-surface-root");
+    const board = page.getByTestId("endless-board");
+    const digitPad = page.getByTestId("digit-pad-1");
+    const toggle = page.getByTestId("sudoku-fullscreen-toggle");
+
+    async function assertElementsInViewport(): Promise<void> {
+      const vw = page.viewportSize()!.width;
+      const vh = page.viewportSize()!.height;
+      const pad = 3;
+      for (const loc of [board, digitPad]) {
+        const box = await loc.boundingBox();
+        expect(box, "element should have layout box").not.toBeNull();
+        expect(box!.x, "left edge").toBeGreaterThanOrEqual(-pad);
+        expect(box!.y, "top edge").toBeGreaterThanOrEqual(-pad);
+        expect(box!.x + box!.width, "right edge").toBeLessThanOrEqual(vw + pad);
+        expect(box!.y + box!.height, "bottom edge").toBeLessThanOrEqual(vh + pad);
+      }
+    }
+
+    await assertElementsInViewport();
+
+    await toggle.click();
+    await expect(root).toHaveAttribute("data-fullscreen", "true", { timeout: 15_000 });
+    await assertElementsInViewport();
+
+    await toggle.click();
+    await expect(root).toHaveAttribute("data-fullscreen", "false", { timeout: 15_000 });
+    await assertElementsInViewport();
+  });
 });

@@ -34,7 +34,7 @@
         "退出全屏后布局与全屏前一致，无残留 class/样式破坏普通模式",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 4,
