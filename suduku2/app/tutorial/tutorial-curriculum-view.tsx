@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, type JSX } from "react";
 import { useSudoku2Auth } from "@/app/auth-context";
 import { joinSudoku2ApiPath } from "@/app/sudoku2-api";
 import { useSudoku2ApiBase } from "@/app/sudoku2-app-providers";
+import { Sudoku2EntryStack, sudoku2EntryTextLinkClass } from "@/app/sudoku2-entry-shell";
 import { techniqueTitleZh } from "@/app/tutorial/technique-titles-zh";
 import {
   getTechniqueCatalog,
@@ -130,13 +131,15 @@ export function TutorialCurriculumView(): JSX.Element {
   const techniques = progress?.techniques;
 
   return (
-    <div
-      className="mx-auto w-full max-w-3xl px-4 py-10 text-[var(--s2-text)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-5xl [@media(min-width:768px)_and_(orientation:landscape)]:px-8"
-      data-testid="tutorial-curriculum-root"
-    >
-      <header className="border-b border-[var(--s2-border)] pb-6">
-        <h1 className="text-2xl font-semibold tracking-tight">教学大纲</h1>
-        <p className="mt-2 text-sm leading-relaxed text-[var(--s2-text-muted)]">
+    <Sudoku2EntryStack data-testid="tutorial-curriculum-root">
+      <header className="rounded-[var(--s2-r-2xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] px-5 py-6 shadow-sm sm:px-8 sm:py-8">
+        <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--s2-accent-panel-muted)]">
+          教学
+        </p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-[var(--s2-accent-panel-fg)] sm:text-3xl">
+          教学大纲
+        </h1>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--s2-accent-panel-muted)]">
           按低 / 中 / 高阶分组；解锁依赖来自大纲图（每项最多依赖上一技巧）。
         </p>
         {!token && ready ? (
@@ -160,7 +163,7 @@ export function TutorialCurriculumView(): JSX.Element {
         ) : null}
       </header>
 
-      <div className="mt-8 space-y-10">
+      <div className="mt-10 space-y-10">
         {TIER_ORDER.map((tier) => {
           const items = grouped[tier];
           if (items.length === 0) {
@@ -168,10 +171,10 @@ export function TutorialCurriculumView(): JSX.Element {
           }
           return (
             <section key={tier} aria-labelledby={`tier-${tier}`}>
-              <h2 id={`tier-${tier}`} className="text-lg font-medium text-[var(--s2-eyebrow)]">
+              <h2 id={`tier-${tier}`} className="text-base font-semibold uppercase tracking-wide text-[var(--s2-eyebrow)]">
                 {TIER_LABEL[tier]}
               </h2>
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-4 space-y-4">
                 {items.map((mod) => {
                   const requires = requiresById.get(mod.id) ?? [];
                   const prereqText =
@@ -198,17 +201,17 @@ export function TutorialCurriculumView(): JSX.Element {
                   return (
                     <li
                       key={mod.id}
-                      className="rounded-xl border border-[var(--s2-border)] bg-[var(--s2-card)] px-4 py-3"
+                      className="rounded-[var(--s2-r-xl)] border border-[var(--s2-border)] bg-[var(--s2-card)] px-4 py-4 shadow-sm sm:px-5 sm:py-5"
                       data-testid={`tutorial-technique-${mod.id}`}
                     >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
-                          <p className="font-medium text-[var(--s2-text)]">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold text-[var(--s2-text)]">
                             {techniqueTitleZh(mod.titleKey)}
                           </p>
-                          <p className="mt-1 text-xs text-[var(--s2-text-subtle)]">{prereqText}</p>
+                          <p className="mt-1.5 text-sm text-[var(--s2-text-subtle)]">{prereqText}</p>
                         </div>
-                        <div className="flex shrink-0 flex-col items-start gap-2 sm:items-end">
+                        <div className="flex w-full shrink-0 flex-col items-stretch gap-3 sm:w-auto sm:items-end">
                           <span
                             className={
                               unlocked === true
@@ -224,21 +227,21 @@ export function TutorialCurriculumView(): JSX.Element {
                           {token && fetchStatus === "ok" && unlocked === true ? (
                             <Link
                               href={`/game/practice?modeId=${encodeURIComponent(mod.practiceEndlessModeId)}`}
-                              className="inline-flex items-center rounded-[var(--s2-r-sm)] border border-[var(--s2-tutorial-cta-border)] bg-[var(--s2-tutorial-cta-bg)] px-2 py-1 text-xs font-medium text-[var(--s2-tutorial-cta-fg)] transition hover:bg-[var(--s2-tutorial-cta-hover-bg)]"
+                              className="inline-flex min-h-[var(--s2-touch-min)] w-full touch-manipulation items-center justify-center rounded-[var(--s2-r-lg)] border border-[var(--s2-tutorial-cta-border)] bg-[var(--s2-tutorial-cta-bg)] px-4 text-sm font-semibold text-[var(--s2-tutorial-cta-fg)] transition hover:bg-[var(--s2-tutorial-cta-hover-bg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--s2-focus-ring)] sm:w-auto sm:min-w-[7.5rem]"
                               data-testid={`tutorial-practice-link-${mod.id}`}
                             >
                               专项练习
                             </Link>
                           ) : token && fetchStatus === "ok" && unlocked === false ? (
                             <span
-                              className="inline-flex cursor-not-allowed items-center rounded-md border border-dashed border-[var(--s2-border-strong)] px-2 py-1 text-xs text-[var(--s2-text-subtle)]"
+                              className="inline-flex min-h-[var(--s2-touch-min)] w-full cursor-not-allowed items-center justify-center rounded-[var(--s2-r-lg)] border border-dashed border-[var(--s2-border-strong)] px-4 text-sm text-[var(--s2-text-subtle)] sm:w-auto"
                               data-testid={`tutorial-practice-locked-${mod.id}`}
                             >
                               需先解锁专项
                             </span>
                           ) : (
                             <span
-                              className="inline-flex items-center rounded-md border border-dashed border-[var(--s2-border-strong)] px-2 py-1 text-xs text-[var(--s2-text-subtle)]"
+                              className="inline-flex min-h-[var(--s2-touch-min)] w-full items-center justify-center rounded-[var(--s2-r-lg)] border border-dashed border-[var(--s2-border-strong)] px-4 text-sm text-[var(--s2-text-subtle)] sm:w-auto"
                               data-testid={`tutorial-practice-wait-${mod.id}`}
                               title={!token ? "登录后可进入专项练习" : "正在读取解锁状态"}
                             >
@@ -256,14 +259,11 @@ export function TutorialCurriculumView(): JSX.Element {
         })}
       </div>
 
-      <p className="mt-10 text-center">
-        <Link
-          href="/"
-          className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
-        >
+      <p className="mt-12 text-center">
+        <Link href="/" className={sudoku2EntryTextLinkClass}>
           返回首页
         </Link>
       </p>
-    </div>
+    </Sudoku2EntryStack>
   );
 }

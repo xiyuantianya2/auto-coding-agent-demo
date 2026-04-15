@@ -122,7 +122,7 @@ export function HomeSettingsSection(): JSX.Element {
 
   return (
     <section
-      className="mt-10 w-full max-w-lg rounded-2xl border border-[var(--s2-border)] bg-[var(--s2-card)] p-6 text-left shadow-sm"
+      className="mt-10 w-full max-w-lg rounded-[var(--s2-r-2xl)] border border-[var(--s2-border)] bg-[var(--s2-card)] p-6 text-left shadow-sm"
       data-testid="home-settings-section"
       aria-labelledby="home-settings-heading"
     >

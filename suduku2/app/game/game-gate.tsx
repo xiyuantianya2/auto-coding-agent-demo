@@ -4,6 +4,13 @@ import Link from "next/link";
 import type { JSX, ReactNode } from "react";
 
 import { useSudoku2Auth } from "@/app/auth-context";
+import {
+  Sudoku2EntryCard,
+  Sudoku2EntryScreen,
+  Sudoku2EntryStack,
+  sudoku2EntryPrimaryCtaClass,
+  sudoku2EntryTextLinkClass,
+} from "@/app/sudoku2-entry-shell";
 
 export function GameGate(props: { children: ReactNode }): JSX.Element {
   const { children } = props;
@@ -11,44 +18,46 @@ export function GameGate(props: { children: ReactNode }): JSX.Element {
 
   if (!ready) {
     return (
-      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
-        <p className="text-sm text-[var(--s2-text-muted)]" data-testid="game-gate-loading">
-          加载中…
-        </p>
-      </div>
+      <Sudoku2EntryScreen>
+        <Sudoku2EntryStack>
+          <p className="text-center text-sm text-[var(--s2-text-muted)]" data-testid="game-gate-loading">
+            加载中…
+          </p>
+        </Sudoku2EntryStack>
+      </Sudoku2EntryScreen>
     );
   }
 
   if (!token) {
     return (
-      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
-        <div className="max-w-md text-center">
-          <h1 className="text-2xl font-semibold">对局</h1>
-          <p
-            className="mt-4 text-sm leading-relaxed text-[var(--s2-text-muted)]"
-            data-testid="game-login-hint"
-          >
-            进入对局前请先登录账号，以便同步进度与无尽关卡数据。
-          </p>
-          <p className="mt-8">
-            <Link
-              href="/login"
-              className="inline-flex rounded-[var(--s2-r-lg)] bg-[var(--s2-accent)] px-5 py-2.5 text-sm font-semibold text-[var(--s2-on-accent)] transition hover:bg-[var(--s2-accent-hover)]"
-              data-testid="game-goto-login"
+      <Sudoku2EntryScreen>
+        <Sudoku2EntryStack>
+          <Sudoku2EntryCard>
+            <h1 className="text-2xl font-semibold tracking-tight">对局</h1>
+            <p className="mt-1 text-sm font-medium text-[var(--s2-text-muted)]">需要登录后继续</p>
+            <p
+              className="mt-4 text-sm leading-relaxed text-[var(--s2-text-muted)]"
+              data-testid="game-login-hint"
             >
-              去登录
-            </Link>
-          </p>
-          <p className="mt-6">
-            <Link
-              href="/"
-              className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
-            >
-              返回首页
-            </Link>
-          </p>
-        </div>
-      </div>
+              进入对局前请先登录账号，以便同步进度与无尽关卡数据。
+            </p>
+            <p className="mt-8 flex justify-center">
+              <Link
+                href="/login"
+                className={sudoku2EntryPrimaryCtaClass}
+                data-testid="game-goto-login"
+              >
+                去登录
+              </Link>
+            </p>
+            <p className="mt-8 text-center">
+              <Link href="/" className={sudoku2EntryTextLinkClass}>
+                返回首页
+              </Link>
+            </p>
+          </Sudoku2EntryCard>
+        </Sudoku2EntryStack>
+      </Sudoku2EntryScreen>
     );
   }
 

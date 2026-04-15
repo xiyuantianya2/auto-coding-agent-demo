@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { Sudoku2EntryScreen } from "@/app/sudoku2-entry-shell";
 import { TutorialCurriculumView } from "@/app/tutorial/tutorial-curriculum-view";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function TutorialPage() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-[var(--s2-page-bg)]">
+    <Sudoku2EntryScreen>
       <TutorialCurriculumView />
-    </div>
+    </Sudoku2EntryScreen>
   );
 }

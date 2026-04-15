@@ -1,62 +1,67 @@
 import Link from "next/link";
+
 import { HomeSessionBar } from "@/app/home-session-bar";
 import { HomeSettingsSection } from "@/app/home-settings-section";
 import { joinSudoku2ApiPath } from "@/app/sudoku2-api";
+import {
+  Sudoku2EntryHeroPanel,
+  Sudoku2EntryMutedPanel,
+  Sudoku2EntryScreen,
+  Sudoku2EntryStack,
+  sudoku2EntryNavLinkClass,
+} from "@/app/sudoku2-entry-shell";
 import { GRID_SIZE } from "@/lib/core";
 
 export default function Home() {
   const sampleApiPath = joinSudoku2ApiPath("", "/api/auth/login");
 
   return (
-    <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
-      <div className="max-w-lg text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-[var(--s2-eyebrow)]">
-          suduku2
-        </p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-          数独2
-        </h1>
-        <p className="mt-4 text-base leading-relaxed text-[var(--s2-text-muted)]">
-          核心棋盘尺寸（契约常量）：{GRID_SIZE}×{GRID_SIZE}
-        </p>
-        <p className="mt-2 text-sm text-[var(--s2-text-subtle)]" data-testid="api-path-sample">
-          API 路径示例（同源默认）：{sampleApiPath}
-        </p>
+    <Sudoku2EntryScreen>
+      <Sudoku2EntryStack className="max-w-2xl">
+        <Sudoku2EntryHeroPanel>
+          <p className="text-sm font-medium uppercase tracking-[0.2em] text-[var(--s2-accent-panel-muted)]">
+            suduku2
+          </p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[var(--s2-accent-panel-fg)] sm:text-4xl">
+            数独2
+          </h1>
+          <p className="mt-4 text-base leading-relaxed text-[var(--s2-accent-panel-muted)]">
+            核心棋盘尺寸（契约常量）：{GRID_SIZE}×{GRID_SIZE}
+          </p>
+          <p
+            className="mt-2 text-sm text-[var(--s2-accent-panel-muted)] opacity-90"
+            data-testid="api-path-sample"
+          >
+            API 路径示例（同源默认）：{sampleApiPath}
+          </p>
+        </Sudoku2EntryHeroPanel>
+
         <div className="mt-6">
-          <HomeSessionBar />
+          <Sudoku2EntryMutedPanel>
+            <HomeSessionBar />
+          </Sudoku2EntryMutedPanel>
         </div>
+
         <nav
           aria-label="主导航"
-          className="mt-10 flex flex-wrap justify-center gap-3 text-sm"
+          className="mt-8 flex flex-wrap justify-center gap-3 sm:gap-4"
         >
-          <Link
-            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
-            href="/login"
-          >
+          <Link className={sudoku2EntryNavLinkClass} href="/login">
             登录
           </Link>
-          <Link
-            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
-            href="/tutorial"
-          >
+          <Link className={sudoku2EntryNavLinkClass} href="/tutorial">
             教学
           </Link>
-          <Link
-            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
-            href="/game"
-          >
+          <Link className={sudoku2EntryNavLinkClass} href="/game">
             对局
           </Link>
-          <Link
-            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
-            href="/game/endless"
-          >
+          <Link className={sudoku2EntryNavLinkClass} href="/game/endless">
             无尽
           </Link>
         </nav>
 
         <HomeSettingsSection />
-      </div>
-    </div>
+      </Sudoku2EntryStack>
+    </Sudoku2EntryScreen>
   );
 }

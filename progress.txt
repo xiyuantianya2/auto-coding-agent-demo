@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=10 — 首页、对局入口与教学壳页对齐新 UI
+
+### What was done:
+- 新增 `app/sudoku2-entry-shell.tsx`：统一入口页 `Sudoku2EntryScreen` / `Sudoku2EntryStack`、accent 英雄条、卡片与 muted 面板，以及导航/主按钮/次级按钮/正文链接的 class 常量（触控最小高度与对局 HUD 令牌一致）。
+- `app/page.tsx`：首页用英雄面板 + muted 会话条包裹 `HomeSessionBar`，主导航链接使用统一 nav 样式。
+- `home-session-bar.tsx`：退出登录改为次级按钮样式；文案区居中。
+- `game/page.tsx`、`game-gate.tsx`、`game/endless/page.tsx`、`tutorial/page.tsx`、`tutorial-curriculum-view.tsx`、`game/practice/page.tsx` 的 Suspense fallback：对齐同一套背景、边距与卡片/英雄条视觉；无尽难度卡片加高可点区域；教学列表卡片与「专项练习」按钮加大触控目标。
+- `home-settings-section.tsx`：卡片圆角改为 `--s2-r-2xl` 与其它入口卡一致。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（266）、`npm run test:e2e`（42，`CI=1`）通过。验收前若 3003 被占用需先结束占用进程。
+
+### Notes:
+- `/game` 未登录时仍由 `GameGate` 渲染，`h1` 保持「对局」以满足 `e2e/page-load-rendering.spec.ts` 地标断言。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=5 — 回归：lint、build 与现有 E2E
 
 ### What was done:

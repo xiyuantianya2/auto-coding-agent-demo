@@ -110,7 +110,7 @@
         "教学页入口与列表区域在新主题下可读、可点击区域足够大",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 11,
