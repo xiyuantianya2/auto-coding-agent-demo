@@ -1,0 +1,7 @@
+# 非游戏资源：避免被 Godot 扫描/导入，并减小导出包体积（与 export_presets 排除列表互补）
+node_modules/
+e2e/
+test-results/
+playwright-report/
+src/
+public/

@@ -1,6 +1,7 @@
 # Godot
 .godot/
 *.import
+*.uid
 # 导出产物（可按需改为提交 Web 测试用构建）
 export/
 

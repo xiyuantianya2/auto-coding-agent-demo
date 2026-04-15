@@ -101,7 +101,7 @@
         "Android 导出步骤与依赖在 README 中写清；若本仓库不提交密钥，明确说明。",
         "export/ 或构建产物路径加入 .gitignore（若适用）。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 10,
