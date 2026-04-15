@@ -7,6 +7,7 @@ import {
   deserializeGameState,
   SERIALIZATION_SCHEMA_VERSION,
   serializeGameState,
+  tryDeserializeGameStateFromUnknown,
 } from "./serialize";
 import type { CellState, GameState, Grid9 } from "./types";
 
@@ -180,5 +181,25 @@ describe("serializeGameState / deserializeGameState", () => {
   it("rejects oversized JSON strings", () => {
     const huge = " ".repeat(512 * 1024 + 1);
     expect(() => deserializeGameState(huge)).toThrow(DeserializeGameStateError);
+  });
+});
+
+describe("tryDeserializeGameStateFromUnknown", () => {
+  it("returns null for undefined, null, or invalid wire", () => {
+    expect(tryDeserializeGameStateFromUnknown(undefined)).toBeNull();
+    expect(tryDeserializeGameStateFromUnknown(null)).toBeNull();
+    expect(tryDeserializeGameStateFromUnknown({})).toBeNull();
+  });
+
+  it("accepts the same wire shape as JSON.parse(GET draft) and matches deserializeGameState", () => {
+    const grid = makeEmptyGrid();
+    const cells = makeEmptyCells();
+    grid[0][0] = 5;
+    cells[0][0] = { given: 5 };
+    const original: GameState = { grid, cells, mode: "fill" };
+    const wire = JSON.parse(serializeGameState(original)) as unknown;
+    const got = tryDeserializeGameStateFromUnknown(wire);
+    expect(got).not.toBeNull();
+    expect(serializeGameState(got!)).toBe(serializeGameState(original));
   });
 });

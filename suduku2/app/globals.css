@@ -221,6 +221,25 @@ body {
 
 /* SudokuPlaySurface：9×9 棋盘响应式宽度 — 放在 @layer 中以免被 Tailwind 丢弃 */
 @layer components {
+  /*
+   * 系统全屏层：部分浏览器需对全屏元素本身声明视口尺寸，否则仅靠子级 flex/百分比时高度为 0 或不足。
+   * vh 作为不支持 dvh 的环境回退。
+   */
+  [data-testid="sudoku-play-surface-root"]:fullscreen,
+  [data-testid="sudoku-play-surface-root"]:-webkit-full-screen,
+  [data-testid="sudoku-play-surface-root"]:-moz-full-screen {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+    height: 100vh;
+    height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
   /* 行/列/宫：除底色外叠加淡斜纹，灰度/高对比下仍可辨认区域 */
   .s2-play-board > button[data-s2-in-region="true"]::before {
     content: "";

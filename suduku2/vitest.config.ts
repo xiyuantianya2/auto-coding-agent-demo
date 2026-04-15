@@ -19,6 +19,9 @@ export default defineConfig({
       "server/**/*.test.ts",
       "e2e/**/*.test.ts",
     ],
+    exclude: [
+      "e2e/runAcceptanceSuite.gate.integration-qa.test.ts",
+    ],
     passWithNoTests: true,
     testTimeout: 15_000,
   },

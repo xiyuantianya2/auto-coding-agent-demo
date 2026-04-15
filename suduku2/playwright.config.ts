@@ -15,8 +15,8 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: true,
   forbidOnly: isCI,
-  /* 本地无 retry 避免失败时翻倍等待 */
-  retries: isCI ? 2 : 0,
+  /* CI 仅 1 次 retry：workers=1 时 2 次 retry 会让单个 flaky 用例耗时 3x */
+  retries: isCI ? 1 : 0,
   /* Windows 下并发登录/注册会争用 `data/sessions.json` 原子写入（EPERM），单 worker 更稳 */
   workers: 1,
   use: {

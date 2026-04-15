@@ -307,7 +307,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
 
   return (
     <div
-      className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-10 text-[var(--s2-text)] md:px-6 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-5xl"
+      className="mx-auto flex w-full max-w-4xl flex-col gap-5 px-4 py-6 text-[var(--s2-text)] sm:px-5 md:gap-6 md:px-6 md:py-8 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(100%,min(96vw,100rem))]"
       data-testid="practice-play-root"
     >
       <header className="flex flex-col gap-2">
@@ -365,7 +365,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       ) : null}
 
       {phase.kind === "playing" && gameState ? (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {justWon ? (
             <div
               className="rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"

@@ -13,6 +13,10 @@ describe.sequential("integration-qa task 8: runAcceptanceSuite (full Playwright 
     { timeout: 600_000 },
     async () => {
       const { passed, report } = await runAcceptanceSuite();
+      if (!passed) {
+        // eslint-disable-next-line no-console -- 总闸失败时打印报告便于诊断
+        console.error(report);
+      }
       expect(report.length).toBeGreaterThan(0);
       expect(report).toContain("Sudoku2 — Playwright acceptance suite (integration-qa)");
       expect(report).toMatch(/expected=\d+/);

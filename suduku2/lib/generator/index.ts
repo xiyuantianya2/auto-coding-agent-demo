@@ -73,6 +73,7 @@ export {
 export {
   cloneGrid9,
   gameStateFromGivensGrid,
+  gameStateMatchesGivensGrid,
   gameStateFromSolvedGrid,
 } from "./grid-game-state";
 export {

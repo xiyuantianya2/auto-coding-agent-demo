@@ -5,11 +5,16 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useState,
   type JSX,
   type ReactNode,
 } from "react";
+
+/** 浏览器内用 `useLayoutEffect`（绘制前同步）；Node SSR 用 `useEffect` 占位，避免告警且与水合一致 */
+const useIsomorphicLayoutEffect =
+  typeof globalThis.window !== "undefined" ? useLayoutEffect : useEffect;
 
 import { joinSudoku2ApiPath } from "@/app/sudoku2-api";
 import { useSudoku2ApiBase } from "@/app/sudoku2-app-providers";
@@ -113,15 +118,22 @@ export function AuthProvider(props: { children: ReactNode }): JSX.Element {
   const [ready, setReady] = useState(false);
   const [token, setToken] = useState<string | null>(null);
 
-  useEffect(() => {
+  /**
+   * 使用 `useLayoutEffect`：在浏览器绘制前完成读取，避免 Safari 等环境下 `useEffect`
+   * 过晚执行导致「会话状态：加载中」长时间停留；服务端不执行 effect，首屏仍为未就绪直至水合。
+   */
+  useIsomorphicLayoutEffect(() => {
+    let nextToken: string | null = null;
     try {
       const t = globalThis.localStorage?.getItem(SUDOKU2_SESSION_TOKEN_STORAGE_KEY);
-      if (t && t.length > 0) {
-        setToken(t);
+      if (typeof t === "string" && t.length > 0) {
+        nextToken = t;
       }
-    } finally {
-      setReady(true);
+    } catch {
+      /* Safari 无痕 / 存储禁用等 */
     }
+    setToken(nextToken);
+    setReady(true);
   }, []);
 
   const persistToken = useCallback((t: string | null) => {

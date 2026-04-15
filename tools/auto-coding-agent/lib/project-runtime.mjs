@@ -92,8 +92,8 @@ const CUSTOM_AGENT_BUILDERS = {
       `1. 实现本任务的功能代码。`,
       `2. 更新 progress.txt 记录本任务。`,
       `3. 在 link-game 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `4. 单元/集成测试：若项目有 vitest / jest 测试，在 link-game 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E。`,
-      `5. 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
+      `4. 单元/集成测试：在 link-game 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E。`,
+      `5. 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
       `6. **以上全部通过后**，才可以修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
       `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
@@ -107,6 +107,11 @@ const CUSTOM_AGENT_BUILDERS = {
       `- 性能敏感路径：若被测功能有已知的高耗时路径，测试应仅对快速路径做全量断言，对慢路径仅做结构冒烟或跳过，并设置充裕的 timeout。`,
       `- Mock 可靠性：对 Node 内置模块做 spy/mock 时，ESM 具名导入绑定的是导入时引用，vi.spyOn 不会生效。应使用命名空间导入或 vi.mock 整体替换。`,
       `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发，而非忽略。`,
+      ``,
+      `测试执行效率（严格遵守，防止超时）：`,
+      `- **禁止重复跑全量测试**：步骤 4 的 \`npm test\` 和步骤 5 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
+      `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+      `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，只跑该文件，不要反复跑全量套件。`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -156,6 +161,93 @@ function describeToolResult(tc) {
     if (inner?.result?.success) return "";
   }
   return "";
+}
+
+/**
+ * Extract task objects from agent CLI text output when the agent failed to
+ * write task.json but did produce the tasks as text/JSON in its response.
+ *
+ * Strategies (tried in order):
+ *   1. Find a complete task.json-shaped object with a "tasks" array.
+ *   2. Find individual task-like JSON objects (have id/title/steps/passes).
+ *
+ * @param {string} text
+ * @returns {Array<{id: number; title: string; description?: string; steps: string[]; passes: boolean}>}
+ */
+function extractTasksFromText(text) {
+  // Strategy 1: Look for ```json ... ``` blocks containing a full task.json
+  const codeBlockPattern = /```(?:json)?\s*\n([\s\S]*?)```/g;
+  for (const match of text.matchAll(codeBlockPattern)) {
+    const block = match[1].trim();
+    try {
+      const parsed = JSON.parse(block);
+      if (parsed && Array.isArray(parsed.tasks) && parsed.tasks.length > 0) {
+        const valid = parsed.tasks.filter(
+          (t) => t && typeof t.title === "string" && Array.isArray(t.steps),
+        );
+        if (valid.length > 0) return valid;
+      }
+      // Might be a single task object
+      if (parsed && typeof parsed.title === "string" && Array.isArray(parsed.steps)) {
+        return [parsed];
+      }
+      // Might be a bare array of tasks
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed[0]?.title && parsed[0]?.steps) {
+        return parsed.filter((t) => t && typeof t.title === "string" && Array.isArray(t.steps));
+      }
+    } catch {
+      // not valid JSON, continue
+    }
+  }
+
+  // Strategy 2: Look for individual task-shaped JSON objects in the text
+  const objectPattern = /\{[^{}]*"title"\s*:\s*"[^"]+?"[^{}]*"steps"\s*:\s*\[[^\]]*\][^{}]*\}/g;
+  const candidates = [];
+  for (const m of text.matchAll(objectPattern)) {
+    try {
+      const obj = JSON.parse(m[0]);
+      if (obj && typeof obj.title === "string" && Array.isArray(obj.steps)) {
+        candidates.push(obj);
+      }
+    } catch {
+      // skip invalid
+    }
+  }
+  if (candidates.length > 0) return candidates;
+
+  // Strategy 3: Try to find the largest JSON-like block containing "tasks"
+  const braceBlocks = [];
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] !== "{") continue;
+    // Quick check: does the text near this brace mention "tasks"?
+    const lookahead = text.slice(i, i + 200);
+    if (!lookahead.includes('"tasks"')) continue;
+    let depth = 0;
+    let end = -1;
+    for (let j = i; j < text.length && j < i + 500_000; j++) {
+      if (text[j] === "{") depth++;
+      else if (text[j] === "}") {
+        depth--;
+        if (depth === 0) { end = j; break; }
+      }
+    }
+    if (end > i) braceBlocks.push(text.slice(i, end + 1));
+  }
+  for (const block of braceBlocks) {
+    try {
+      const parsed = JSON.parse(block);
+      if (parsed && Array.isArray(parsed.tasks) && parsed.tasks.length > 0) {
+        const valid = parsed.tasks.filter(
+          (t) => t && typeof t.title === "string" && Array.isArray(t.steps),
+        );
+        if (valid.length > 0) return valid;
+      }
+    } catch {
+      // skip
+    }
+  }
+
+  return [];
 }
 
 function isWebpackNoise(chunk) {
@@ -603,8 +695,8 @@ export class ProjectRuntime {
       `硬性要求（必须按顺序执行，且仅在前置步骤全部通过后才进入下一步）：`,
       `1. 实现本任务的功能代码。`,
       `2. 在 ${this.project.dir} 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `3. 单元/集成测试：若项目有 vitest / jest 测试（检查 package.json 的 test 脚本），在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
-      `4. 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+      `3. 单元/集成测试：在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。这只会运行快速的单元/集成测试（vitest），不含 Playwright E2E。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
+      `4. 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并打开浏览器运行 E2E 测试。Playwright 配置已内置 webServer 自动启动。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
       `5. **以上全部通过后**，才可以修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
       `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
@@ -618,6 +710,12 @@ export class ProjectRuntime {
       `- 性能敏感路径：若被测功能有已知的高耗时路径（如高难度档位的生成/求解，大量迭代的算法），测试应仅对快速路径做全量断言，对慢路径仅做结构冒烟或跳过，并设置充裕的 timeout。避免在一个 it() 中串行运行多个高耗时操作。`,
       `- Mock 可靠性：对 Node 内置模块（如 crypto、fs）做 spy/mock 时，ESM 具名导入（\`import { randomUUID } from "node:crypto"\`）绑定的是导入时引用，\`vi.spyOn\` 不会生效。应在被测模块中使用命名空间导入（\`import crypto from "node:crypto"\`），或使用 \`vi.mock\` 整体替换。`,
       `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发（\`--workers=1\`），而非忽略。`,
+      ``,
+      `测试执行效率（严格遵守，防止超时）：`,
+      `- **禁止重复跑全量测试**：步骤 3 的 \`npm test\` 和步骤 4 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从步骤 1 重新跑全量——只重跑失败的那个步骤即可。`,
+      `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+      `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
+      `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -625,6 +723,12 @@ export class ProjectRuntime {
 
   buildDecompositionMessage(userPrompt) {
     const tjp = this.getTaskJsonPath();
+    let taskJsonContent = "";
+    try {
+      taskJsonContent = fs.readFileSync(tjp, "utf8");
+    } catch {
+      taskJsonContent = '{"project":"","description":"","tasks":[]}';
+    }
     return [
       `你是本仓库的 coding agent。工作区根目录：${this.repoRoot}`,
       ``,
@@ -636,17 +740,23 @@ export class ProjectRuntime {
       userPrompt,
       `---`,
       ``,
+      `当前 task.json 内容（路径：${tjp}）：`,
+      `\`\`\`json`,
+      taskJsonContent,
+      `\`\`\``,
+      ``,
       `执行步骤：`,
       `1. 浏览 ${this.project.dir}/ 目录的代码结构，了解项目背景。`,
-      `2. 阅读当前 task.json（路径：${tjp}），了解已有任务。`,
+      `2. 上面已提供当前 task.json 的完整内容，不需要再读取文件。`,
       `3. 将用户需求分解为若干个可独立完成和验证的开发任务（通常 3-10 个）。`,
-      `4. 修改 task.json：`,
+      `4. 用 Edit 或 Write 工具修改 task.json（路径：${tjp}）：`,
       `   - 保留已有 passes: true 的任务不变`,
       `   - 删除已有 passes: false 的旧任务（它们将被新任务替代）`,
       `   - 新任务追加到 tasks 数组末尾`,
       `   - 新任务的 id 从现有最大 id + 1 开始递增`,
       `   - 每个新任务格式：{ "id": N, "title": "简短标题", "description": "说明", "steps": ["验收步骤1", "验收步骤2", ...], "passes": false }`,
       `   - 任务应按依赖顺序排列`,
+      `   ⚠️ 必须使用工具实际写入文件。如果 Edit/Write 工具失败，请重试或换用 Shell 工具写入。不要只在对话中输出 JSON 而不写入文件。`,
       ``,
       `任务分解原则：`,
       `- **先跑通再优化**：任务描述中的算法/生成策略应优先选择简单、可靠、性能可控的方案。例如：生成类任务应要求「单次调用 < 5 秒完成」，宁可保留冗余数据也不追求理论最优导致生成超时。`,
@@ -884,7 +994,15 @@ export class ProjectRuntime {
     }
 
     const tjp = this.getTaskJsonPath();
-    const queue = loadIncompleteTasks(this.repoRoot, tjp);
+    let queue = loadIncompleteTasks(this.repoRoot, tjp);
+    if (queue.length === 0) {
+      // Agent exited successfully but didn't update task.json.
+      // Try to extract tasks from the agent's CLI output and apply programmatically.
+      const rescued = this.tryRescueDecompositionFromOutput(tjp);
+      if (rescued) {
+        queue = loadIncompleteTasks(this.repoRoot, tjp);
+      }
+    }
     if (queue.length === 0) {
       this.state.lastError =
         "需求分解 Agent 已退出，但 task.json 中没有 passes: false 的新任务。请检查 CLI 输出。";
@@ -896,6 +1014,58 @@ export class ProjectRuntime {
 
     this.log(`[自定义任务] 需求分解完成，生成了 ${queue.length} 个待执行任务。`);
     return true;
+  }
+
+  /**
+   * When the decomposition agent fails to write task.json, scan its CLI output
+   * for JSON task objects and merge them into task.json programmatically.
+   * @param {string} tjp Absolute path to task.json
+   * @returns {boolean} Whether the rescue succeeded
+   */
+  tryRescueDecompositionFromOutput(tjp) {
+    const cliText = this.agentCliSnapshot.text || "";
+    if (!cliText) return false;
+
+    this.log("[decomp-rescue] Agent 未更新 task.json，尝试从 CLI 输出提取任务…");
+    this.appendCliText("\n[decomp-rescue] 检测到 Agent 未写入文件，尝试从输出中提取任务…\n");
+
+    const newTasks = extractTasksFromText(cliText);
+    if (newTasks.length === 0) {
+      this.log("[decomp-rescue] 未能从 CLI 输出中提取到有效任务。");
+      this.appendCliText("[decomp-rescue] ❌ 未找到可提取的任务 JSON。\n");
+      return false;
+    }
+
+    try {
+      let data;
+      try {
+        const raw = fs.readFileSync(tjp, "utf8");
+        data = JSON.parse(raw);
+      } catch {
+        data = { project: this.project.name || "", description: "", tasks: [] };
+      }
+      if (!Array.isArray(data.tasks)) data.tasks = [];
+
+      const kept = data.tasks.filter((t) => t.passes === true);
+      const maxId = kept.reduce((mx, t) => Math.max(mx, Number(t.id) || 0), 0);
+
+      const renumbered = newTasks.map((t, i) => ({
+        ...t,
+        id: maxId + 1 + i,
+        passes: false,
+      }));
+
+      data.tasks = [...kept, ...renumbered];
+      fs.writeFileSync(tjp, JSON.stringify(data, null, 2) + "\n", "utf8");
+
+      this.log(`[decomp-rescue] ✅ 成功提取并写入 ${renumbered.length} 个新任务到 task.json。`);
+      this.appendCliText(`[decomp-rescue] ✅ 成功提取 ${renumbered.length} 个任务并写入 task.json。\n`);
+      return true;
+    } catch (e) {
+      this.log(`[decomp-rescue] 写入 task.json 失败：${e?.message || e}`);
+      this.appendCliText(`[decomp-rescue] ❌ 写入失败：${e?.message || e}\n`);
+      return false;
+    }
   }
 
   async customTaskFlow(userPrompt) {

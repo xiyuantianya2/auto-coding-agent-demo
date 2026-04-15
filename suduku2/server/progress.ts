@@ -20,6 +20,8 @@ import {
   serializeGameState,
   type GameState,
 } from "@/lib/core";
+import { getTechniqueCatalog, getUnlockGraph } from "@/content/curriculum";
+import { TIER_PROFILES } from "@/lib/generator/tier-profiles";
 
 import { getDataDir } from "./data-dir";
 import { refreshEndlessGlobalPool } from "./endless-pool";
@@ -37,8 +39,10 @@ export function userProgressPath(dataDir: string, userId: UserId): string {
 }
 
 export function defaultUserProgress(): UserProgress {
+  const catalog = getTechniqueCatalog();
+  const entryTechnique = catalog[0];
   return {
-    techniques: {},
+    techniques: entryTechnique ? { [entryTechnique.id]: { unlocked: true } } : {},
     practice: {},
     endless: {
       entry: { clearedLevel: 0 },
@@ -223,11 +227,60 @@ export async function getProgress(
   return { ...progress, global };
 }
 
+/**
+ * 根据无尽关卡通关进度，自动解锁对应难度档位的技巧。
+ * 规则：若用户在某档位 clearedLevel >= 1，则该档位 allowedTechniques 中的所有技巧
+ * 及其在解锁图中的前置技巧，均标记为 unlocked。
+ */
+function autoUnlockTechniquesFromEndless(progress: UserProgress): void {
+  const catalog = getTechniqueCatalog();
+  const catalogIds = new Set(catalog.map((m) => m.id));
+  const graph = getUnlockGraph();
+  const requiresMap = new Map(graph.map((e) => [e.techniqueId, e.requires]));
+
+  const toUnlock = new Set<string>();
+
+  for (const tier of DIFFICULTY_TIERS) {
+    if (progress.endless[tier].clearedLevel >= 1) {
+      const profile = TIER_PROFILES[tier];
+      for (const techId of profile.allowedTechniques) {
+        if (catalogIds.has(techId)) {
+          toUnlock.add(techId);
+        }
+      }
+    }
+  }
+
+  // Also unlock all prerequisites transitively
+  const visited = new Set<string>();
+  function addPrereqs(techId: string): void {
+    if (visited.has(techId)) return;
+    visited.add(techId);
+    const reqs = requiresMap.get(techId);
+    if (reqs) {
+      for (const req of reqs) {
+        toUnlock.add(req);
+        addPrereqs(req);
+      }
+    }
+  }
+  for (const id of [...toUnlock]) {
+    addPrereqs(id);
+  }
+
+  for (const id of toUnlock) {
+    if (!progress.techniques[id]?.unlocked) {
+      progress.techniques[id] = { ...(progress.techniques[id] ?? {}), unlocked: true };
+    }
+  }
+}
+
 export async function saveProgress(token: string, patch: UserProgressPatch): Promise<void> {
   const userId = getUserIdFromToken(token);
   const dataDir = getDataDir();
   const current = readUserProgressFile(dataDir, userId);
   const merged = mergeUserProgress(current, patch);
+  autoUnlockTechniquesFromEndless(merged);
   writeUserProgressAtomic(dataDir, userId, merged);
   refreshEndlessGlobalPool(dataDir);
 }

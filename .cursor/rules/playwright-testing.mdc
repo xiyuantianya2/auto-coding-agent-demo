@@ -50,6 +50,16 @@ alwaysApply: true
 - 用 `data-testid` / `aria-label` / `role` 定位元素，避免依赖 CSS 类名
 - 关卡难度必须保证 solver 在合理重试次数内（≤25 次）可通关第 1 关
 
+## 测试执行效率（防止自动化超时）
+
+这些规则**必须**严格遵守，否则自动化 agent 会因超时被终止：
+
+1. **Vitest 和 Playwright 职责分离**：`npm test`（Vitest）只运行纯逻辑单元/集成测试（`*.test.ts`），`npm run test:e2e`（Playwright）只运行浏览器 E2E（`*.spec.ts`）。**绝不能**在 Vitest 测试中通过 `spawn`/`exec` 调用 `npx playwright test`——这会导致 E2E 被运行两次，耗时翻倍。
+2. **Acceptance gate 测试必须排除**：如果项目有 `runAcceptanceSuite.gate.*.test.ts` 这类在 Vitest 中嵌套运行完整 Playwright 套件的文件，**必须**在 `vitest.config.ts` 的 `exclude` 中排除，仅通过专用的 `npm run test:acceptance-gate` 运行。
+3. **每步只跑一次**：`npm test` 和 `npm run test:e2e` 各只需运行一次。修复失败时，只重跑失败的步骤，不要从头重新跑全量。
+4. **最小范围重跑**：如果某个特定测试文件失败，使用 `npx vitest run path/to/file.test.ts` 或 `npx playwright test path/to/file.spec.ts` 只跑该文件。
+5. **单次测试超时上限**：单个 Vitest 用例 ≤ 30 秒，单个 Playwright 用例 ≤ 2 分钟。需要更长时间说明测试需要拆分或简化。
+
 ## 浏览器共享（禁止重复下载）
 
 - Playwright 浏览器二进制统一在系统缓存目录（`%LOCALAPPDATA%\ms-playwright`）

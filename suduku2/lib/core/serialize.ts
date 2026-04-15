@@ -238,3 +238,18 @@ export function deserializeGameState(json: string): GameState {
 
   return result;
 }
+
+/**
+ * 自 API/JSON 的 `unknown` 值尝试还原 {@link GameState}；失败时返回 `null`（不抛错）。
+ * 用于将 `GET /api/progress` 返回的 `draft` wire 转为运行时状态（含 `Set` 笔记）。
+ */
+export function tryDeserializeGameStateFromUnknown(wire: unknown): GameState | null {
+  if (wire === undefined || wire === null) {
+    return null;
+  }
+  try {
+    return deserializeGameState(JSON.stringify(wire));
+  } catch {
+    return null;
+  }
+}

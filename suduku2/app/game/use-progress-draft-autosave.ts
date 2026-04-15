@@ -82,6 +82,7 @@ export function useProgressDraftAutosave(options: UseProgressDraftAutosaveOption
 
   /** 换题或新会话：立即同步草稿（`autosaveKey` 仅在换题/新局时变化）。 */
   useEffect(() => {
+    lastSentRef.current = null;
     if (!enabledRef.current || !tokenRef.current || !gameStateRef.current) {
       return;
     }

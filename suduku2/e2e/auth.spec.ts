@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 import { apiRegisterAndLogin, uniqueUsername } from "./helpers";
 
@@ -7,12 +7,29 @@ test.describe.configure({ retries: 1 });
 /** 与任务约定一致：单次 HTTP 调用应在合理时间内完成（通常 < 5s） */
 const HTTP_ROUND_TRIP_MAX_MS = 5000;
 
+async function switchToRegisterTab(page: Page): Promise<void> {
+  if (new URL(page.url()).searchParams.get("mode") !== "register") {
+    await page.getByTestId("auth-tab-register").click();
+  }
+  await expect(page).toHaveURL(/\/login\?mode=register$/);
+}
+
+async function switchToLoginTab(page: Page): Promise<void> {
+  if (new URL(page.url()).searchParams.get("mode") === "register") {
+    await page.getByTestId("auth-tab-login").click();
+  }
+  await expect(page).toHaveURL((url) => {
+    const u = new URL(url);
+    return u.pathname === "/login" && u.searchParams.get("mode") !== "register";
+  });
+}
+
 test("注册成功后可从首页看到已登录状态", async ({ page }) => {
   const username = uniqueUsername();
   const password = "secret12";
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
+  await switchToRegisterTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
@@ -32,7 +49,7 @@ test("登录成功：已存在用户可登录", async ({ page }) => {
   const password = "secret12";
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
+  await switchToRegisterTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
@@ -42,7 +59,7 @@ test("登录成功：已存在用户可登录", async ({ page }) => {
   await expect(page.getByTestId("session-status")).toContainText("未登录");
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-login").click();
+  await switchToLoginTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
@@ -56,14 +73,14 @@ test("错误密码时显示中文提示", async ({ page }) => {
   const password = "secret12";
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
+  await switchToRegisterTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
   await page.waitForURL("http://127.0.0.1:3003/");
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-login").click();
+  await switchToLoginTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill("wrongpw");
   await page.getByTestId("auth-submit").click();
@@ -76,14 +93,14 @@ test("重复用户名注册时显示中文提示", async ({ page }) => {
   const password = "secret12";
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
+  await switchToRegisterTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
   await page.waitForURL("http://127.0.0.1:3003/");
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-register").click();
+  await switchToRegisterTab(page);
   await page.getByTestId("auth-username").fill(username);
   await page.getByTestId("auth-password").fill(password);
   await page.getByTestId("auth-submit").click();
@@ -95,7 +112,7 @@ test("网络错误时显示中文提示", async ({ page }) => {
   await page.route("**/api/auth/login", (route) => route.abort("failed"));
 
   await page.goto("/login");
-  await page.getByTestId("auth-tab-login").click();
+  await switchToLoginTab(page);
   await page.getByTestId("auth-username").fill(uniqueUsername());
   await page.getByTestId("auth-password").fill("secret12");
   await page.getByTestId("auth-submit").click();

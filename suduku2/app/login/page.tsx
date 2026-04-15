@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { JSX } from "react";
+import { Suspense, type JSX } from "react";
 
 import { LoginForm } from "@/app/login/login-form";
 
@@ -15,7 +15,15 @@ export default function LoginPage(): JSX.Element {
         <h1 className="text-2xl font-semibold">账号</h1>
         <p className="mt-2 text-sm text-[var(--s2-text-muted)]">使用用户名与密码登录，或注册新账号。</p>
         <div className="mt-10">
-          <LoginForm />
+          <Suspense
+            fallback={
+              <p className="text-center text-sm text-[var(--s2-text-muted)]" data-testid="login-form-suspense">
+                加载中…
+              </p>
+            }
+          >
+            <LoginForm />
+          </Suspense>
         </div>
       </div>
     </div>

@@ -1,15 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useId, useState, type FormEvent, type JSX } from "react";
 
 import { useSudoku2Auth } from "@/app/auth-context";
 
 export function LoginForm(): JSX.Element {
+  const searchParams = useSearchParams();
+  const mode: "login" | "register" =
+    searchParams.get("mode") === "register" ? "register" : "login";
+
   const router = useRouter();
   const { login, register } = useSudoku2Auth();
-  const [mode, setMode] = useState<"login" | "register">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState("");
@@ -26,10 +29,28 @@ export function LoginForm(): JSX.Element {
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setMessage(null);
+
+    const u = username.trim();
+    if (!u) {
+      setMessage({ kind: "err", text: "请输入用户名。" });
+      return;
+    }
+    if (password.length < 6) {
+      setMessage({ kind: "err", text: "密码长度须不少于 6 位。" });
+      return;
+    }
+
+    /** 以地址栏为准：客户端路由更新 `useSearchParams` 可能略晚于导航，避免误走登录/注册分支 */
+    const submitMode: "login" | "register" =
+      typeof globalThis.window !== "undefined" &&
+      new URL(globalThis.window.location.href).searchParams.get("mode") === "register"
+        ? "register"
+        : "login";
+
     setBusy(true);
     try {
-      if (mode === "login") {
-        const r = await login(username, password);
+      if (submitMode === "login") {
+        const r = await login(u, password);
         if (!r.ok) {
           setMessage({ kind: "err", text: r.message });
           return;
@@ -38,7 +59,7 @@ export function LoginForm(): JSX.Element {
         router.push("/");
         return;
       }
-      const r = await register(username, password, nickname.trim() || undefined);
+      const r = await register(u, password, nickname.trim() || undefined);
       if (!r.ok) {
         setMessage({ kind: "err", text: r.message });
         return;
@@ -53,39 +74,35 @@ export function LoginForm(): JSX.Element {
   return (
     <div className="w-full max-w-md rounded-[var(--s2-r-2xl)] border border-[var(--s2-border)] bg-[var(--s2-card)] p-8 shadow-xl">
       <div className="flex gap-2 rounded-[var(--s2-r-lg)] bg-[var(--s2-card-muted)] p-1">
-        <button
-          type="button"
-          className={`flex-1 rounded-[var(--s2-r-md)] px-3 py-2 text-sm font-medium transition ${
+        <Link
+          href="/login"
+          scroll={false}
+          className={`flex flex-1 touch-manipulation items-center justify-center rounded-[var(--s2-r-md)] px-3 py-2 text-center text-sm font-medium transition ${
             mode === "login"
               ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)]"
               : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
-          onClick={() => {
-            setMode("login");
-            setMessage(null);
-          }}
           data-testid="auth-tab-login"
+          onClick={() => setMessage(null)}
         >
           登录
-        </button>
-        <button
-          type="button"
-          className={`flex-1 rounded-[var(--s2-r-md)] px-3 py-2 text-sm font-medium transition ${
+        </Link>
+        <Link
+          href="/login?mode=register"
+          scroll={false}
+          className={`flex flex-1 touch-manipulation items-center justify-center rounded-[var(--s2-r-md)] px-3 py-2 text-center text-sm font-medium transition ${
             mode === "register"
               ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)]"
               : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
-          onClick={() => {
-            setMode("register");
-            setMessage(null);
-          }}
           data-testid="auth-tab-register"
+          onClick={() => setMessage(null)}
         >
           注册
-        </button>
+        </Link>
       </div>
 
-      <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+      <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
         <div>
           <label htmlFor={usernameId} className="block text-sm font-medium text-[var(--s2-text-muted)]">
             用户名
@@ -97,7 +114,6 @@ export function LoginForm(): JSX.Element {
             className="mt-2 w-full rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
             value={username}
             onChange={(ev) => setUsername(ev.target.value)}
-            required
             data-testid="auth-username"
           />
         </div>
@@ -113,8 +129,6 @@ export function LoginForm(): JSX.Element {
             className="mt-2 w-full rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
             value={password}
             onChange={(ev) => setPassword(ev.target.value)}
-            required
-            minLength={6}
             data-testid="auth-password"
           />
         </div>

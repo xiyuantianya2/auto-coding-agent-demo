@@ -5,6 +5,7 @@
  *  2. 模块初始化（为单个模块生成 task.json）
  *  3. 模块内任务执行（增强版 agent message，带模块上下文）
  */
+import fs from "node:fs";
 import path from "node:path";
 import {
   deriveModulePlanPath,
@@ -128,6 +129,22 @@ export function buildModuleInitializerPrompt(repoRoot, project, taskJsonPath, mo
     ? depModules.map((d) => `  - ${d.title}（${d.id}）：${d.interface}`).join("\n")
     : "  （无前置依赖）";
 
+  let archContent = "";
+  try {
+    const archPath = path.join(repoRoot, project.dir, "architecture.md");
+    archContent = fs.readFileSync(archPath, "utf8");
+  } catch { /* no architecture.md */ }
+
+  const archSection = archContent
+    ? [
+        ``,
+        `architecture.md 内容（已预读，无需再读文件）：`,
+        `\`\`\`markdown`,
+        archContent.length > 8000 ? archContent.slice(0, 8000) + "\n…[已截断]" : archContent,
+        `\`\`\``,
+      ]
+    : [];
+
   return [
     `你是本仓库的 coding agent。工作区根目录：${repoRoot}`,
     ``,
@@ -141,6 +158,7 @@ export function buildModuleInitializerPrompt(repoRoot, project, taskJsonPath, mo
     ``,
     `已完成的模块：`,
     completedSummary,
+    ...archSection,
     ``,
     `当前要分解的模块：`,
     `- ID：${targetModule.id}`,
@@ -153,9 +171,9 @@ export function buildModuleInitializerPrompt(repoRoot, project, taskJsonPath, mo
     ``,
     `执行步骤：`,
     `1. 浏览 ${project.dir}/ 目录的现有代码结构，了解已完成模块的实现。`,
-    `2. 如果存在 architecture.md，阅读并理解架构设计。`,
+    `2. 上面已提供 architecture.md 内容（如有），不需要再读取该文件。`,
     `3. 将该模块分解为 3-10 个可独立完成和验证的开发任务。`,
-    `4. 将任务列表写入文件。`,
+    `4. 用 Write 工具将任务列表写入文件。如果 Write 工具失败，请重试或换用 Shell 工具写入。不要只在对话中输出 JSON。`,
     ``,
     `任务文件路径：${moduleTaskPath}`,
     ``,
@@ -228,8 +246,8 @@ export function buildModuleTaskMessage(repoRoot, project, taskJsonPath, modulePl
 
   const testInstructions = needsE2E
     ? [
-        `- 单元/集成测试：若本模块有 vitest / jest 测试（检查 package.json 的 test 脚本），在 ${project.dir} 目录执行 \`npm test\` 确保全部通过。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
-        `- 浏览器自动化验收（Playwright E2E）：在 ${project.dir}/ 目录下执行 \`npx playwright test --headed\`（或 \`npm run test:e2e\`），它会自动启动 dev server 并打开 Chromium 浏览器窗口，运行 E2E 测试。Playwright 配置已内置 webServer 自动启动 dev。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+        `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
+        `- 浏览器自动化验收（Playwright E2E）：在 ${project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
       ]
     : [
         `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过。本模块不涉及 UI，**无需编写或运行 Playwright E2E 测试**，仅通过 Vitest 单元/集成测试验收即可。`,
@@ -280,6 +298,12 @@ export function buildModuleTaskMessage(repoRoot, project, taskJsonPath, modulePl
     needsE2E
       ? `- E2E flaky 处理：若 Playwright 测试在并行模式下有偶发 flaky（如启动竞争），优先在 spec 里标记 \`test.describe.configure({ retries: 1 })\` 或降低并发（\`--workers=1\`），而非忽略失败。`
       : "",
+    ``,
+    `测试执行效率（严格遵守，防止超时）：`,
+    `- **禁止重复跑全量测试**：\`npm test\` 和 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
+    `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+    `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
+    `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
   ]
     .filter(Boolean)
     .join("\n");

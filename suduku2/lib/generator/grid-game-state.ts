@@ -7,6 +7,28 @@ import {
 } from "@/lib/core";
 
 /**
+ * 判断 `state` 的题面给定数是否与 `givens` 一致（用于判断存档草稿是否属于当前题目）。
+ */
+export function gameStateMatchesGivensGrid(givens: Grid9, state: GameState): boolean {
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      const raw = givens[r]?.[c];
+      const expected =
+        typeof raw === "number" && Number.isInteger(raw) && raw > 0 && raw <= 9 ? raw : EMPTY_CELL;
+      const g = state.cells[r][c].given;
+      if (expected !== EMPTY_CELL) {
+        if (g !== expected) {
+          return false;
+        }
+      } else if (g !== undefined) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+/**
  * 深拷贝 9×9 盘面，避免与调用方共享行/列数组引用。
  */
 export function cloneGrid9(grid: Grid9): Grid9 {
