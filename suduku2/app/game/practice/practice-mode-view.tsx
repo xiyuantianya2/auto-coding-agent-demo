@@ -57,6 +57,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [justWon, setJustWon] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
+  /** 同题重开时递增，供盘面内撤销栈与计时归零。 */
+  const [roundSessionKey, setRoundSessionKey] = useState(0);
 
   const winSavedRef = useRef(false);
   const startedAtRef = useRef<number | null>(null);
@@ -123,10 +125,16 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         return;
       }
 
+      setRoundSessionKey(0);
       const fresh = gameStateFromGivensGrid(spec.givens);
       const fromDraft = tryDeserializeGameStateFromUnknown(data.draft);
+      /** 题面相同时，已终盘的草稿可能是上一局/另一模式遗留；勿恢复为「假胜利」 */
       setGameState(
-        fromDraft && gameStateMatchesGivensGrid(spec.givens, fromDraft) ? fromDraft : fresh,
+        fromDraft &&
+          gameStateMatchesGivensGrid(spec.givens, fromDraft) &&
+          !isVictory(fromDraft)
+          ? fromDraft
+          : fresh,
       );
       startedAtRef.current = Date.now();
       setPhase({ kind: "playing", spec });
@@ -145,6 +153,15 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       globalThis.clearTimeout(timer);
     }
   }, [apiBase, modeId, moduleMeta, title, token]);
+
+  const onRestartRound = useCallback(() => {
+    if (phase.kind !== "playing") {
+      return;
+    }
+    setGameState(gameStateFromGivensGrid(phase.spec.givens));
+    setRoundSessionKey((k) => k + 1);
+    setStatusHint(null);
+  }, [phase]);
 
   const practiceDraftKey =
     phase.kind === "playing" ? `${modeId}-${phase.spec.seed}` : "idle";
@@ -368,7 +385,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         <div className="flex flex-col gap-3">
           {justWon ? (
             <div
-              className="rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"
+              className="relative z-[110] rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"
               data-testid="practice-win-banner"
             >
               <p className="font-semibold">恭喜完成本局！</p>
@@ -389,6 +406,8 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
             key={`${modeId}-${phase.spec.seed}`}
             gameState={gameState}
             onGameStateChange={setGameState}
+            onRestartRound={onRestartRound}
+            undoSessionKey={roundSessionKey}
             onPlayRejected={() => setStatusHint("该操作在当前模式下不可用。")}
             onNeedCellSelection={() => setStatusHint("请先点击一个空格。")}
             disabled={busy || justWon}

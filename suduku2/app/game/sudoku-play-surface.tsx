@@ -1,12 +1,13 @@
 "use client";
 
 import type { JSX, ReactNode } from "react";
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   EMPTY_CELL,
   getEffectiveDigitAt,
   getUniqueValidPlacementDigit,
+  isVictory,
   type GameState,
 } from "@/lib/core";
 import { useFullscreen } from "@/lib/fullscreen";
@@ -19,6 +20,10 @@ import { useSudoku2Game } from "@/app/game/use-sudoku2-game";
 export type SudokuPlaySurfaceProps = {
   gameState: GameState;
   onGameStateChange: (next: GameState) => void;
+  /** 将盘面恢复为当前题目初始并递增 `undoSessionKey`（与专项/无尽父级实现）。 */
+  onRestartRound: () => void;
+  /** 与 `onRestartRound` 同步，用于子组件内撤销栈与计时归零。 */
+  undoSessionKey: number;
   disabled?: boolean;
   boardTestId?: string;
   clearCellTestId?: string;
@@ -170,12 +175,14 @@ function HintHudCallout(props: {
 }
 
 /**
- * 无尽与专项等模式共用的 9×9 盘面：`GameState` 驱动、笔记/填数模式、提示高亮、撤销重做、计时与暂停。
+ * 无尽与专项等模式共用的 9×9 盘面：`GameState` 驱动、笔记/填数模式、提示高亮、撤销与重开本局、计时与暂停。
  */
 export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
   const {
     gameState,
     onGameStateChange,
+    onRestartRound,
+    undoSessionKey,
     disabled = false,
     boardTestId = "sudoku-board",
     clearCellTestId = "sudoku-clear-cell",
@@ -187,13 +194,19 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
 
   const [quickGameEnabled, setQuickGameEnabled] = useQuickGameSetting();
 
+  const [victoryModalDismissed, setVictoryModalDismissed] = useState(false);
+  const victory = isVictory(gameState);
+
+  useEffect(() => {
+    setVictoryModalDismissed(false);
+  }, [undoSessionKey]);
+
   const {
     selected,
     paused,
     hint,
     noHintAvailable,
     canUndo,
-    canRedo,
     elapsedSec,
     interactionLocked,
     actions,
@@ -205,7 +218,35 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     onNeedCellSelection,
     showTimer,
     quickGameEnabled,
+    undoSessionKey,
   });
+
+  /** 桌面端 Ctrl/⌘+Z 撤销；避免在表单控件内抢键。 */
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (disabled || interactionLocked) {
+        return;
+      }
+      const t = e.target;
+      if (
+        t instanceof HTMLElement &&
+        t.closest("input, textarea, select, [contenteditable=true]") !== null
+      ) {
+        return;
+      }
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) {
+        return;
+      }
+      const key = e.key.toLowerCase();
+      if (key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        actions.undo();
+      }
+    };
+    globalThis.addEventListener("keydown", onKeyDown);
+    return () => globalThis.removeEventListener("keydown", onKeyDown);
+  }, [actions, disabled, interactionLocked]);
 
   const hintCells = useMemo(() => hintCellSet(hint), [hint]);
   const candHigh = useMemo(() => candidateHighlightMap(hint), [hint]);
@@ -247,7 +288,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
         "[@media(min-width:768px)_and_(orientation:landscape)]:gap-1.5",
       ].join(" ")}
       role="toolbar"
-      aria-label="提示与撤销"
+      aria-label="提示、撤销与重开"
     >
       <button
         type="button"
@@ -272,12 +313,12 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
       <button
         type="button"
         className={hudBtnSecondary}
-        data-testid="sudoku-redo"
-        aria-label="重做一步"
-        disabled={interactionLocked || !canRedo}
-        onClick={() => actions.redo()}
+        data-testid="sudoku-restart-round"
+        aria-label="重新开始本局"
+        disabled={interactionLocked}
+        onClick={() => onRestartRound()}
       >
-        重做
+        重开
       </button>
     </div>
   );
@@ -295,6 +336,44 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
       data-fullscreen={isFullscreen ? "true" : "false"}
       data-testid="sudoku-play-surface-root"
     >
+      {victory && !victoryModalDismissed ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+          role="presentation"
+          onClick={() => setVictoryModalDismissed(true)}
+        >
+          <div
+            className="w-full max-w-sm rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-card-muted)] p-5 text-[var(--s2-text)] shadow-lg ring-1 ring-[var(--s2-border)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sudoku-victory-dialog-title"
+            data-testid="sudoku-victory-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="sudoku-victory-dialog-title" className="m-0 text-lg font-semibold text-[var(--s2-text)]">
+              通关成功
+            </h2>
+            {showTimer ? (
+              <p className="mt-3 text-sm text-[var(--s2-text-subtle)]">
+                本局用时{" "}
+                <span className="tabular-nums font-semibold text-[var(--s2-timer-text)]">{elapsedSec}</span>{" "}
+                秒
+              </p>
+            ) : (
+              <p className="mt-3 text-sm text-[var(--s2-text-subtle)]">题目已全部正确填写。</p>
+            )}
+            <button
+              type="button"
+              className="mt-5 w-full rounded-[var(--s2-r-lg)] bg-[var(--s2-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--s2-on-accent)] transition hover:bg-[var(--s2-accent-hover)]"
+              data-testid="sudoku-victory-dialog-dismiss"
+              onClick={() => setVictoryModalDismissed(true)}
+            >
+              知道了
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {showTimer ? (
         <div className="flex w-full min-w-0 flex-col gap-2">
           <div
@@ -334,7 +413,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                     data-testid="sudoku-pause"
                     aria-pressed={paused}
                     aria-label={paused ? "继续对局" : "暂停对局"}
-                    disabled={disabled}
+                    disabled={disabled || victory}
                     onClick={() => actions.togglePause()}
                   >
                     {paused ? "继续" : "暂停"}

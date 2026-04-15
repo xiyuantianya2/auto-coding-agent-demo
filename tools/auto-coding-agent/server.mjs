@@ -17,6 +17,10 @@ import {
   getProjectTaskSummary,
 } from "./lib/projects.mjs";
 import { ProjectRuntime } from "./lib/project-runtime.mjs";
+import {
+  PlaywrightHealRuntime,
+  projectHasPlaywright,
+} from "./lib/playwright-heal-runtime.mjs";
 import { formatBeijingDateTime } from "./lib/beijing-time.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +44,12 @@ const MAX_AGENT_CLI_CHARS = Math.max(
 
 /** @type {Map<string, ProjectRuntime>} */
 const runtimes = new Map();
+
+/** @type {Map<string, PlaywrightHealRuntime>} */
+const healRuntimes = new Map();
+
+/** @type {Promise<void> | null} */
+let batchHealPromise = null;
 
 /**
  * 获取或创建项目的运行时实例。
@@ -69,6 +79,41 @@ async function initAllRuntimes() {
       );
     }
   }
+}
+
+/**
+ * @param {string} projectId
+ * @returns {Promise<PlaywrightHealRuntime | null>}
+ */
+async function getHealRuntime(projectId) {
+  const proj = getProject(projectId);
+  if (!proj) return null;
+  if (!healRuntimes.has(projectId)) {
+    healRuntimes.set(projectId, new PlaywrightHealRuntime(proj, REPO_ROOT));
+  }
+  return healRuntimes.get(projectId) ?? null;
+}
+
+async function runBatchHealAll() {
+  await reloadRegistry();
+  const eligible = listProjects().filter((p) => projectHasPlaywright(REPO_ROOT, p.dir));
+  log(`[E2E 自愈·批处理] 候选: ${eligible.map((p) => p.id).join(", ") || "(无)"}`);
+  for (const p of eligible) {
+    const rt = await getHealRuntime(p.id);
+    if (!rt) continue;
+    const out = rt.start();
+    if (!out.ok) {
+      log(`[E2E 自愈·批处理] 跳过 ${p.id}: ${out.error || ""}`);
+      continue;
+    }
+    await rt.waitUntilIdle();
+    const st = rt.getStatus();
+    log(`[E2E 自愈·批处理] ${p.id} → ${st.status}`);
+    if (st.lastError) {
+      log(`[E2E 自愈·批处理] ${p.id} lastError: ${String(st.lastError).slice(0, 400)}`);
+    }
+  }
+  log(`[E2E 自愈·批处理] 顺序运行结束`);
 }
 
 // ── HTTP helpers ────────────────────────────────────────────────────
@@ -286,6 +331,78 @@ async function handleRequest(req, res) {
     if (!rt) return json(res, 404, { ok: false, error: `项目 "${projectId}" 不存在` }, true);
     const out = rt.handleAgentInput(text);
     return json(res, out.ok ? 200 : 400, out, true);
+  }
+
+  // ── Playwright E2E 自愈（失败时调 Cursor Agent CLI 修复并重试）────────────────
+
+  if (req.method === "GET" && url.pathname === "/api/playwright-heal/eligible") {
+    await reloadRegistry();
+    const projects = listProjects()
+      .filter((p) => projectHasPlaywright(REPO_ROOT, p.dir))
+      .map((p) => ({ id: p.id, dir: p.dir, name: p.name }));
+    return json(res, 200, { ok: true, projects }, true);
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/playwright-heal/status") {
+    const projectId = url.searchParams.get("project");
+    if (!projectId) return json(res, 400, { ok: false, error: "缺少 project 参数" }, true);
+    await reloadRegistry();
+    const h = await getHealRuntime(projectId);
+    if (!h) return json(res, 404, { ok: false, error: `项目 "${projectId}" 不存在` }, true);
+    return json(res, 200, h.getStatus(), true);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/playwright-heal/control") {
+    const body = await readBody(req);
+    const action = body?.action;
+    const projectId = body?.project;
+
+    if (action === "start") {
+      if (!projectId) return json(res, 400, { ok: false, error: "缺少 project 字段" }, true);
+      await reloadRegistry();
+      const h = await getHealRuntime(projectId);
+      if (!h) return json(res, 404, { ok: false, error: `项目 "${projectId}" 不存在` }, true);
+      const out = h.start();
+      return json(res, out.ok ? 200 : 400, { ok: out.ok, error: out.error }, true);
+    }
+
+    if (action === "pause") {
+      if (!projectId) return json(res, 400, { ok: false, error: "缺少 project 字段" }, true);
+      const h = await getHealRuntime(projectId);
+      if (!h) return json(res, 404, { ok: false, error: `项目 "${projectId}" 不存在` }, true);
+      return json(res, 200, h.pause(), true);
+    }
+
+    if (action === "reset") {
+      if (!projectId) return json(res, 400, { ok: false, error: "缺少 project 字段" }, true);
+      const h = await getHealRuntime(projectId);
+      if (!h) return json(res, 404, { ok: false, error: `项目 "${projectId}" 不存在` }, true);
+      return json(res, 200, h.reset(), true);
+    }
+
+    return json(res, 400, { ok: false, error: "未知 action（支持 start / pause / reset）" }, true);
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/playwright-heal/batch-start") {
+    if (batchHealPromise) {
+      return json(res, 400, { ok: false, error: "批处理已在运行" }, true);
+    }
+    batchHealPromise = runBatchHealAll()
+      .catch((e) => {
+        log(`[E2E 自愈·批处理] 未捕获异常: ${e?.message || e}`);
+      })
+      .finally(() => {
+        batchHealPromise = null;
+      });
+    return json(
+      res,
+      200,
+      {
+        ok: true,
+        message: "已启动：将按注册表顺序对每个含 Playwright 的项目执行自愈 E2E（查看服务端日志）",
+      },
+      true,
+    );
   }
 
   json(res, 404, { ok: false, error: "Not found" }, true);

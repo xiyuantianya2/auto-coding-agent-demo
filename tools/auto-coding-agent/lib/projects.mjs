@@ -53,6 +53,16 @@ const DEFAULT_PROJECTS = [
     createdAt: "2025-01-01T00:00:00+08:00",
   },
   {
+    id: "suduku2",
+    name: "数独 2",
+    description: "模块化数独（专项练习、无尽模式、账户进度）",
+    dir: "suduku2",
+    framework: "Next.js",
+    icon: "🔢",
+    taskJsonPath: "suduku2/task.json",
+    createdAt: "2025-01-01T00:00:00+08:00",
+  },
+  {
     id: "hello-nextjs",
     name: "AI 视频生成",
     description: "AI 视频生成应用 Demo（前后端、Supabase、火山引擎视频 API）",

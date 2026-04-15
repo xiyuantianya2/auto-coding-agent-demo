@@ -54,6 +54,8 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
   const [busy, setBusy] = useState(false);
   const [justWon, setJustWon] = useState(false);
   const [statusHint, setStatusHint] = useState<string | null>(null);
+  /** 同题重开时递增，供盘面内撤销栈与计时归零。 */
+  const [roundSessionKey, setRoundSessionKey] = useState(0);
 
   const winSavedRef = useRef(false);
   /** 与专项练习 `loadPuzzle` 相同：忽略过时异步完成，避免双调竞态卸载盘面。 */
@@ -95,10 +97,16 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
         return;
       }
 
+      setRoundSessionKey(0);
       const fresh = gameStateFromGivensGrid(spec.givens);
       const fromDraft = tryDeserializeGameStateFromUnknown(data.draft);
+      /** 题面相同时，已终盘的草稿可能是上一局/另一模式遗留；勿恢复为「假胜利」 */
       setGameState(
-        fromDraft && gameStateMatchesGivensGrid(spec.givens, fromDraft) ? fromDraft : fresh,
+        fromDraft &&
+          gameStateMatchesGivensGrid(spec.givens, fromDraft) &&
+          !isVictory(fromDraft)
+          ? fromDraft
+          : fresh,
       );
       setPhase({ kind: "playing", clearedLevel: cleared, nextLevel, spec });
     } catch (e) {
@@ -116,6 +124,15 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
       globalThis.clearTimeout(timer);
     }
   }, [apiBase, tier, token]);
+
+  const onRestartRound = useCallback(() => {
+    if (phase.kind !== "playing") {
+      return;
+    }
+    setGameState(gameStateFromGivensGrid(phase.spec.givens));
+    setRoundSessionKey((k) => k + 1);
+    setStatusHint(null);
+  }, [phase]);
 
   const draftAutosaveKey =
     tier && phase.kind === "playing"
@@ -299,7 +316,7 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
         <div className="flex flex-col gap-3">
           {justWon ? (
             <div
-              className="rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"
+              className="relative z-[110] rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"
               data-testid="endless-win-banner"
             >
               <p className="font-semibold">恭喜通关！</p>
@@ -320,6 +337,8 @@ export function EndlessTierView(props: { tierParam: string }): JSX.Element {
             key={`${tier}-${phase.nextLevel}-${phase.spec.seed}`}
             gameState={gameState}
             onGameStateChange={setGameState}
+            onRestartRound={onRestartRound}
+            undoSessionKey={roundSessionKey}
             onPlayRejected={() => setStatusHint("该操作在当前模式下不可用。")}
             onNeedCellSelection={() => setStatusHint("请先点击一个空格。")}
             disabled={busy || justWon}

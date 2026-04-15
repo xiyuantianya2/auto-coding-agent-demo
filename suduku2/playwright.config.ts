@@ -32,11 +32,13 @@ export default defineConfig({
      * - 页面预编译，加载速度远快于 dev 模式的按需编译
      * - 无文件监听 / HMR 开销，进程启停更快（尤其 Windows）
      *
-     * 本地开发仍用 next dev 配合 reuseExistingServer 复用已有实例。
+     * `reuseExistingServer` 在 CI 与本地均开启：若 `url` 已可访问（例如本机已跑
+     * `next dev -p 3003`），则不再启动第二进程，避免「端口已被占用」导致失败。
+     * 干净环境（含典型 CI）下仍会执行 `command` 启动新服务。
      */
     command: isCI ? "npm run start:e2e" : "npm run dev",
     url: "http://127.0.0.1:3003",
-    reuseExistingServer: !isCI,
+    reuseExistingServer: true,
     timeout: isCI ? 180_000 : 120_000,
     env: {
       ...process.env,

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import {
   cloneGameState,
   EMPTY_CELL,
   getEffectiveDigitAt,
   getUniqueValidPlacementDigit,
+  isVictory,
   serializeGameState,
   type GameState,
 } from "@/lib/core";
@@ -34,7 +35,6 @@ export type Sudoku2GameActions = {
   /** 请求一步提示（高亮，不自动填数）。 */
   requestHint: () => void;
   undo: () => void;
-  redo: () => void;
   /** 切换暂停；暂停时冻结交互与计时。 */
   togglePause: () => void;
   /** 一键笔记：批量写入约束候选（任务 20）；经 `commit` 入撤销栈。 */
@@ -54,6 +54,11 @@ export type UseSudoku2GameParams = {
    * **笔记模式**下不自动填数（仍只编辑笔记），优先级高于自动填数。
    */
   quickGameEnabled?: boolean;
+  /**
+   * 本局会话键：与父级「重开本局」同步递增，用于重置撤销栈与对局计时。
+   * 换题或新局时父级应归零或换新键。
+   */
+  undoSessionKey?: number;
 };
 
 export type UseSudoku2GameResult = {
@@ -67,7 +72,6 @@ export type UseSudoku2GameResult = {
    */
   noHintAvailable: boolean;
   canUndo: boolean;
-  canRedo: boolean;
   candidates: CandidatesGrid;
   elapsedSec: number;
   interactionLocked: boolean;
@@ -87,6 +91,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     onNeedCellSelection,
     showTimer = true,
     quickGameEnabled = false,
+    undoSessionKey = 0,
   } = params;
 
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
@@ -94,11 +99,14 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
   const [hint, setHint] = useState<HintResult | null>(null);
   const [noHintAvailable, setNoHintAvailable] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
 
-  const interactionLocked = disabled || paused;
+  const victory = isVictory(gameState);
+  const interactionLocked = disabled || paused || victory;
 
-  const elapsedSec = useSudokuSessionTimer(showTimer ? paused : true);
+  const elapsedSec = useSudokuSessionTimer(
+    showTimer ? paused || disabled || victory : true,
+    undoSessionKey,
+  );
 
   const candidates = useMemo(() => computeCandidates(gameState), [gameState]);
 
@@ -112,17 +120,19 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
   const refreshUndoUi = useCallback(() => {
     const api = undoRedoRef.current;
     setCanUndo(api?.canUndo() ?? false);
-    setCanRedo(api?.canRedo() ?? false);
   }, []);
 
-  useEffect(() => {
+  /** 仅随 `undoSessionKey`（重开或父级换局键）重建栈；步进盘面由 `commit` 入栈。 */
+  useLayoutEffect(() => {
     const api = createUndoRedo();
+    api.push(cloneGameState(gameState));
     undoRedoRef.current = api;
-    api.push(cloneGameState(gameStateRef.current));
-    queueMicrotask(() => {
-      refreshUndoUi();
-    });
-  }, [refreshUndoUi]);
+    refreshUndoUi();
+    setSelected(null);
+    setHint(null);
+    setNoHintAvailable(false);
+    setPaused(false);
+  }, [undoSessionKey, refreshUndoUi]);
 
   const commit = useCallback(
     (next: GameState) => {
@@ -273,25 +283,6 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     refreshUndoUi();
   }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
 
-  const redo = useCallback(() => {
-    if (interactionLocked) {
-      return;
-    }
-    const api = undoRedoRef.current;
-    if (!api?.canRedo()) {
-      return;
-    }
-    const next = applyCommand(
-      gameState,
-      { type: "redo", payload: api },
-      candidates,
-    );
-    onGameStateChange(next);
-    setHint(null);
-    setNoHintAvailable(false);
-    refreshUndoUi();
-  }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
-
   const requestHint = useCallback(() => {
     if (interactionLocked) {
       return;
@@ -313,11 +304,11 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
   }, [commit, gameState, interactionLocked]);
 
   const togglePause = useCallback(() => {
-    if (disabled) {
+    if (disabled || victory) {
       return;
     }
     setPaused((p) => !p);
-  }, [disabled]);
+  }, [disabled, victory]);
 
   const actions = useMemo<Sudoku2GameActions>(
     () => ({
@@ -327,11 +318,10 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
       clear,
       requestHint,
       undo,
-      redo,
       togglePause,
       fillAllPencilNotes,
     }),
-    [clear, digit, fillAllPencilNotes, redo, requestHint, selectCell, setMode, togglePause, undo],
+    [clear, digit, fillAllPencilNotes, requestHint, selectCell, setMode, togglePause, undo],
   );
 
   return {
@@ -341,7 +331,6 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     hint,
     noHintAvailable,
     canUndo,
-    canRedo,
     candidates,
     elapsedSec,
     interactionLocked,

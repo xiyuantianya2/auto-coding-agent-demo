@@ -479,6 +479,32 @@
         </span>
       </div>
 
+      <div
+        class="panel"
+        id="playwrightHealPanel"
+        style="border-color: #14532d; box-shadow: inset 0 0 0 1px rgba(20, 83, 45, 0.35)"
+      >
+        <div class="panel-head" style="align-items: center">
+          <div>
+            <span style="font-size: 0.95rem; font-weight: 600; color: #86efac">一键 Playwright E2E（自愈）</span>
+            <span class="badge idle" id="healBadge" style="margin-left: 0.5rem">自愈·空闲</span>
+          </div>
+        </div>
+        <p style="margin: 0.5rem 0; font-size: 0.82rem; color: var(--muted)">
+          在当前子项目目录执行 <code>npm run test:e2e</code>；失败时自动调用本机
+          <code>agent</code>（Cursor Agent CLI）按失败日志修复代码或测试并重试，直至通过或达到轮数上限（环境变量
+          <code>AUTOCODING_E2E_HEAL_MAX_ROUNDS</code>，默认 20）。单次 E2E 超时可设
+          <code>AUTOCODING_E2E_PLAYWRIGHT_TIMEOUT_MS</code>。
+        </p>
+        <div class="row" style="margin-bottom: 0.75rem">
+          <button type="button" class="primary" id="btnHealStart">开始自愈测试</button>
+          <button type="button" id="btnHealPause">暂停</button>
+          <button type="button" class="danger" id="btnHealReset">清空日志并重置</button>
+        </div>
+        <p id="healMeta" style="font-size: 0.78rem; color: #fde68a; margin: 0 0 0.35rem"></p>
+        <pre class="log" id="healLog" style="max-height: 220px; font-size: 0.78rem">（尚未运行）</pre>
+      </div>
+
       <div class="panel" id="customTaskPanel" style="border-color:#1e40af;box-shadow:inset 0 0 0 1px rgba(30,64,175,0.3)">
         <div style="margin-bottom:0.5rem">
           <span style="font-size:0.9rem;font-weight:600;color:#93c5fd">✦ 新增 / 重构功能</span>
@@ -980,6 +1006,70 @@
               if (pctEl) pctEl.textContent = "—";
             }
           }
+
+          try {
+            const hr = await fetch(
+              "/api/playwright-heal/status?project=" + encodeURIComponent(PROJECT_ID),
+            );
+            const hd = await hr.json();
+            if (hd.ok && $("healBadge")) {
+              const hs = hd.status;
+              const hb = $("healBadge");
+              hb.className =
+                "badge " +
+                (hs === "running"
+                  ? "running"
+                  : hs === "paused"
+                    ? "paused"
+                    : hs === "completed"
+                      ? "done"
+                      : hs === "failed"
+                        ? "paused"
+                        : "idle");
+              hb.textContent =
+                hs === "running"
+                  ? "自愈·运行中" +
+                    (hd.phase === "agent"
+                      ? "（Agent）"
+                      : hd.phase === "e2e"
+                        ? "（E2E）"
+                        : "")
+                  : hs === "paused"
+                    ? "自愈·已暂停"
+                    : hs === "completed"
+                      ? "自愈·已通过"
+                      : hs === "failed"
+                        ? "自愈·失败"
+                        : "自愈·空闲";
+              const hl = $("healLog");
+              if (hl && hd.log) {
+                hl.textContent = hd.log;
+                if (hs === "running") {
+                  requestAnimationFrame(() => {
+                    hl.scrollTop = hl.scrollHeight;
+                  });
+                }
+              }
+              const hMeta = $("healMeta");
+              if (hMeta) {
+                hMeta.textContent =
+                  hs === "idle"
+                    ? ""
+                    : "第 " +
+                      (hd.round ?? "—") +
+                      "/" +
+                      (hd.maxRounds ?? "—") +
+                      " 轮" +
+                      (hd.lastError ? " · " + hd.lastError : "");
+              }
+              const bh = $("btnHealStart");
+              const bhp = $("btnHealPause");
+              if (bh) bh.disabled = hs === "running";
+              if (bhp) bhp.disabled = hs !== "running";
+            }
+          } catch (_) {
+            /* 旧版服务无此 API */
+          }
         } catch (e) {
           $("log").textContent = "无法连接服务：" + (e && e.message ? e.message : String(e));
         }
@@ -998,6 +1088,43 @@
         } catch (e) {
           alert("请求失败：" + (e && e.message ? e.message : String(e)));
         }
+      }
+
+      async function postPlaywrightHeal(action) {
+        try {
+          const r = await fetch("/api/playwright-heal/control", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action, project: PROJECT_ID }),
+          });
+          const d = await r.json();
+          if (!d.ok) alert(d.error || "操作失败");
+          await refresh();
+        } catch (e) {
+          alert("请求失败：" + (e && e.message ? e.message : String(e)));
+        }
+      }
+
+      const btnHealStart = $("btnHealStart");
+      if (btnHealStart) {
+        btnHealStart.onclick = () => {
+          if (
+            !confirm(
+              "将运行完整 Playwright 套件；失败时自动调 agent 修复并重试，可能持续数小时。确定？",
+            )
+          ) {
+            return;
+          }
+          postPlaywrightHeal("start");
+        };
+      }
+      const btnHealPause = $("btnHealPause");
+      if (btnHealPause) btnHealPause.onclick = () => postPlaywrightHeal("pause");
+      const btnHealReset = $("btnHealReset");
+      if (btnHealReset) {
+        btnHealReset.onclick = () => {
+          if (confirm("确定重置自愈面板状态？不会撤销已写代码。")) postPlaywrightHeal("reset");
+        };
       }
 
       $("btnStart").onclick = () => postControl("start");

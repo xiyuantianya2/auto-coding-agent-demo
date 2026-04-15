@@ -76,3 +76,21 @@ export function tryLoadIncompleteTasks(repoRoot, taskJsonPath) {
   }
 }
 
+/**
+ * 判断某任务是否为 task.json「tasks」数组中的最后一项（按文件中的顺序）。
+ * 用于全自动化开发：仅最后一项跑全量测试，其余任务只跑与本任务相关的测试。
+ * @param {string} repoRoot
+ * @param {string} taskJsonPath 相对 repoRoot 的路径，或绝对路径
+ * @param {number} taskId
+ * @returns {boolean}
+ */
+export function isLastPlannedTask(repoRoot, taskJsonPath, taskId) {
+  const p = path.isAbsolute(taskJsonPath) ? taskJsonPath : path.join(repoRoot, taskJsonPath);
+  const raw = fs.readFileSync(p, "utf8");
+  const data = JSON.parse(raw);
+  const tasks = Array.isArray(data.tasks) ? data.tasks : [];
+  if (tasks.length === 0) return false;
+  const last = tasks[tasks.length - 1];
+  return Number(last?.id) === Number(taskId);
+}
+

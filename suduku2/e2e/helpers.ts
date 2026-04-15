@@ -1,4 +1,14 @@
-import type { APIRequestContext, Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
+
+/** 暂停时填数/笔记等控件 `disabled`；重载后若从草稿恢复为暂停，需先继续对局。 */
+export async function ensurePlayingNotPaused(page: Page): Promise<void> {
+  const pause = page.getByTestId("sudoku-pause");
+  await expect(pause).toBeVisible({ timeout: 30_000 });
+  if ((await pause.getAttribute("aria-pressed")) === "true") {
+    await pause.click();
+    await expect(pause).toHaveAttribute("aria-pressed", "false");
+  }
+}
 
 export function uniqueUsername(): string {
   return `e2e_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;

@@ -11,7 +11,8 @@
     "test:acceptance-gate": "vitest run e2e/runAcceptanceSuite.gate.integration-qa.test.ts",
     "start:e2e": "next build && next start -p 3003",
     "test:e2e": "cross-env CI=1 playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:journey": "playwright test e2e/full-journey-headed.spec.ts --headed"
   },
   "dependencies": {
     "clsx": "^2.1.1",

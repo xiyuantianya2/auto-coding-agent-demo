@@ -130,6 +130,14 @@
 
       <div class="toolbar">
         <button class="btn primary" onclick="showCreateForm()">+ 新增项目</button>
+        <button
+          class="btn"
+          type="button"
+          onclick="startBatchPlaywrightHeal()"
+          title="需已启动 tools/auto-coding-agent；将按注册表顺序对每个含 Playwright 的项目执行自愈 E2E"
+        >
+          全项目 E2E 自愈（顺序）
+        </button>
       </div>
 
       <div id="content"><div class="loading">加载项目列表…</div></div>
@@ -137,6 +145,7 @@
       <div class="footer-info">
         需已安装并登录 Cursor Agent CLI（<code>agent login</code>），建议 Node 20/22 LTS。
         各项目按自身 <code>task.json</code> 的 <code>passes: false</code> 任务顺序，独立调用 <code>agent</code> 自动实现。
+        「全项目 E2E 自愈」会对每个含 Playwright 的注册项目顺序运行 <code>npm run test:e2e</code>，失败时由 agent 修复并重试（详见各项目 <code>agent.html</code> 面板）。
       </div>
     </main>
 
@@ -230,6 +239,27 @@
           const d = await r.json();
           if (!d.ok) { alert(d.error || "删除失败"); return; }
           await loadProjects();
+        } catch (e) {
+          alert("请求失败：" + (e.message || e));
+        }
+      }
+
+      async function startBatchPlaywrightHeal() {
+        if (
+          !confirm(
+            "将在后台依次对每个已注册且含 Playwright 的子项目执行「自愈 E2E」（可能极耗时）。进度见运行 auto-coding-agent 的终端日志。确定？",
+          )
+        ) {
+          return;
+        }
+        try {
+          const r = await fetch("/api/playwright-heal/batch-start", { method: "POST" });
+          const d = await r.json();
+          if (!d.ok) {
+            alert(d.error || "启动失败");
+            return;
+          }
+          alert(d.message || "已启动");
         } catch (e) {
           alert("请求失败：" + (e.message || e));
         }

@@ -4,9 +4,9 @@ import { useLayoutEffect, useRef, useState } from "react";
 
 /**
  * 向上计时的对局时钟：`paused` 为 true 时冻结显示与计时；恢复后继续累计。
- * 新一局请通过父级 `key` 重挂组件以归零。
+ * `resetEpoch` 变化时归零（如同一局内「重开」或父级换题时传入新键）。
  */
-export function useSudokuSessionTimer(paused: boolean): number {
+export function useSudokuSessionTimer(paused: boolean, resetEpoch = 0): number {
   const [elapsedSec, setElapsedSec] = useState(0);
   const anchorMsRef = useRef(0);
   const frozenSecRef = useRef<number | null>(null);
@@ -14,7 +14,8 @@ export function useSudokuSessionTimer(paused: boolean): number {
   useLayoutEffect(() => {
     anchorMsRef.current = globalThis.Date.now();
     frozenSecRef.current = null;
-  }, []);
+    setElapsedSec(0);
+  }, [resetEpoch]);
 
   useLayoutEffect(() => {
     if (paused) {

@@ -1,5 +1,5 @@
 /**
- * integration-qa / task id=4：提示、笔记模式与撤销/重做 — 与 `@/lib/hint`、`@/lib/notes` 行为一致的 UI 契约。
+ * integration-qa / task id=4：提示、笔记模式与撤销/重开本局 — 与 `@/lib/hint`、`@/lib/notes` 行为一致的 UI 契约。
  * 断言依赖 `data-testid`、`data-hint-*`、`aria-pressed` 与 `evaluate` 读取的计算样式（opacity），不依赖 Tailwind 类名。
  */
 import { test, expect } from "@playwright/test";
@@ -8,7 +8,7 @@ import { apiRegisterAndLogin, injectAuth } from "./helpers";
 
 test.describe.configure({ retries: 1 });
 
-test.describe("提示、笔记模式与撤销/重做（hint / notes / undo-redo）", () => {
+test.describe("提示、笔记模式与撤销/重开（hint / notes / undo-restart）", () => {
 
 const TID = "unique-candidate";
 const MODE = "practice-endless:unique-candidate";
@@ -160,7 +160,7 @@ test("提示：连续多次点击时 HUD 说明仍可见且无控制台 error", 
   ).toHaveLength(0);
 });
 
-test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 一致", async ({ page, request }) => {
+test("笔记模式：可切换、打点可读；撤销后重开本局恢复初始并清空撤销栈", async ({ page, request }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
 
   const { token } = await apiRegisterAndLogin(request);
@@ -183,9 +183,9 @@ test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 
   await page.getByTestId("sudoku-mode-notes").click();
   await expect(page.getByTestId("sudoku-mode-notes")).toHaveAttribute("aria-pressed", "true");
 
-  /* 填数→笔记 的 setMode 会写入撤销栈，与「仅选中格不入栈」不同：此时应可撤销模式切换，重做仍不可用 */
+  /* 填数→笔记 的 setMode 会写入撤销栈，与「仅选中格不入栈」不同：此时应可撤销模式切换；重开本局始终可点（未暂停时） */
   await expect(page.getByTestId("sudoku-undo")).toBeEnabled();
-  await expect(page.getByTestId("sudoku-redo")).toBeDisabled();
+  await expect(page.getByTestId("sudoku-restart-round")).toBeEnabled();
 
   const emptyPlayerCell = page
     .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
@@ -206,19 +206,18 @@ test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 
   expect(onOpacity).toBeGreaterThan(0.55);
 
   await expect(page.getByTestId("sudoku-undo")).toBeEnabled();
-  await expect(page.getByTestId("sudoku-redo")).toBeDisabled();
+  await expect(page.getByTestId("sudoku-restart-round")).toBeEnabled();
 
   await page.getByTestId("sudoku-undo").click();
   const offOpacity = await noteMarkerEmphasis(page, markerId);
   expect(offOpacity).toBeLessThan(0.55);
 
-  await expect(page.getByTestId("sudoku-redo")).toBeEnabled();
-  await page.getByTestId("sudoku-redo").click();
-  const again = await noteMarkerEmphasis(page, markerId);
-  expect(again).toBeGreaterThan(0.55);
+  await page.getByTestId("sudoku-restart-round").click();
+  await expect(page.getByTestId("sudoku-mode-fill")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("sudoku-undo")).toBeDisabled();
 });
 
-test("填数模式：填一格后撤销清空、重做恢复（与 canUndo/canRedo 按钮态一致）", async ({
+test("填数模式：填一格后撤销清空、重开后不可再撤销", async ({
   page,
   request,
 }) => {
@@ -269,10 +268,9 @@ test("填数模式：填一格后撤销清空、重做恢复（与 canUndo/canRe
 
   await expect.poll(async () => readFilledDigit(page, tid!)).toBe("");
 
-  await expect(page.getByTestId("sudoku-redo")).toBeEnabled();
-  await page.getByTestId("sudoku-redo").click();
-
-  await expect.poll(async () => readFilledDigit(page, tid!)).toBe(placed);
+  await page.getByTestId("sudoku-restart-round").click();
+  await expect(page.getByTestId("sudoku-undo")).toBeDisabled();
+  await expect.poll(async () => readFilledDigit(page, tid!)).toBe("");
 });
 
-}); // describe 提示、笔记模式与撤销/重做
+}); // describe 提示、笔记模式与撤销/重开

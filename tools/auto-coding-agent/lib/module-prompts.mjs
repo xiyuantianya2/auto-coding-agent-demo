@@ -34,6 +34,8 @@ export function buildProjectDecompositionPrompt(repoRoot, project, taskJsonPath,
     userDescription,
     `---`,
     ``,
+    `用户提交的需求原文已追加到 ${project.dir}/requirements-archive.md；模块划分须与之一致，请勿偏离。`,
+    ``,
     `执行步骤：`,
     `1. 浏览 ${project.dir}/ 目录的代码结构（如果已有代码），了解项目背景。`,
     `2. 如果存在 architecture.md，阅读并理解整体架构。`,
@@ -201,7 +203,7 @@ export function buildModuleInitializerPrompt(repoRoot, project, taskJsonPath, mo
     `- 最后一个任务通常是模块的集成测试`,
     `- 任务中应考虑与已完成模块的接口对接`,
     `- 任务 steps 中应包含在 ${project.dir} 目录下执行 npm run lint 和 npm run build 的要求`,
-    `- 若任务包含编写单元/集成测试，steps 中应包含在 ${project.dir} 目录下执行 npm test 并确保全部通过`,
+    `- 若任务包含编写单元/集成测试：中间任务的 steps 应要求仅运行与本任务相关的测试文件（如 npx vitest run <路径>）；**仅最后一项任务**的 steps 应要求完整 \`npm test\`（及 UI 模块时的全量 E2E）`,
     `- 涉及性能敏感操作（如高计算量算法、大量迭代的生成器等）的测试步骤应注明：对已知慢路径（如高难度档位生成）仅做结构冒烟而非全量覆盖，或设置合理的 test timeout`,
     isUiModule(targetModule)
       ? `- 本模块涉及 UI，任务 steps 中应包含编写和运行 Playwright E2E 测试的要求`
@@ -226,8 +228,17 @@ export function buildModuleInitializerPrompt(repoRoot, project, taskJsonPath, mo
 
 /**
  * 构建模块内任务执行的 agent message（增强版，包含模块上下文）。
+ * @param {boolean} [isLastPlannedTask=false] 当前任务是否为该模块 task.json 中最后一项；仅最后一项跑全量 npm test / test:e2e。
  */
-export function buildModuleTaskMessage(repoRoot, project, taskJsonPath, modulePlan, targetModule, task) {
+export function buildModuleTaskMessage(
+  repoRoot,
+  project,
+  taskJsonPath,
+  modulePlan,
+  targetModule,
+  task,
+  isLastPlannedTask = false,
+) {
   const steps = Array.isArray(task.steps) ? task.steps.map((s, i) => `${i + 1}. ${s}`).join("\n") : "";
   const moduleTaskPath = path.join(
     repoRoot,
@@ -245,12 +256,34 @@ export function buildModuleTaskMessage(repoRoot, project, taskJsonPath, modulePl
   const needsE2E = isUiModule(targetModule);
 
   const testInstructions = needsE2E
+    ? isLastPlannedTask
+      ? [
+          `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
+          `- 浏览器自动化验收（Playwright E2E）：在 ${project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+        ]
+      : [
+          `- 单元/集成测试（**仅本任务范围**）：针对本任务新增或修改的代码，只运行相关的 Vitest 文件（\`npx vitest run <路径>\`），**不要**执行完整的 \`npm test\`。`,
+          `- 浏览器 E2E（**仅本任务范围**）：若本任务涉及 UI/浏览器，只运行相关的 Playwright 文件（\`npx playwright test <路径>\`），**不要**执行完整的 \`npm run test:e2e\`。若本任务纯逻辑、不涉及页面，可跳过 E2E。`,
+        ]
+    : isLastPlannedTask
+      ? [
+          `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过。本模块不涉及 UI，**无需编写或运行 Playwright E2E 测试**，仅通过 Vitest 单元/集成测试验收即可。`,
+        ]
+      : [
+          `- 单元/集成测试（**仅本任务范围**）：针对本任务，只运行相关的 Vitest 文件（\`npx vitest run <路径>\`），**不要**执行完整的 \`npm test\`。本模块不涉及 UI，**不要运行 Playwright E2E**。`,
+        ];
+
+  const effTail = isLastPlannedTask
     ? [
-        `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
-        `- 浏览器自动化验收（Playwright E2E）：在 ${project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+        `- **禁止重复跑全量测试**：\`npm test\` 和 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
+        `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+        `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
+        `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
       ]
     : [
-        `- 单元/集成测试：在 ${project.dir} 目录执行 \`npm test\` 确保全部通过。本模块不涉及 UI，**无需编写或运行 Playwright E2E 测试**，仅通过 Vitest 单元/集成测试验收即可。`,
+        `- **本任务不是本模块任务列表中的最后一项**：不要运行完整 \`npm test\` 或全量 \`npm run test:e2e\`；整体验收在模块内最后一项任务执行。`,
+        `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。`,
+        `- **修复失败时只重跑最小范围**：只跑与本任务相关的测试文件。`,
       ];
 
   return [
@@ -300,10 +333,7 @@ export function buildModuleTaskMessage(repoRoot, project, taskJsonPath, modulePl
       : "",
     ``,
     `测试执行效率（严格遵守，防止超时）：`,
-    `- **禁止重复跑全量测试**：\`npm test\` 和 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
-    `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
-    `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
-    `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
+    ...effTail,
   ]
     .filter(Boolean)
     .join("\n");

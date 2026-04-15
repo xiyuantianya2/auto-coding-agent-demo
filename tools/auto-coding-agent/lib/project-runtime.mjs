@@ -13,9 +13,11 @@ import {
   isTaskDoneSafe,
   isTaskIncomplete,
   tryLoadIncompleteTasks,
+  isLastPlannedTask,
 } from "./task-queue.mjs";
 import { performProjectCleanup } from "./project-cleanup.mjs";
 import { formatBeijingDateTime } from "./beijing-time.mjs";
+import { appendRequirementsArchive } from "./requirements-archive.mjs";
 import {
   loadModulePlan,
   saveModulePlan,
@@ -73,8 +75,30 @@ function resolveAgentIdleTimeoutMs() {
 // ── project-specific agent prompt builders ──────────────────────────
 
 const CUSTOM_AGENT_BUILDERS = {
-  "link-game": (repoRoot, project, task) => {
+  "link-game": (repoRoot, project, task, lastInPlan) => {
     const steps = Array.isArray(task.steps) ? task.steps.map((s, i) => `${i + 1}. ${s}`).join("\n") : "";
+    const testBlock = lastInPlan
+      ? [
+          `4. 单元/集成测试：在 link-game 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E。`,
+          `5. 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
+          `6. **以上全部通过后**，才可以修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
+        ]
+      : [
+          `4. 单元/集成测试（**仅本任务范围**）：针对本任务新增或修改的代码，只运行相关的 Vitest 文件（\`npx vitest run <路径>\`），**不要**执行完整的 \`npm test\`。`,
+          `5. 浏览器 E2E（**仅本任务范围**）：若本任务涉及 UI/浏览器，只运行相关的 Playwright 文件（\`npx playwright test <路径>\`），**不要**执行完整的 \`npm run test:e2e\`。若本任务纯逻辑、不涉及页面，可跳过 E2E。`,
+          `6. **以上全部通过后**，才可以修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
+        ];
+    const effNote = lastInPlan
+      ? [
+          `- **禁止重复跑全量测试**：步骤 4 的 \`npm test\` 和步骤 5 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
+          `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+          `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，只跑该文件，不要反复跑全量套件。`,
+        ]
+      : [
+          `- **本任务不是需求列表中的最后一项**：不要运行完整 \`npm test\` 或全量 \`npm run test:e2e\`；整体验收在最后一项任务执行。`,
+          `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。`,
+          `- **修复失败时只重跑最小范围**：只跑与本任务相关的测试文件。`,
+        ];
     return [
       `你是本仓库的 coding agent。工作区根目录：${repoRoot}`,
       ``,
@@ -92,9 +116,7 @@ const CUSTOM_AGENT_BUILDERS = {
       `1. 实现本任务的功能代码。`,
       `2. 更新 progress.txt 记录本任务。`,
       `3. 在 link-game 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `4. 单元/集成测试：在 link-game 目录执行 \`npm test\` 确保全部通过（仅含快速单元/集成测试，不含 Playwright E2E）。先跑单元测试再跑 E2E。`,
-      `5. 浏览器自动化验收（Playwright E2E）：在 link-game/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并运行 E2E 测试。如果浏览器未安装，先执行 \`npx playwright install chromium\`。全部测试通过才算验收成功。`,
-      `6. **以上全部通过后**，才可以修改仓库根目录下的 task.json（路径：${path.join(repoRoot, "task.json")}），将 id=${task.id} 的 passes 改为 true；不要只改子目录里的副本。`,
+      ...testBlock,
       `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
       ``,
@@ -109,9 +131,7 @@ const CUSTOM_AGENT_BUILDERS = {
       `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发，而非忽略。`,
       ``,
       `测试执行效率（严格遵守，防止超时）：`,
-      `- **禁止重复跑全量测试**：步骤 4 的 \`npm test\` 和步骤 5 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从头重新跑全量——只重跑失败的那个步骤即可。`,
-      `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
-      `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，只跑该文件，不要反复跑全量套件。`,
+      ...effNote,
     ]
       .filter(Boolean)
       .join("\n");
@@ -673,14 +693,59 @@ export class ProjectRuntime {
     return path.join(this.dataDir, `wizard-${this.project.id}.json`);
   }
 
+  /**
+   * 将用户原文追加到子项目目录下的 requirements-archive.md。
+   * @param {string} kind 条目标题中的类型说明
+   * @param {Array<{ title: string; body: string }>} blocks
+   */
+  async writeRequirementsArchive(kind, blocks) {
+    try {
+      await appendRequirementsArchive(this.repoRoot, this.project.dir, { kind, blocks });
+      this.log(`[需求留档] 已追加 ${this.project.dir}/requirements-archive.md（${kind}）`);
+    } catch (e) {
+      this.log(`[需求留档] 写入失败：${e?.message || e}`);
+    }
+  }
+
   // ── Agent message building ──────────────────────────────────────
 
-  buildAgentMessage(task) {
+  buildAgentMessage(task, lastInPlanArg) {
+    let lastInPlan = lastInPlanArg;
+    if (lastInPlan === undefined) {
+      try {
+        lastInPlan = isLastPlannedTask(this.repoRoot, this.project.taskJsonPath, task.id);
+      } catch {
+        lastInPlan = false;
+      }
+    }
     const custom = CUSTOM_AGENT_BUILDERS[this.project.id];
-    if (custom) return custom(this.repoRoot, this.project, task);
+    if (custom) return custom(this.repoRoot, this.project, task, lastInPlan);
 
     const steps = Array.isArray(task.steps) ? task.steps.map((s, i) => `${i + 1}. ${s}`).join("\n") : "";
     const tjp = this.getTaskJsonPath();
+    const testSteps = lastInPlan
+      ? [
+          `3. 单元/集成测试：在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。这只会运行快速的单元/集成测试（vitest），不含 Playwright E2E。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
+          `4. 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并打开浏览器运行 E2E 测试。Playwright 配置已内置 webServer 自动启动。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
+          `5. **以上全部通过后**，才可以修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
+        ]
+      : [
+          `3. 单元/集成测试（**仅本任务范围**）：针对本任务新增或修改的代码，只运行相关的 Vitest 文件（\`npx vitest run <路径>\`），**不要**执行完整的 \`npm test\`。`,
+          `4. 浏览器 E2E（**仅本任务范围**）：若本任务涉及 UI/浏览器，只运行相关的 Playwright 文件（\`npx playwright test <路径>\`），**不要**执行完整的 \`npm run test:e2e\`。若本任务纯逻辑、不涉及页面，可跳过 E2E。`,
+          `5. **以上全部通过后**，才可以修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
+        ];
+    const effLines = lastInPlan
+      ? [
+          `- **禁止重复跑全量测试**：步骤 3 的 \`npm test\` 和步骤 4 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从步骤 1 重新跑全量——只重跑失败的那个步骤即可。`,
+          `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
+          `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
+          `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
+        ]
+      : [
+          `- **本任务不是需求列表中的最后一项**：不要运行完整 \`npm test\` 或全量 \`npm run test:e2e\`；整体验收在最后一项任务执行。`,
+          `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。`,
+          `- **修复失败时只重跑最小范围**：只跑与本任务相关的测试文件。`,
+        ];
     return [
       `你是本仓库的 coding agent。工作区根目录：${this.repoRoot}`,
       ``,
@@ -695,9 +760,7 @@ export class ProjectRuntime {
       `硬性要求（必须按顺序执行，且仅在前置步骤全部通过后才进入下一步）：`,
       `1. 实现本任务的功能代码。`,
       `2. 在 ${this.project.dir} 目录执行 npm run lint 与 npm run build，修复直至通过。`,
-      `3. 单元/集成测试：在 ${this.project.dir} 目录执行 \`npm test\` 确保全部通过。这只会运行快速的单元/集成测试（vitest），不含 Playwright E2E。先跑单元测试再跑 E2E——单元测试更快、反馈更精准，优先用它定位问题。`,
-      `4. 浏览器自动化验收（Playwright E2E）：在 ${this.project.dir}/ 目录下执行 \`npm run test:e2e\`，它会自动启动 dev server 并打开浏览器运行 E2E 测试。Playwright 配置已内置 webServer 自动启动。如果浏览器未安装，先执行 \`npx playwright install chromium\`（系统级缓存，不要重复下载）。若 e2e/ 目录下尚无 *.spec.ts 测试文件，需为当前任务的功能编写 Playwright 测试用例。全部测试通过才算验收成功。`,
-      `5. **以上全部通过后**，才可以修改 task.json（路径：${tjp}），将 id=${task.id} 的 passes 改为 true。`,
+      ...testSteps,
       `   ⚠️ 如果 lint、build、单元测试或 E2E 测试有任何一项未通过，**绝对不要**将 passes 改为 true。宁可留 passes: false 让自动化系统重试，也不要在测试未通过时标记为 true。`,
       `- 单次 git commit 包含本任务相关变更（若使用 git）。`,
       ``,
@@ -712,10 +775,7 @@ export class ProjectRuntime {
       `- E2E flaky：若并行下偶发失败，优先标记 retries 或降低并发（\`--workers=1\`），而非忽略。`,
       ``,
       `测试执行效率（严格遵守，防止超时）：`,
-      `- **禁止重复跑全量测试**：步骤 3 的 \`npm test\` 和步骤 4 的 \`npm run test:e2e\` 各只需运行**一次**。不要在修复代码后从步骤 1 重新跑全量——只重跑失败的那个步骤即可。`,
-      `- **不要在 vitest 测试中嵌套 Playwright**：不要编写通过 spawn/exec 调用 \`npx playwright test\` 的 vitest 测试。vitest 只做纯逻辑单元测试，E2E 由 Playwright 自身运行。`,
-      `- **单次测试超时上限**：单个 vitest 用例不应超过 30 秒（含 setup），单个 Playwright 用例不应超过 2 分钟。若需更长时间，应拆分或简化。`,
-      `- **修复失败时只重跑最小范围**：如果某个特定测试文件失败，使用 \`npx vitest run path/to/file.test.ts\` 或 \`npx playwright test path/to/file.spec.ts\` 只跑该文件，不要反复跑全量套件。`,
+      ...effLines,
     ]
       .filter(Boolean)
       .join("\n");
@@ -740,6 +800,8 @@ export class ProjectRuntime {
       userPrompt,
       `---`,
       ``,
+      `用户本次提交的需求原文已追加到 ${this.project.dir}/requirements-archive.md；分解任务时请勿偏离该原文。`,
+      ``,
       `当前 task.json 内容（路径：${tjp}）：`,
       `\`\`\`json`,
       taskJsonContent,
@@ -762,6 +824,7 @@ export class ProjectRuntime {
       `- **先跑通再优化**：任务描述中的算法/生成策略应优先选择简单、可靠、性能可控的方案。例如：生成类任务应要求「单次调用 < 5 秒完成」，宁可保留冗余数据也不追求理论最优导致生成超时。`,
       `- **禁止自行添加极限约束**：若用户需求中没有明确要求「最少」「最小」「最优」等极限目标，任务描述不要自行引入。例如数独出题无需追求最少提示数、图片压缩无需追求最小体积——「足够好且快速」优先于「理论最优但可能超时」。`,
       `- **耗时操作必须有上限**：涉及循环/重试/搜索的任务，description 中应明确要求设置 maxAttempts 或超时保底，不能无限循环。`,
+      `- **测试验收范围**：除 tasks 数组中**最后一项**外，各任务的 steps 只应要求针对本任务变更的测试（如 \`npx vitest run <路径>\` / 相关 Playwright 文件）；**最后一项**再要求完整 \`npm test\` 与全量 E2E（若项目有）。`,
       ``,
       `硬性要求：`,
       `- 只修改 task.json（路径：${tjp}），不要修改任何应用代码或其他文件`,
@@ -773,7 +836,13 @@ export class ProjectRuntime {
   // ── Task execution ──────────────────────────────────────────────
 
   async runOneTask(task) {
-    const agentMessage = this.buildAgentMessage(task);
+    let lastInPlan = false;
+    try {
+      lastInPlan = isLastPlannedTask(this.repoRoot, this.project.taskJsonPath, task.id);
+    } catch {
+      lastInPlan = false;
+    }
+    const agentMessage = this.buildAgentMessage(task, lastInPlan);
     this.agentPromptSnapshot = { text: agentMessage, taskId: task.id, updatedAt: formatBeijingDateTime() };
     this.beginAgentCliSession(task);
     this.lastAgentPid = undefined;
@@ -811,9 +880,11 @@ export class ProjectRuntime {
     const marked = await this.waitUntilTaskMarkedDone(task.id);
     if (!marked) {
       const tjp = this.getTaskJsonPath();
-      const autoFixed = this.tryAutoVerifyAndMark(tjp, task.id);
+      const autoFixed = this.tryAutoVerifyAndMark(tjp, task.id, lastInPlan);
       if (autoFixed) {
-        this.log(`[auto-verify] Agent 漏标 passes，但 lint/build/test 全部通过，已自动标记 id=${task.id} passes: true。`);
+        this.log(
+          `[auto-verify] Agent 漏标 passes，但 ${lastInPlan ? "lint/build/test" : "lint/build"} 全部通过，已自动标记 id=${task.id} passes: true。`,
+        );
         this.appendCliText(`\n[auto-verify] ✅ Agent 漏标 passes，自动验收通过并标记。\n`);
         return { ok: true, code: 0 };
       }
@@ -1074,6 +1145,9 @@ export class ProjectRuntime {
     this.startIdleWatchdog();
     try {
       this.log(`[自定义任务] 开始需求分解…`);
+      await this.writeRequirementsArchive("新增 / 重构功能", [
+        { title: "用户提交的完整描述（原文）", body: userPrompt },
+      ]);
       const ok = await this.runDecomposition(userPrompt);
       if (!ok) {
         if (this.resetRequested) {
@@ -1183,6 +1257,7 @@ export class ProjectRuntime {
       `项目信息：`,
       `- 名称：${this.project.name}`,
       `- 目录：${this.project.dir}/（已创建，位于工作区根目录下）`,
+      `- 需求原文留档：${this.project.dir}/requirements-archive.md（已由系统记录向导原文；请勿清空历史，实现须与之一致）`,
       `- 用户描述：${description}`,
       qaSection,
       ``,
@@ -1299,6 +1374,10 @@ export class ProjectRuntime {
         return;
       }
 
+      await this.writeRequirementsArchive("新建项目向导 · 需求分析（初稿）", [
+        { title: "用户提交的项目描述（原文）", body: description },
+      ]);
+
       const wizFile = this.getWizardFilePath();
       try {
         const raw = fs.readFileSync(wizFile, "utf8");
@@ -1332,6 +1411,27 @@ export class ProjectRuntime {
     this.startIdleWatchdog();
     try {
       this.log(`[项目初始化] 开始…`);
+      const initBlocks = [
+        { title: "原始项目描述（原文）", body: wizardData.description },
+      ];
+      const ans = wizardData.answers;
+      if (Array.isArray(ans) && ans.length > 0) {
+        const qaText = ans
+          .map((a) => {
+            const q = a.question != null ? String(a.question) : "";
+            const av = a.answer != null ? String(a.answer) : "";
+            return `Q: ${q}\nA: ${av}`;
+          })
+          .join("\n\n---\n\n");
+        initBlocks.push({ title: "向导追问与回答（完整）", body: qaText });
+      }
+      if (this.wizardQuestions && this.wizardQuestions.length > 0) {
+        initBlocks.push({
+          title: "AI 生成的追问模板（JSON，含 id / label / placeholder 等）",
+          body: JSON.stringify(this.wizardQuestions, null, 2),
+        });
+      }
+      await this.writeRequirementsArchive("新建项目向导 · 项目初始化（完整）", initBlocks);
       const message = this.buildInitMessage(wizardData);
       this.agentPromptSnapshot = { text: message, taskId: null, updatedAt: formatBeijingDateTime() };
       this.agentCliSnapshot = {
@@ -1471,6 +1571,9 @@ export class ProjectRuntime {
    * 将项目需求分解为模块（生成 module-plan.json）。
    */
   async runModuleDecomposition(userPrompt) {
+    await this.writeRequirementsArchive("模块化开发 · 模块分解", [
+      { title: "用户提交的完整描述（原文）", body: userPrompt },
+    ]);
     const tjp = this.project.taskJsonPath;
     if (!tjp) {
       this.state.lastError = "项目未配置 taskJsonPath，无法进行模块分解。";
@@ -1566,8 +1669,15 @@ export class ProjectRuntime {
    */
   async runOneModuleTask(modulePlan, targetModule, task) {
     const tjp = this.project.taskJsonPath;
+    const moduleTaskRel = deriveModuleTaskJsonPath(tjp, targetModule.id);
+    let lastInPlan = false;
+    try {
+      lastInPlan = isLastPlannedTask(this.repoRoot, moduleTaskRel, task.id);
+    } catch {
+      lastInPlan = false;
+    }
     const agentMessage = buildModuleTaskMessage(
-      this.repoRoot, this.project, tjp, modulePlan, targetModule, task,
+      this.repoRoot, this.project, tjp, modulePlan, targetModule, task, lastInPlan,
     );
     this.agentPromptSnapshot = { text: agentMessage, taskId: task.id, updatedAt: formatBeijingDateTime() };
     this.beginAgentCliSession(task);
@@ -1606,9 +1716,11 @@ export class ProjectRuntime {
     const moduleTaskJsonPath = deriveModuleTaskJsonPath(tjp, targetModule.id);
     const marked = await this.waitUntilModuleTaskDone(moduleTaskJsonPath, task.id);
     if (!marked) {
-      const autoFixed = this.tryAutoVerifyAndMark(moduleTaskJsonPath, task.id);
+      const autoFixed = this.tryAutoVerifyAndMark(moduleTaskJsonPath, task.id, lastInPlan);
       if (autoFixed) {
-        this.log(`[auto-verify] Agent 漏标 passes，但 lint/build/test 全部通过，已自动标记 id=${task.id} passes: true。`);
+        this.log(
+          `[auto-verify] Agent 漏标 passes，但 ${lastInPlan ? "lint/build/test" : "lint/build"} 全部通过，已自动标记 id=${task.id} passes: true。`,
+        );
         this.appendCliText(`\n[auto-verify] ✅ Agent 漏标 passes，自动验收通过并标记。\n`);
         return { ok: true, code: 0 };
       }
@@ -1625,13 +1737,14 @@ export class ProjectRuntime {
   }
 
   /**
-   * 当 Agent 退出码为 0 但未标记 passes 时，自动运行 lint/build/test 验证。
+   * 当 Agent 退出码为 0 但未标记 passes 时，自动运行 lint/build（及最后一项任务时的 test）验证。
    * 若全部通过，自动将 passes 标记为 true。
    * @param {string} moduleTaskJsonRelPath
    * @param {number} taskId
+   * @param {boolean} [isLastPlannedTask=true] 非最后一项任务时不跑全量 npm test，与 Agent 提示一致。
    * @returns {boolean} 是否自动标记成功
    */
-  tryAutoVerifyAndMark(moduleTaskJsonRelPath, taskId) {
+  tryAutoVerifyAndMark(moduleTaskJsonRelPath, taskId, isLastPlannedTask = true) {
     const projectDir = path.join(this.repoRoot, this.project.dir);
     const absTaskPath = path.join(this.repoRoot, moduleTaskJsonRelPath);
     const timeoutMs = 120_000;
@@ -1652,7 +1765,8 @@ export class ProjectRuntime {
       }
     };
 
-    this.log(`[auto-verify] Agent 未标记 passes，尝试自动验收 lint/build/test…`);
+    const verifyLabel = isLastPlannedTask ? "lint/build/test" : "lint/build（非最后一项任务跳过全量 test）";
+    this.log(`[auto-verify] Agent 未标记 passes，尝试自动验收 ${verifyLabel}…`);
     this.appendCliText(`\n[auto-verify] 尝试自动验收…\n`);
 
     if (!runNpm("lint")) {
@@ -1669,12 +1783,16 @@ export class ProjectRuntime {
     }
     this.appendCliText(`[auto-verify] ✅ build 通过\n`);
 
-    if (!runNpm("test")) {
-      this.log(`[auto-verify] test 失败，无法自动标记。`);
-      this.appendCliText(`[auto-verify] ❌ test 失败\n`);
-      return false;
+    if (isLastPlannedTask) {
+      if (!runNpm("test")) {
+        this.log(`[auto-verify] test 失败，无法自动标记。`);
+        this.appendCliText(`[auto-verify] ❌ test 失败\n`);
+        return false;
+      }
+      this.appendCliText(`[auto-verify] ✅ test 通过\n`);
+    } else {
+      this.appendCliText(`[auto-verify] ⏭️ 跳过全量 test（非最后一项任务）\n`);
     }
-    this.appendCliText(`[auto-verify] ✅ test 通过\n`);
 
     try {
       const raw = fs.readFileSync(absTaskPath, "utf8");
