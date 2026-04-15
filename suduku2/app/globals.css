@@ -48,6 +48,9 @@
   --s2-cell-fill-text: #0f766e;
   --s2-cell-selected-ring: rgba(13, 148, 136, 0.88);
   --s2-cell-hint-ring: rgba(217, 119, 6, 0.95);
+  /* 选中格所在行/列/宫：略染青绿，与选中环区分 */
+  --s2-cell-region-empty-bg: #ecfdf5;
+  --s2-cell-region-given-bg: #e2f0ee;
 
   --s2-cand-pip-muted: #cbd5e1;
   --s2-cand-pip-on: #334155;
@@ -134,6 +137,8 @@ html.dark {
   --s2-cell-fill-text: #5eead4;
   --s2-cell-selected-ring: rgba(45, 212, 191, 0.9);
   --s2-cell-hint-ring: rgba(251, 191, 36, 0.95);
+  --s2-cell-region-empty-bg: #1a2e32;
+  --s2-cell-region-given-bg: #243647;
 
   --s2-cand-pip-muted: #64748b;
   --s2-cand-pip-on: #e2e8f0;
@@ -213,42 +218,82 @@ body {
 
 /* SudokuPlaySurface：9×9 棋盘响应式宽度 — 放在 @layer 中以免被 Tailwind 丢弃 */
 @layer components {
+  /* 行/列/宫高亮为即时背景色切换，刻意不为格钮添加 transition，避免切换焦点时闪烁或位移动画 */
+  @media (prefers-reduced-motion: reduce) {
+    .s2-play-board > button {
+      transition: none !important;
+    }
+  }
+
   .s2-play-board {
-    max-width: min(100%, 560px);
+    max-width: min(100%, 620px);
   }
 
   @media (max-width: 767px) and (orientation: landscape) {
     .s2-play-board {
-      max-width: min(100%, min(94vmin, 560px));
+      max-width: min(100%, min(94vmin, 620px));
     }
   }
 
   @media (min-width: 768px) and (orientation: landscape) {
     .s2-play-board {
-      /* 预留页眉/关卡信息/计时行等非棋盘区域，避免首屏裁切（E2E 以视口框断言） */
-      max-width: min(100%, 92vmin, 96vw, calc(100dvh - 18rem), 780px);
+      /* 预留页眉/关卡信息/计时行与侧栏；对局容器已加宽，像素上限提高 */
+      max-width: min(100%, 92vmin, 96vw, calc(100dvh - 18rem), 920px);
     }
   }
 
   @media (min-width: 1280px) and (orientation: landscape) {
     .s2-play-board {
-      max-width: min(100%, 88vmin, 94vw, calc(100dvh - 16rem), 880px);
+      max-width: min(100%, 88vmin, 94vw, calc(100dvh - 14rem), 1080px);
     }
   }
 
   @media (min-width: 1024px) and (orientation: portrait) {
     .s2-play-board {
-      max-width: min(100%, 640px);
+      max-width: min(100%, 680px);
     }
   }
 
+  /* 全屏：棋格栏为 size 容器，棋盘边长取栏内 min(宽,高)，填满可用区域 */
+  [data-fullscreen="true"] .s2-board-area {
+    container-type: size;
+    container-name: board;
+  }
+
   [data-fullscreen="true"] .s2-play-board {
-    max-width: min(100%, 76dvw, calc(100dvh - 8rem), 680px);
+    max-width: min(100%, calc(100dvh - 10rem), 92dvw);
   }
 
   @media (min-width: 768px) and (orientation: landscape) {
     [data-fullscreen="true"] .s2-play-board {
-      max-width: min(100%, 82dvw, calc(100dvh - 7rem), 780px);
+      max-width: min(100%, calc(100dvh - 9rem), 90dvw);
+    }
+  }
+
+  @supports (width: 1cqmin) {
+    [data-fullscreen="true"] .s2-play-board {
+      width: min(100%, 100cqmin);
+      max-width: min(100%, 100cqmin);
+    }
+  }
+
+  /* 全屏：侧栏底部「保存草稿」等与主操作区同量级（矮视口略压缩以免挤出视口） */
+  [data-fullscreen="true"] .s2-play-sidebar-extra-actions > button {
+    min-height: clamp(3.25rem, min(9vmin, 10vh), 7.5rem);
+    padding-inline: clamp(1.1rem, 3vmin, 2rem);
+    padding-block: clamp(0.55rem, 1.8vmin, 1rem);
+    font-size: clamp(0.95rem, min(2.6vmin, 2.8vh), 1.35rem);
+    border-radius: var(--s2-r-xl);
+  }
+
+  /* 非全屏横屏：对局侧栏底部按钮随容器放大（全屏规则更具体，不冲突） */
+  @media (min-width: 768px) and (orientation: landscape) {
+    .s2-play-sidebar-extra-actions > button {
+      min-height: clamp(3.1rem, min(8.5vmin, 9.5vh), 7rem);
+      padding-inline: clamp(1.05rem, 2.8vmin, 2rem);
+      padding-block: clamp(0.55rem, 1.6vmin, 1rem);
+      font-size: clamp(0.95rem, min(2.5vmin, 2.8vh), 1.3rem);
+      border-radius: var(--s2-r-xl);
     }
   }
 }

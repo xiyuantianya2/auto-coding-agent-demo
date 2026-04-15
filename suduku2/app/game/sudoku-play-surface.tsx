@@ -49,6 +49,21 @@ function candidateHighlightMap(h: HintResult | null): Map<string, Set<number>> {
   return m;
 }
 
+/** 与选中格同一行、列或 3×3 宫（含选中格自身） */
+function isInSelectedRegion(r: number, c: number, selected: { r: number; c: number } | null): boolean {
+  if (!selected) {
+    return false;
+  }
+  if (r === selected.r || c === selected.c) {
+    return true;
+  }
+  const br = Math.floor(r / 3) * 3;
+  const bc = Math.floor(c / 3) * 3;
+  const sbr = Math.floor(selected.r / 3) * 3;
+  const sbc = Math.floor(selected.c / 3) * 3;
+  return br === sbr && bc === sbc;
+}
+
 /** HUD 与首屏工具条共用：触控高、圆角与焦点环与设计令牌一致 */
 const hudBtnBase =
   "inline-flex min-h-[var(--s2-touch-min)] touch-manipulation items-center justify-center rounded-[var(--s2-r-lg)] px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--s2-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--s2-card-muted)]";
@@ -158,8 +173,8 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
       className={[
         "flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
         "[@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]",
-        /* 全屏：铺满视口、四边安全区内边距，避免贴边裁切；内容过高时可纵向滚动 */
-        "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
+        /* 全屏：铺满视口、四边安全区内边距；主内容区 flex-1 占满剩余高度以便棋盘按栏内空间放大 */
+        "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:min-h-0 data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
         "data-[fullscreen=true]:pt-[calc(0.75rem+env(safe-area-inset-top,0px))] data-[fullscreen=true]:pr-[calc(0.75rem+env(safe-area-inset-right,0px))] data-[fullscreen=true]:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] data-[fullscreen=true]:pl-[calc(0.75rem+env(safe-area-inset-left,0px))]",
       ].join(" ")}
       data-fullscreen={isFullscreen ? "true" : "false"}
@@ -169,6 +184,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
         <div
           className={[
             "flex rounded-[var(--s2-r-xl)] bg-[var(--s2-card-muted)] ring-1 ring-[var(--s2-btn-secondary-ring)]",
+            isFullscreen ? "shrink-0" : "",
             isFullscreen
               ? "flex-row items-stretch gap-3 p-2 [&_button]:min-h-[2.75rem] [&_button]:py-1.5"
               : ["flex-col gap-3 p-3", hudLandscape].join(" "),
@@ -262,8 +278,21 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
         </div>
       ) : null}
 
-      <div className="flex w-full min-w-0 flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-5 lg:gap-8 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-10">
-        <div className="mx-auto flex w-full min-w-0 justify-center md:mx-0 [@media(min-width:768px)_and_(orientation:landscape)]:min-w-0 [@media(min-width:768px)_and_(orientation:landscape)]:flex-1 [@media(min-width:768px)_and_(orientation:landscape)]:justify-center">
+      <div
+        className={[
+          "flex w-full min-w-0 flex-col gap-3 md:flex-row md:justify-between md:gap-4 lg:gap-7 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-9",
+          /* 非全屏须 align-start，避免侧栏过高时把棋盘行纵向拉伸破坏 aspect-square */
+          isFullscreen ? "min-h-0 flex-1 md:items-stretch" : "md:items-start",
+        ].join(" ")}
+      >
+        <div
+          className={[
+            "mx-auto flex w-full min-w-0 justify-center md:mx-0 [@media(min-width:768px)_and_(orientation:landscape)]:min-w-0 [@media(min-width:768px)_and_(orientation:landscape)]:flex-1 [@media(min-width:768px)_and_(orientation:landscape)]:justify-center",
+            isFullscreen
+              ? "s2-board-area min-h-0 flex-1 items-center md:min-h-0 md:flex-[1.35_1_0%]"
+              : "",
+          ].join(" ")}
+        >
           <div
             className={[
               "s2-play-board grid aspect-square w-full grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-[var(--s2-r-xl)] border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2",
@@ -278,27 +307,41 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             const d = getEffectiveDigitAt(gameState, r, c);
             const isGiven = gameState.cells[r][c].given !== undefined;
             const isSel = selected?.r === r && selected?.c === c;
+            const inRegion = isInSelectedRegion(r, c, selected);
             const hintHere = hintCells.has(`${r},${c}`);
             const thickR = (c + 1) % 3 === 0 && c < 8;
             const thickB = (r + 1) % 3 === 0 && r < 8;
             const candSet = candHigh.get(`${r},${c}`);
+            const cellBg = isGiven
+              ? inRegion
+                ? "bg-[var(--s2-cell-region-given-bg)] text-[var(--s2-cell-given-text)]"
+                : "bg-[var(--s2-cell-given-bg)] text-[var(--s2-cell-given-text)]"
+              : inRegion
+                ? "bg-[var(--s2-cell-region-empty-bg)] text-[var(--s2-cell-fill-text)]"
+                : "bg-[var(--s2-cell-empty-bg)] text-[var(--s2-cell-fill-text)]";
+            const hintRing = hintHere
+              ? isGiven
+                ? inRegion
+                  ? "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-region-given-bg)]"
+                  : "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-given-bg)]"
+                : inRegion
+                  ? "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-region-empty-bg)]"
+                  : "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-empty-bg)]"
+              : "";
             return (
               <button
                 key={`${r}-${c}`}
                 type="button"
                 className={[
-                  "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-[clamp(0.95rem,3.6vmin,1.35rem)] font-semibold",
-                  isGiven
-                    ? "bg-[var(--s2-cell-given-bg)] text-[var(--s2-cell-given-text)]"
-                    : "bg-[var(--s2-cell-empty-bg)] text-[var(--s2-cell-fill-text)]",
+                  "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-[clamp(0.95rem,3.6vmin,1.35rem)] font-semibold transition-none",
+                  cellBg,
                   isSel ? "z-[1] ring-2 ring-[var(--s2-cell-selected-ring)]" : "",
-                  hintHere
-                    ? "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-empty-bg)]"
-                    : "",
+                  hintRing,
                   thickR ? "border-r-2 border-r-[var(--s2-border-strong)]" : "",
                   thickB ? "border-b-2 border-b-[var(--s2-border-strong)]" : "",
                 ].join(" ")}
                 data-testid={`sudoku-cell-${r}-${c}`}
+                data-s2-in-region={inRegion ? "true" : undefined}
                 data-hint-cell={hintHere ? "true" : undefined}
                 aria-label={`单元格 ${r + 1} 行 ${c + 1} 列`}
                 disabled={interactionLocked || isGiven}
@@ -352,17 +395,30 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           </div>
         </div>
 
-        <div className="flex w-full min-w-0 shrink-0 flex-col gap-4 md:max-w-sm [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,280px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-sm">
-          <div className="flex flex-col gap-2">
+        <div
+          className={[
+            "s2-play-sidebar flex w-full min-w-0 flex-col",
+            isFullscreen
+              ? "max-w-[min(100%,min(96vw,52rem))] min-h-0 shrink flex-1 justify-center gap-5 overflow-y-auto overscroll-y-contain py-2 sm:gap-6 sm:py-3 md:max-w-[min(100%,min(48vw,48rem))] md:flex-[0.95_1_20rem] lg:max-w-[min(100%,min(42vw,48rem))]"
+              : "shrink-0 gap-4 md:max-w-md [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,280px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(100%,min(32rem,42vw))] [@media(min-width:1024px)_and_(orientation:landscape)]:max-w-[min(100%,min(36rem,44vw))]",
+          ].join(" ")}
+        >
+          <div className={["flex flex-col gap-2", isFullscreen ? "shrink-0" : ""].join(" ")}>
             <div
-              className="flex w-full overflow-hidden rounded-2xl bg-[var(--s2-card-muted)] p-1 ring-1 ring-[var(--s2-btn-secondary-ring)]"
+              className={[
+                "flex w-full overflow-hidden rounded-2xl bg-[var(--s2-card-muted)] p-1 ring-1 ring-[var(--s2-btn-secondary-ring)]",
+                isFullscreen ? "p-1.5" : "",
+              ].join(" ")}
               role="group"
               aria-label="填数与笔记模式"
             >
               <button
                 type="button"
                 className={[
-                  "min-h-[52px] flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 text-base font-semibold transition-colors",
+                  "flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 font-semibold transition-colors",
+                  isFullscreen
+                    ? "min-h-[clamp(3.5rem,min(10vmin,12vh),7rem)] text-[clamp(1.15rem,min(3.6vmin,4vh),2rem)]"
+                    : "min-h-[52px] text-base [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.35rem,min(9vmin,10vh),6.5rem)] [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(1.1rem,min(3.2vmin,3.6vh),1.75rem)]",
                   gameState.mode === "fill"
                     ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
                     : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
@@ -377,7 +433,10 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               <button
                 type="button"
                 className={[
-                  "min-h-[52px] flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 text-base font-semibold transition-colors",
+                  "flex-1 touch-manipulation select-none rounded-[var(--s2-r-lg)] px-3 py-3 font-semibold transition-colors",
+                  isFullscreen
+                    ? "min-h-[clamp(3.5rem,min(10vmin,12vh),7rem)] text-[clamp(1.15rem,min(3.6vmin,4vh),2rem)]"
+                    : "min-h-[52px] text-base [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.35rem,min(9vmin,10vh),6.5rem)] [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(1.1rem,min(3.2vmin,3.6vh),1.75rem)]",
                   gameState.mode === "notes"
                     ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm"
                     : "text-[var(--s2-text-muted)] hover:bg-[var(--s2-btn-secondary-bg)]",
@@ -391,7 +450,12 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               </button>
             </div>
             <p
-              className="text-center text-xs leading-snug text-[var(--s2-text-subtle)]"
+              className={[
+                "text-center leading-snug text-[var(--s2-text-subtle)]",
+                isFullscreen
+                  ? "text-[clamp(0.85rem,min(2.4vmin,2.8vh),1.15rem)]"
+                  : "text-xs [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(0.8rem,min(2vmin,2.2vh),1.05rem)]",
+              ].join(" ")}
               data-testid="sudoku-mode-hint"
               aria-live="polite"
             >
@@ -402,7 +466,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           </div>
 
           <div
-            className="grid grid-cols-3 gap-3"
+            className={[
+              "grid grid-cols-3 gap-3",
+              /* 全屏：键钮为正方形（宽≈高），避免被 flex 行高拉成细长条 */
+              isFullscreen
+                ? "mx-auto w-full max-w-[min(100%,min(72vmin,44rem))] shrink-0 justify-items-stretch gap-[clamp(0.55rem,min(2.5vmin,3vw),1.35rem)]"
+                : [
+                    "mx-auto w-full max-w-[min(100%,min(92vw,22.5rem))] sm:max-w-[min(100%,min(90vw,26rem))]",
+                    "[@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(100%,min(72vmin,44rem))] [@media(min-width:768px)_and_(orientation:landscape)]:gap-[clamp(0.5rem,min(2.4vmin,3vw),1.35rem)]",
+                  ].join(" "),
+            ].join(" ")}
             data-testid="sudoku-digit-pad"
             role="group"
             aria-label="数字 1 至 9"
@@ -413,7 +486,15 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 <button
                   key={n}
                   type="button"
-                  className="min-h-[56px] min-w-0 touch-manipulation select-none rounded-xl bg-[var(--s2-digit-pad-bg)] px-2 py-3 text-lg font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40"
+                  className={[
+                    "min-w-0 touch-manipulation select-none rounded-xl bg-[var(--s2-digit-pad-bg)] font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40",
+                    isFullscreen
+                      ? "flex aspect-square w-full max-w-full items-center justify-center px-1 py-1 text-[clamp(1.35rem,min(7vmin,min(8vw,10vh)),3.75rem)] sm:rounded-2xl sm:px-2"
+                      : [
+                          "flex w-full min-h-[56px] items-center justify-center px-2 py-2 text-lg sm:min-h-[3.5rem] sm:text-xl max-md:min-h-[clamp(3.25rem,12vw,4.5rem)] max-md:text-[clamp(1.1rem,5.2vw,1.65rem)]",
+                          "[@media(min-width:768px)_and_(orientation:landscape)]:aspect-square [@media(min-width:768px)_and_(orientation:landscape)]:min-h-0 [@media(min-width:768px)_and_(orientation:landscape)]:rounded-2xl [@media(min-width:768px)_and_(orientation:landscape)]:px-2 [@media(min-width:768px)_and_(orientation:landscape)]:py-2 [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(1.3rem,min(6.8vmin,min(7.5vw,10vh)),3.75rem)]",
+                        ].join(" "),
+                  ].join(" ")}
                   data-testid={`digit-pad-${n}`}
                   aria-label={`数字 ${n}`}
                   onClick={() => actions.digit(n)}
@@ -427,7 +508,12 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
 
           <button
             type="button"
-            className="min-h-[52px] w-full touch-manipulation rounded-xl bg-[var(--s2-btn-secondary-bg)] px-4 py-3 text-sm font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40"
+            className={[
+              "w-full touch-manipulation rounded-xl bg-[var(--s2-btn-secondary-bg)] px-4 py-3 font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:bg-[var(--s2-btn-secondary-hover)] disabled:opacity-40",
+              isFullscreen
+                ? "min-h-[clamp(3.65rem,min(9vmin,10vh),7.5rem)] shrink-0 px-5 text-[clamp(1rem,min(3vmin,3.4vh),1.5rem)] sm:rounded-2xl sm:px-6"
+                : "min-h-[52px] text-sm [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.5rem,min(8.5vmin,9.5vh),7rem)] [@media(min-width:768px)_and_(orientation:landscape)]:px-6 [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(0.98rem,min(2.9vmin,3.2vh),1.45rem)] [@media(min-width:768px)_and_(orientation:landscape)]:sm:rounded-2xl",
+            ].join(" ")}
             onClick={() => actions.clear()}
             disabled={interactionLocked || !selected}
             data-testid={clearCellTestId}
@@ -436,12 +522,27 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           </button>
 
           {hint ? (
-            <p className="text-xs text-[var(--s2-hint-banner)]" data-testid="sudoku-hint-banner" aria-live="polite">
+            <p
+              className={["text-[var(--s2-hint-banner)]", isFullscreen ? "shrink-0 text-[clamp(0.65rem,min(1.8vmin,2vh),0.85rem)]" : "text-xs"].join(
+                " ",
+              )}
+              data-testid="sudoku-hint-banner"
+              aria-live="polite"
+            >
               提示技巧：{techniqueIdToZh(hint.technique)}
             </p>
           ) : null}
 
-          {extraRightColumn ? <div className="flex flex-col gap-2">{extraRightColumn}</div> : null}
+          {extraRightColumn ? (
+            <div
+              className={[
+                "s2-play-sidebar-extra-actions flex flex-col gap-2",
+                isFullscreen ? "shrink-0 gap-3 sm:gap-4" : "",
+              ].join(" ")}
+            >
+              {extraRightColumn}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
