@@ -3,6 +3,8 @@ import {
   BOX_WIDTH,
   EMPTY_CELL,
   GRID_SIZE,
+  MAX_DIGIT,
+  MIN_DIGIT,
   isFilledDigit,
   isValidCellCoord,
 } from "./constants";
@@ -84,4 +86,33 @@ export function isValidPlacement(
   }
 
   return true;
+}
+
+/**
+ * 若 `(r,c)` 为空格且恰好有一个数字 `1`–`9` 满足 {@link isValidPlacement}，则返回该数字；否则返回 `null`
+ *（含 0 个或多个合法填数、坐标非法、或该格已有生效数字的情形）。
+ *
+ * 至多 9 次 {@link isValidPlacement} 调用，无深度搜索。
+ */
+export function getUniqueValidPlacementDigit(
+  state: GameState,
+  r: number,
+  c: number,
+): number | null {
+  if (!isValidCellCoord(r, c) || getEffectiveDigitAt(state, r, c) !== EMPTY_CELL) {
+    return null;
+  }
+  let found: number | null = null;
+  let count = 0;
+  for (let n = MIN_DIGIT; n <= MAX_DIGIT; n++) {
+    if (!isValidPlacement(state, r, c, n)) {
+      continue;
+    }
+    count++;
+    found = n;
+    if (count > 1) {
+      return null;
+    }
+  }
+  return count === 1 ? found : null;
 }

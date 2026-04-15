@@ -3,7 +3,12 @@
 import type { JSX, ReactNode } from "react";
 import { useMemo, useRef } from "react";
 
-import { EMPTY_CELL, getEffectiveDigitAt, type GameState } from "@/lib/core";
+import {
+  EMPTY_CELL,
+  getEffectiveDigitAt,
+  getUniqueValidPlacementDigit,
+  type GameState,
+} from "@/lib/core";
 import { useFullscreen } from "@/lib/fullscreen";
 import type { HintResult } from "@/lib/hint";
 import { techniqueIdToZh } from "@/app/tutorial/technique-titles-zh";
@@ -129,6 +134,23 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     const fd = getEffectiveDigitAt(gameState, selected.r, selected.c);
     return fd !== EMPTY_CELL ? fd : null;
   }, [gameState, selected]);
+
+  /** 填数模式下，空白格若行/列/宫约束下仅有一个可填数字，则键盘仅保留该键可用（笔记模式不锁定）。 */
+  const singlePlacementDigit = useMemo(() => {
+    if (!selected || gameState.mode !== "fill") {
+      return null;
+    }
+    const { r, c } = selected;
+    if (gameState.cells[r][c].given !== undefined) {
+      return null;
+    }
+    if (getEffectiveDigitAt(gameState, r, c) !== EMPTY_CELL) {
+      return null;
+    }
+    return getUniqueValidPlacementDigit(gameState, r, c);
+  }, [gameState, selected]);
+
+  const digitPadSingleCandidateLock = singlePlacementDigit !== null;
 
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const { isSupported, isFullscreen, toggle } = useFullscreen(surfaceRef);
@@ -498,12 +520,15 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   ].join(" "),
             ].join(" ")}
             data-testid="sudoku-digit-pad"
+            data-s2-single-candidate-lock={digitPadSingleCandidateLock ? "true" : undefined}
             role="group"
             aria-label="数字 1 至 9"
           >
             {Array.from({ length: 9 }, (_, i) => {
               const n = i + 1;
               const isFocusDigitKey = focusDigit === n;
+              const digitKeyDisabled =
+                interactionLocked || (digitPadSingleCandidateLock && n !== singlePlacementDigit);
               return (
                 <button
                   key={n}
@@ -525,7 +550,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   aria-pressed={isFocusDigitKey}
                   aria-label={`数字 ${n}`}
                   onClick={() => actions.digit(n)}
-                  disabled={interactionLocked}
+                  disabled={digitKeyDisabled}
                 >
                   {n}
                 </button>

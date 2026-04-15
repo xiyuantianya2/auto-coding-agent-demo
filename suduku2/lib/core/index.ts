@@ -60,6 +60,7 @@ export {
 export {
   getEffectiveCellDigit,
   getEffectiveDigitAt,
+  getUniqueValidPlacementDigit,
   isValidPlacement,
 } from "./placement";
 
@@ -70,6 +71,7 @@ export {
   deserializeGameState,
   SERIALIZATION_SCHEMA_VERSION,
   serializeGameState,
+  tryDeserializeGameStateFromUnknown,
 } from "./serialize";
 
 export {

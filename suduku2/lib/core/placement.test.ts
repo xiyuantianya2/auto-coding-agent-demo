@@ -4,6 +4,7 @@ import { EMPTY_CELL } from "./constants";
 import {
   getEffectiveCellDigit,
   getEffectiveDigitAt,
+  getUniqueValidPlacementDigit,
   isValidPlacement,
 } from "./placement";
 import type { CellState, GameState, Grid9 } from "./types";
@@ -129,5 +130,46 @@ describe("isValidPlacement", () => {
     cells[6][6] = { given: 1 };
     const state = makeState(grid, cells);
     expect(isValidPlacement(state, 6, 7, 1)).toBe(false);
+  });
+});
+
+describe("getUniqueValidPlacementDigit", () => {
+  it("returns null when multiple digits are valid on an empty cell", () => {
+    const state = makeState(makeEmptyGrid(), makeEmptyCells());
+    expect(getUniqueValidPlacementDigit(state, 0, 0)).toBeNull();
+  });
+
+  it("returns null when no digit is valid (row/col block all 1–9)", () => {
+    const grid = makeEmptyGrid();
+    const cells = makeEmptyCells();
+    for (let c = 1; c <= 8; c++) {
+      grid[0][c] = c;
+      cells[0][c] = { value: c };
+    }
+    grid[1][0] = 9;
+    cells[1][0] = { value: 9 };
+    const state = makeState(grid, cells);
+    expect(getUniqueValidPlacementDigit(state, 0, 0)).toBeNull();
+  });
+
+  it("returns the only digit when the row forces a single value in the last free cell", () => {
+    const grid = makeEmptyGrid();
+    const cells = makeEmptyCells();
+    for (let c = 0; c < 8; c++) {
+      const d = c + 1;
+      grid[0][c] = d;
+      cells[0][c] = { value: d };
+    }
+    const state = makeState(grid, cells);
+    expect(getUniqueValidPlacementDigit(state, 0, 8)).toBe(9);
+  });
+
+  it("returns null for a filled cell", () => {
+    const grid = makeEmptyGrid();
+    const cells = makeEmptyCells();
+    grid[3][3] = 4;
+    cells[3][3] = { value: 4 };
+    const state = makeState(grid, cells);
+    expect(getUniqueValidPlacementDigit(state, 3, 3)).toBeNull();
   });
 });
