@@ -76,3 +76,32 @@ func generate_solvable_layout() -> Object:
 	last_random_attempts = _DEFAULT_MAX_RANDOM
 	last_path = "constructive"
 	return fallback
+
+
+## 在**不改变 multiset**（各图案枚数）的前提下，将当前非空格的牌随机重排，直至全盘可解或达到尝试上限。
+## 用于「洗牌」：保持生成规则（8 种图案、各 12 枚）与可玩性（存在完整消除序列）。
+func reshuffle_board_solvable(board, max_attempts: int = 120) -> bool:
+	var positions: Array = []
+	var values: Array = []
+	for r in range(_BoardModelScript.ROWS):
+		for c in range(_BoardModelScript.COLS):
+			var v: Variant = board.cells[r][c]
+			if v != null:
+				positions.append({"row": r, "col": c})
+				values.append(int(v))
+
+	if values.size() <= 1:
+		return true
+
+	for attempt in range(max_attempts):
+		_shuffle_in_place(values)
+		for i in range(values.size()):
+			var pos: Dictionary = positions[i]
+			var rr: int = int(pos["row"])
+			var cc: int = int(pos["col"])
+			board.cells[rr][cc] = values[i]
+		if _SolvScript.is_board_fully_solvable(board, _DEFAULT_DFS_RANDOM):
+			return true
+
+	push_warning("BoardLayoutGenerator: reshuffle_board_solvable failed after %d attempts" % max_attempts)
+	return false

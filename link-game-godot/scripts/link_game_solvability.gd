@@ -20,6 +20,14 @@ static func _is_empty(board) -> bool:
 				return false
 	return true
 
+## 返回首个可连同图案对（`{"a": {"row","col"}, "b": {...}}`），若无则 `null`（例如盘面无可连对子）。
+static func find_first_connectable_pair(board) -> Variant:
+	var pairs: Array = _enumerate_connectable_pairs(board)
+	if pairs.is_empty():
+		return null
+	return pairs[0]
+
+
 static func _enumerate_connectable_pairs(board) -> Array:
 	var by_pattern: Dictionary = {}
 	for r in range(_BoardModelScript.ROWS):

@@ -29,6 +29,8 @@ func _init() -> void:
 	_test_layout_board_shape_and_pairs()
 	_test_layout_deterministic_seed()
 	_test_layout_multiple_solvable()
+	_test_hint_pair_exists()
+	_test_reshuffle_preserves_multiset()
 	print("link-game-godot: run_tests — board + path + layout OK")
 	quit(0)
 
@@ -136,3 +138,38 @@ func _test_layout_multiple_solvable() -> void:
 		var board = gen.call("restart_new_game", 10000 + i)
 		if not _SolvScript.is_board_fully_solvable(board, 3000000):
 			_fail("generated layout should be fully solvable")
+
+
+func _test_hint_pair_exists() -> void:
+	var gen = _BoardLayoutGeneratorScript.new()
+	var board = gen.call("restart_new_game", 54321)
+	var p: Variant = _SolvScript.find_first_connectable_pair(board)
+	if p == null:
+		_fail("hint: new solvable board should expose at least one connectable pair")
+
+
+func _test_reshuffle_preserves_multiset() -> void:
+	var gen = _BoardLayoutGeneratorScript.new()
+	var board = gen.call("restart_new_game", 111222)
+	var counts_before: Dictionary = {}
+	for r in range(_EXPECT_ROWS):
+		for c in range(_EXPECT_COLS):
+			var pid: int = int(board.cells[r][c])
+			var key := str(pid)
+			counts_before[key] = int(counts_before.get(key, 0)) + 1
+	if not gen.reshuffle_board_solvable(board):
+		_fail("reshuffle should succeed on a full board")
+	var counts_after: Dictionary = {}
+	for r in range(_EXPECT_ROWS):
+		for c in range(_EXPECT_COLS):
+			var pid2: int = int(board.cells[r][c])
+			var key2 := str(pid2)
+			counts_after[key2] = int(counts_after.get(key2, 0)) + 1
+	for k in counts_before:
+		if int(counts_before[k]) != int(counts_after.get(k, 0)):
+			_fail("reshuffle should preserve multiset counts")
+	for k in counts_after:
+		if int(counts_after[k]) != int(counts_before.get(k, 0)):
+			_fail("reshuffle should preserve multiset counts")
+	if not _SolvScript.is_board_fully_solvable(board, 3000000):
+		_fail("reshuffled board should remain fully solvable")

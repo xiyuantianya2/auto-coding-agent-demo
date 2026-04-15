@@ -3,6 +3,10 @@ extends Control
 const _BoardModelScript = preload("res://scripts/board_model.gd")
 const _BoardLayoutGeneratorScript = preload("res://scripts/board_layout_generator.gd")
 const _LinkPathFinderScript = preload("res://scripts/link_path_finder.gd")
+const _SolvScript = preload("res://scripts/link_game_solvability.gd")
+
+## 单局限时（秒），与 `src/match_rules.ts` / README 一致。
+const MATCH_TIME_SEC: float = 120.0
 
 const COLS: int = _BoardModelScript.COLS
 const ROWS: int = _BoardModelScript.ROWS
@@ -26,6 +30,7 @@ var layout_generator
 var _status_label: Label
 var _score_label: Label
 var _remain_label: Label
+var _timer_label: Label
 var _cell_panels: Array = [] ## Array[Array] ROWS×COLS → Panel
 var _grid: GridContainer
 var _path_overlay: Control
@@ -34,12 +39,22 @@ var _path_line: Line2D
 var score: int = 0
 var remaining_tiles: int = COLS * ROWS
 
+var _time_left_sec: float = MATCH_TIME_SEC
+var _game_over: bool = false
+
+var _hint_active: bool = false
+var _hint_ar: int = -1
+var _hint_ac: int = -1
+var _hint_br: int = -1
+var _hint_bc: int = -1
+
 var _busy: bool = false
 var _sel_r: int = -1
 var _sel_c: int = -1
 
 
 func _ready() -> void:
+	set_process(true)
 	layout_generator = _BoardLayoutGeneratorScript.new()
 	current_board = layout_generator.restart_new_game(-1)
 	_build_ui()
@@ -62,10 +77,14 @@ func restart_new_game(rng_seed: int = -1):
 	_sel_c = -1
 	score = 0
 	remaining_tiles = COLS * ROWS
+	_time_left_sec = MATCH_TIME_SEC
+	_game_over = false
+	_clear_hint_visual()
 	_hide_path_line()
 	_sync_cells_from_board()
-	_refresh_selection_highlight()
+	_refresh_cell_outlines()
 	_update_hud()
+	_update_timer_label()
 	_set_status("新局已生成，请点选两格进行路径判定。", Color.LIGHT_GRAY)
 	return current_board
 
@@ -112,9 +131,35 @@ func _build_ui() -> void:
 	rem_l.name = "RemainLabel"
 	rem_l.add_theme_font_size_override("font_size", 16)
 	hud.add_child(rem_l)
+	var time_l := Label.new()
+	time_l.name = "TimerLabel"
+	time_l.add_theme_font_size_override("font_size", 16)
+	hud.add_child(time_l)
 	vbox.add_child(hud)
 	_score_label = score_l
 	_remain_label = rem_l
+	_timer_label = time_l
+
+	var btn_row := HBoxContainer.new()
+	btn_row.name = "ButtonsRow"
+	btn_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	btn_row.add_theme_constant_override("separation", 12)
+	var hint_btn := Button.new()
+	hint_btn.name = "HintButton"
+	hint_btn.text = "提示"
+	hint_btn.pressed.connect(_on_hint_pressed)
+	btn_row.add_child(hint_btn)
+	var shuffle_btn := Button.new()
+	shuffle_btn.name = "ShuffleButton"
+	shuffle_btn.text = "洗牌"
+	shuffle_btn.pressed.connect(_on_shuffle_pressed)
+	btn_row.add_child(shuffle_btn)
+	var restart_btn := Button.new()
+	restart_btn.name = "RestartButton"
+	restart_btn.text = "重新开始"
+	restart_btn.pressed.connect(_on_restart_pressed)
+	btn_row.add_child(restart_btn)
+	vbox.add_child(btn_row)
 
 	var aspect := AspectRatioContainer.new()
 	aspect.name = "BoardAspect"
@@ -172,13 +217,116 @@ func _build_ui() -> void:
 
 	_set_status("先点一格，再点另一格：将调用路径判定（非法选择会有提示）。", Color.LIGHT_GRAY)
 	_update_hud()
+	_update_timer_label()
 
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
 
+func _process(delta: float) -> void:
+	if _game_over:
+		return
+	_time_left_sec = maxf(_time_left_sec - delta, 0.0)
+	_update_timer_label()
+	if _time_left_sec <= 0.0:
+		_trigger_time_up()
+
+
+func _trigger_time_up() -> void:
+	if _game_over:
+		return
+	_game_over = true
+	_clear_hint_visual()
+	_set_status(
+		"时间到：本局失败。可点击「重新开始」重开新局（120 秒倒计时将重置）。",
+		Color(1.0, 0.45, 0.45),
+	)
+	print("link-game-godot: time up — game over")
+
+
+func _on_hint_pressed() -> void:
+	if _busy or _game_over:
+		return
+	if remaining_tiles <= 0:
+		_set_status("已全部消除。", Color(0.65, 0.95, 0.75))
+		return
+
+	var pair: Variant = _SolvScript.find_first_connectable_pair(current_board)
+	if pair != null:
+		var d: Dictionary = pair
+		var a: Dictionary = d["a"]
+		var b: Dictionary = d["b"]
+		_hint_ar = int(a["row"])
+		_hint_ac = int(a["col"])
+		_hint_br = int(b["row"])
+		_hint_bc = int(b["col"])
+		_hint_active = true
+		_refresh_cell_outlines()
+		_set_status("提示：可配对两格已高亮。", Color(0.95, 0.85, 1.0))
+		return
+
+	_set_status("当前无可连对子，正在尝试洗牌…", Color.LIGHT_GRAY)
+	var ok: bool = layout_generator.reshuffle_board_solvable(current_board)
+	if not ok:
+		_set_status("洗牌失败：无法整理出可解盘。请点击「重新开始」。", Color(1.0, 0.55, 0.45))
+		return
+
+	_sync_cells_from_board()
+	pair = _SolvScript.find_first_connectable_pair(current_board)
+	if pair != null:
+		var d2: Dictionary = pair
+		var a2: Dictionary = d2["a"]
+		var b2: Dictionary = d2["b"]
+		_hint_ar = int(a2["row"])
+		_hint_ac = int(a2["col"])
+		_hint_br = int(b2["row"])
+		_hint_bc = int(b2["col"])
+		_hint_active = true
+		_refresh_cell_outlines()
+		_set_status("已洗牌并找到可连对子（高亮显示）。", Color(0.75, 0.95, 0.85))
+	else:
+		_set_status("洗牌后仍未找到可连对子（异常）。请点击「重新开始」。", Color(1.0, 0.55, 0.45))
+
+
+func _on_shuffle_pressed() -> void:
+	if _busy or _game_over:
+		return
+	_clear_hint_visual()
+	var ok: bool = layout_generator.reshuffle_board_solvable(current_board)
+	if ok:
+		_sync_cells_from_board()
+		_set_status("已洗牌：盘面已重新打乱并保持可解。", Color(0.75, 0.9, 1.0))
+	else:
+		_set_status("洗牌失败：请稍后重试或点击「重新开始」。", Color(1.0, 0.6, 0.45))
+
+
+func _on_restart_pressed() -> void:
+	if _busy:
+		return
+	restart_new_game(-1)
+
+
+func _clear_hint_visual() -> void:
+	_hint_active = false
+	_hint_ar = -1
+	_hint_ac = -1
+	_hint_br = -1
+	_hint_bc = -1
+
+
+func _update_timer_label() -> void:
+	if _timer_label == null:
+		return
+	var sec: int = int(ceil(_time_left_sec)) if _time_left_sec > 0.0 else 0
+	_timer_label.text = "剩余时间：%d 秒" % sec
+	if _game_over:
+		_timer_label.add_theme_color_override("font_color", Color(1.0, 0.55, 0.55))
+	else:
+		_timer_label.remove_theme_color_override("font_color")
+
+
 func _on_viewport_size_changed() -> void:
 	# 依赖 AspectRatioContainer + Grid；窗口变化时刷新一次高亮与排版
-	_refresh_selection_highlight()
+	_refresh_cell_outlines()
 	if _path_line.visible:
 		_hide_path_line()
 
@@ -227,6 +375,7 @@ func _hide_path_line() -> void:
 
 
 func _begin_match_resolve(ar: int, ac: int, br: int, bc: int, path_res: Dictionary) -> void:
+	_clear_hint_visual()
 	_busy = true
 	_assert_path_rules(path_res)
 	_show_path_for_result(path_res)
@@ -293,6 +442,10 @@ func _on_cell_gui_input(event: InputEvent, r: int, c: int) -> void:
 func _on_cell_clicked(r: int, c: int) -> void:
 	if _busy:
 		return
+	if _game_over:
+		_set_status("本局已结束（时间到）。请点击「重新开始」。", Color(1.0, 0.55, 0.45))
+		return
+	_clear_hint_visual()
 	var v: Variant = current_board.cells[r][c]
 	if v == null:
 		var msg := "无效：空格不可选择。"
@@ -303,14 +456,14 @@ func _on_cell_clicked(r: int, c: int) -> void:
 	if _sel_r < 0:
 		_sel_r = r
 		_sel_c = c
-		_refresh_selection_highlight()
+		_refresh_cell_outlines()
 		_set_status("已选 (%d,%d)，请选择第二格。" % [r + 1, c + 1], Color.LIGHT_GRAY)
 		return
 
 	if r == _sel_r and c == _sel_c:
 		_sel_r = -1
 		_sel_c = -1
-		_refresh_selection_highlight()
+		_refresh_cell_outlines()
 		_set_status("已取消选择。", Color.LIGHT_GRAY)
 		return
 
@@ -351,7 +504,7 @@ func _on_cell_clicked(r: int, c: int) -> void:
 func _reset_selection_after_attempt() -> void:
 	_sel_r = -1
 	_sel_c = -1
-	_refresh_selection_highlight()
+	_refresh_cell_outlines()
 
 
 func _set_status(text: String, color: Color) -> void:
@@ -379,13 +532,27 @@ func _apply_cell_visual(r: int, c: int) -> void:
 		lbl.text = str(pid + 1)
 
 
-func _refresh_selection_highlight() -> void:
+func _refresh_cell_outlines() -> void:
 	for r in range(ROWS):
 		for c in range(COLS):
 			var panel: Panel = _cell_panels[r][c]
+			var is_hint := (
+				_hint_active
+				and (
+					(r == _hint_ar and c == _hint_ac)
+					or (r == _hint_br and c == _hint_bc)
+				)
+			)
 			var sel := (r == _sel_r and c == _sel_c)
 			var sb := StyleBoxFlat.new()
 			sb.bg_color = Color(0, 0, 0, 0)
-			sb.set_border_width_all(2 if sel else 1)
-			sb.border_color = Color(1.0, 0.82, 0.35) if sel else Color(0.08, 0.09, 0.11)
+			if is_hint:
+				sb.set_border_width_all(3)
+				sb.border_color = Color(0.95, 0.35, 0.98)
+			elif sel:
+				sb.set_border_width_all(2)
+				sb.border_color = Color(1.0, 0.82, 0.35)
+			else:
+				sb.set_border_width_all(1)
+				sb.border_color = Color(0.08, 0.09, 0.11)
 			panel.add_theme_stylebox_override("panel", sb)
