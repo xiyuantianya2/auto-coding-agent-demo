@@ -243,7 +243,7 @@
         "刷新页面后开关状态按持久化策略保持或恢复为默认（与实现一致且可验收）。",
         "`npm run lint` 与 `npm run build` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 23,

@@ -6,6 +6,8 @@ export type ThemePreference = "light" | "dark" | "system";
 
 export const SUDOKU2_THEME_STORAGE_KEY = "suduku2.ui.theme";
 export const SUDOKU2_HC_CANDIDATES_STORAGE_KEY = "suduku2.ui.highContrastCandidates";
+/** 「快速游戏」：单候选空格点击自动填数；`"1"` 表示开启（默认未设置即关闭）。 */
+export const SUDOKU2_QUICK_GAME_STORAGE_KEY = "suduku2.ui.quickGame";
 
 export const SETTINGS_THEME_KEY = "theme";
 export const SETTINGS_HC_CANDIDATES_KEY = "highContrastCandidates";

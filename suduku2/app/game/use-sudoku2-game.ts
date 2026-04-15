@@ -6,6 +6,7 @@ import {
   cloneGameState,
   EMPTY_CELL,
   getEffectiveDigitAt,
+  getUniqueValidPlacementDigit,
   serializeGameState,
   type GameState,
 } from "@/lib/core";
@@ -48,6 +49,11 @@ export type UseSudoku2GameParams = {
   onNeedCellSelection?: () => void;
   /** 是否展示并累计对局计时（默认 true）。为 false 时计时冻结在 0。 */
   showTimer?: boolean;
+  /**
+   * 快速游戏：在**填数模式**下，首次点击某空格的瞬间若该行/列/宫约束下仅有一个合法数字则自动填入并走笔记同步。
+   * **笔记模式**下不自动填数（仍只编辑笔记），优先级高于自动填数。
+   */
+  quickGameEnabled?: boolean;
 };
 
 export type UseSudoku2GameResult = {
@@ -75,6 +81,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     onPlayRejected,
     onNeedCellSelection,
     showTimer = true,
+    quickGameEnabled = false,
   } = params;
 
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
@@ -152,6 +159,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
       }
       const { r, c } = cell;
       const isEmpty = getEffectiveDigitAt(gameState, r, c) === EMPTY_CELL;
+      const isGiven = gameState.cells[r][c].given !== undefined;
       const wasSame = selected?.r === r && selected?.c === c;
       /** 空白格二次点击：在填数 / 笔记间切换（与工具栏一致，走同一 `setMode` 状态）。 */
       if (isEmpty && wasSame) {
@@ -161,9 +169,27 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
         }
         return;
       }
+      /**
+       * 快速游戏：首次点到另一空格时尝试自动填数（`getUniqueValidPlacementDigit` 至多 9 次规则检查）。
+       * 与笔记模式同时启用时：**仅填数模式**下才可能自动填；笔记模式下只选中格。
+       */
+      if (
+        quickGameEnabled &&
+        gameState.mode === "fill" &&
+        isEmpty &&
+        !isGiven &&
+        !wasSame
+      ) {
+        const only = getUniqueValidPlacementDigit(gameState, r, c);
+        if (only !== null) {
+          apply({ type: "fill", payload: { r, c, digit: only } });
+          setSelected({ r, c });
+          return;
+        }
+      }
       setSelected({ r, c });
     },
-    [apply, gameState, interactionLocked, selected],
+    [apply, gameState, interactionLocked, quickGameEnabled, selected],
   );
 
   const setMode = useCallback(

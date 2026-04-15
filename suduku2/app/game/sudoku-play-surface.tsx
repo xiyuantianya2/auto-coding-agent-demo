@@ -13,6 +13,7 @@ import { useFullscreen } from "@/lib/fullscreen";
 import type { HintResult } from "@/lib/hint";
 import { techniqueIdToZh } from "@/app/tutorial/technique-titles-zh";
 
+import { useQuickGameSetting } from "@/app/game/use-quick-game-setting";
 import { useSudoku2Game } from "@/app/game/use-sudoku2-game";
 
 export type SudokuPlaySurfaceProps = {
@@ -138,6 +139,8 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     onNeedCellSelection,
   } = props;
 
+  const [quickGameEnabled, setQuickGameEnabled] = useQuickGameSetting();
+
   const {
     selected,
     paused,
@@ -154,6 +157,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     onPlayRejected,
     onNeedCellSelection,
     showTimer,
+    quickGameEnabled,
   });
 
   const hintCells = useMemo(() => hintCellSet(hint), [hint]);
@@ -576,6 +580,33 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   : "同一空格再点一次可切到填数"}
               </span>
             </p>
+
+            <label
+              className={[
+                "flex cursor-pointer items-start gap-2 rounded-xl bg-[var(--s2-card-muted)] px-3 py-2.5 text-left text-sm text-[var(--s2-text)] ring-1 ring-[var(--s2-btn-secondary-ring)]",
+                isFullscreen
+                  ? "text-[clamp(0.85rem,min(2.4vmin,2.8vh),1.05rem)]"
+                  : "",
+              ].join(" ")}
+            >
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 shrink-0 rounded border-[var(--s2-input-border)]"
+                data-testid="sudoku-quick-game"
+                checked={quickGameEnabled}
+                aria-label="快速游戏：填数模式下单候选空格点击自动填入"
+                disabled={interactionLocked}
+                onChange={(e) => {
+                  setQuickGameEnabled(e.target.checked);
+                }}
+              />
+              <span className="min-w-0 leading-snug">
+                <span className="font-semibold">快速游戏</span>
+                <span className="mt-1 block text-[var(--s2-text-muted)]">
+                  填数模式下，点击仅有一个合法数字的空格时自动填入；多候选或笔记模式下不自动填。
+                </span>
+              </span>
+            </label>
 
             <button
               type="button"
