@@ -1,5 +1,6 @@
 /**
  * 任务 14：选中已填格时同数字全局高亮（data-s2-same-digit），与选中环可区分。
+ * 任务 15：关注数字与数字键盘联动（data-s2-focus-digit / aria-pressed）。
  */
 import { test, expect, type Page } from "@playwright/test";
 
@@ -78,13 +79,19 @@ test("已填格：同数字全局高亮；切换数字更新；空格无残留",
 
   await page.getByTestId(first.testIds[0]!).click();
   await expect(board.locator('[data-s2-same-digit="true"]')).toHaveCount(first.testIds.length);
+  await expect(page.getByTestId(`digit-pad-${first.digit}`)).toHaveAttribute("data-s2-focus-digit", "true");
+  await expect(page.getByTestId(`digit-pad-${second.digit}`)).not.toHaveAttribute("data-s2-focus-digit", "true");
 
   await page.getByTestId(second!.testIds[0]!).click();
   await expect(board.locator('[data-s2-same-digit="true"]')).toHaveCount(second!.testIds.length);
+  await expect(page.getByTestId(`digit-pad-${second.digit}`)).toHaveAttribute("data-s2-focus-digit", "true");
+  await expect(page.getByTestId(`digit-pad-${first.digit}`)).not.toHaveAttribute("data-s2-focus-digit", "true");
 
   const firstEmpty = board
     .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
     .first();
   await firstEmpty.click();
   await expect(board.locator('[data-s2-same-digit="true"]')).toHaveCount(0);
+  await expect(page.getByTestId(`digit-pad-${first.digit}`)).not.toHaveAttribute("data-s2-focus-digit", "true");
+  await expect(page.getByTestId(`digit-pad-${second.digit}`)).not.toHaveAttribute("data-s2-focus-digit", "true");
 });

@@ -496,12 +496,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           >
             {Array.from({ length: 9 }, (_, i) => {
               const n = i + 1;
+              const isFocusDigitKey = focusDigit === n;
               return (
                 <button
                   key={n}
                   type="button"
                   className={[
-                    "min-w-0 touch-manipulation select-none rounded-xl bg-[var(--s2-digit-pad-bg)] font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40",
+                    "min-w-0 touch-manipulation select-none rounded-xl font-semibold transition-colors",
+                    isFocusDigitKey
+                      ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)] shadow-sm ring-2 ring-[var(--s2-focus-ring)] hover:opacity-95 disabled:opacity-85"
+                      : "bg-[var(--s2-digit-pad-bg)] text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40",
                     isFullscreen
                       ? "flex aspect-square w-full max-w-full items-center justify-center px-1 py-1 text-[clamp(1.35rem,min(7vmin,min(8vw,10vh)),3.75rem)] sm:rounded-2xl sm:px-2"
                       : [
@@ -510,6 +514,8 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                         ].join(" "),
                   ].join(" ")}
                   data-testid={`digit-pad-${n}`}
+                  data-s2-focus-digit={isFocusDigitKey ? "true" : undefined}
+                  aria-pressed={isFocusDigitKey}
                   aria-label={`数字 ${n}`}
                   onClick={() => actions.digit(n)}
                   disabled={interactionLocked}

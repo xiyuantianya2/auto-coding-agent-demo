@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=15 — 数字键盘：与关注数字联动高亮
+
+### What was done:
+- `SudokuPlaySurface` 数字键：复用既有 `focusDigit`（与任务 14 同源），对 `focusDigit === n` 的键施加强调样式（accent、ring），并设 `data-s2-focus-digit` / `aria-pressed`；无额外扫描循环。
+- `e2e/same-digit-highlight.spec.ts`：在同数字高亮用例中断言数字键盘关注态随选格切换与清除。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（266）、`npx playwright test --headed`（45，含 1 flaky 重试通过）均通过。
+
+### Notes:
+- 关注数字来自选中已填格的有效数字；选空格时无键盘激活键。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=12 — 全量回归：lint、build 与 Playwright E2E
 
 ### What was done:
