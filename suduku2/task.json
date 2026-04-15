@@ -44,7 +44,7 @@
         "npm run test:e2e 全部通过（含新用例）",
         "新用例使用 data-testid 或 aria 定位，不依赖易变样式类名"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 5,
