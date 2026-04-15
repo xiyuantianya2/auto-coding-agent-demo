@@ -99,7 +99,7 @@
         "键盘可聚焦主要按钮，aria-label / aria-pressed 等与改版前语义一致或更清晰",
         "npm run lint 与 npm run build 通过"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 10,
