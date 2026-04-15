@@ -16,6 +16,9 @@
  * **同源对应**：映射阶段将求解步骤上的 `explanationKey` 原样写入提示的 `messageKey`，供 curriculum / i18n 使用；
  * 仅在求解步骤未提供说明键时省略。
  *
+ * {@link HintResult.explanation `explanation`} 为**可直接展示的中文解题思路**（观察区域、结论、建议下一步），
+ * 由 {@link mapSolveStepToHintResult} 根据技巧与高亮结构生成，不依赖外部 i18n 表即可阅读。
+ *
  * ## 提示次数与冷却（引擎无状态）
  *
  * 本模块**不维护**每局提示次数、冷却、节流或任何会话计数；这些由 UI 或上层可选实现。
@@ -68,6 +71,7 @@ export { mapSolveStepToHintResult };
  * - **`cells`**：需要在棋盘上高亮的相关格坐标（行/列 0–8）。
  * - **`highlightCandidates`**：可选；按格列出需要强调的候选数字；`digits` 为展示高亮集合；
  *   `eliminate` 若存在，表示建议从该格**删去**的候选方向（与 solver 的删减语义一致）。
+ * - **`explanation`**：可直接展示的中文说明（与 `messageKey` 并存；UI 应优先展示本字段正文）。
  * - **`messageKey`**：可选；面向 curriculum / i18n 的文案键，**对应**求解步骤上的
  *   {@link import("@/lib/solver").SolveStep `SolveStep.explanationKey`}（同源字段，提示侧命名）。
  */
@@ -80,6 +84,8 @@ export type HintResult = {
     digits: number[];
     eliminate?: number[];
   }>;
+  /** 可直接渲染的中文解题思路（观察区域、为何成立、建议下一步）。 */
+  explanation: string;
   messageKey?: string;
 };
 
@@ -90,8 +96,9 @@ export type HintResult = {
  * 该函数返回的数组已按 `find-applicable-steps` 文档约定：低→中→高阶批次合并、去重后的顺序；
  * **默认取首个元素**作为「下一步」提示，以便 UI 与测试快照稳定（不要求全局最优或最少分支）。
  *
- * - 若数组为空（含求解器在墙上时钟预算内未发现可应用步骤），返回 `null`。
+ * - 若数组为空（含求解器在墙上时钟预算内未发现可应用步骤），返回 `null`（明确「无可展示步」语义）。
  * - 若盘面已达胜利态（全盘填满且无冲突），返回 `null`，避免对终盘再调用求解搜索。
+ * - 若首条及后续步骤映射后仍无**可定位格**（`cells` 为空），跳过直至找到首条可映射步或穷尽列表后返回 `null`。
  *
  * 本函数**不修改** `state`、不维护提示次数；单次耗时主要由 `findApplicableSteps` 决定。
  *
@@ -104,9 +111,11 @@ export function getNextHint(state: GameState): HintResult | null {
   }
 
   const steps = findApplicableSteps(state);
-  if (steps.length === 0) {
-    return null;
+  for (const step of steps) {
+    const hint = mapSolveStepToHintResult(step);
+    if (hint.cells.length > 0) {
+      return hint;
+    }
   }
-
-  return mapSolveStepToHintResult(steps[0]!);
+  return null;
 }

@@ -67,6 +67,7 @@ describe("getNextHint technique id contract (TechniqueIds / isRegisteredTechniqu
     expect(hint).not.toBeNull();
     expect(hint!.technique).toBe(TechniqueIds.UniqueCandidate);
     expect(hint!.technique).toBe(steps[0]!.technique);
+    expect(hint!.explanation.length).toBeGreaterThan(0);
   });
 
   it("registered id: second distinct TechniqueId is taken from findApplicableSteps[0] (spy)", () => {
@@ -145,6 +146,7 @@ describe("getNextHint technique id contract (TechniqueIds / isRegisteredTechniqu
       expect(typeof hint.technique).toBe("string");
       expect(hint.technique.length).toBeGreaterThan(0);
       expect(Array.isArray(hint.cells)).toBe(true);
+      expect(hint.explanation.length).toBeGreaterThan(0);
     },
   );
 });

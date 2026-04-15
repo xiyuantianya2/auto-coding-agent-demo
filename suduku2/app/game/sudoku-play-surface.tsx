@@ -145,6 +145,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
     selected,
     paused,
     hint,
+    noHintAvailable,
     canUndo,
     canRedo,
     elapsedSec,
@@ -719,7 +720,19 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
               data-testid="sudoku-hint-banner"
               aria-live="polite"
             >
-              提示技巧：{techniqueIdToZh(hint.technique)}
+              <span className="font-semibold">{techniqueIdToZh(hint.technique)}</span>
+              <span className="mx-1">·</span>
+              <span>{hint.explanation}</span>
+            </p>
+          ) : noHintAvailable ? (
+            <p
+              className={["text-[var(--s2-hint-banner)]", isFullscreen ? "shrink-0 text-[clamp(0.65rem,min(1.8vmin,2vh),0.85rem)]" : "text-xs"].join(
+                " ",
+              )}
+              data-testid="sudoku-hint-empty-banner"
+              aria-live="polite"
+            >
+              暂无可用提示：当前盘面未发现可展示的人类技巧步（或已达终盘）。
             </p>
           ) : null}
 

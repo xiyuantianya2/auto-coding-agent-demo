@@ -53,6 +53,8 @@ describe("hint-system skeleton", () => {
     expect(hint).not.toBeNull();
     expect(typeof hint!.technique).toBe("string");
     expect(hint!.technique.length).toBeGreaterThan(0);
+    expect(typeof hint!.explanation).toBe("string");
+    expect(hint!.explanation.length).toBeGreaterThan(0);
   });
 
   it("getNextHint returns null for a completed valid board", () => {
@@ -71,6 +73,7 @@ describe("hint-system skeleton", () => {
       highlightCandidates: [
         { r: 2, c: 3, digits: [4, 5], eliminate: [5] },
       ],
+      explanation: "隐唯一：示例说明。",
       messageKey: "solver.hidden-single.row",
     };
     expect(sample.technique).toBe(TechniqueIds.HiddenSingle);

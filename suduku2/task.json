@@ -254,7 +254,7 @@
         "无可行步时行为可预期且不崩溃。",
         "`npm test` 中 hint/solver 相关用例更新并通过；`npm run lint` 与 `npm run build` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 24,

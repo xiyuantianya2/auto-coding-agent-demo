@@ -71,6 +71,8 @@ function assertHintShape(h: ReturnType<typeof mapSolveStepToHintResult>): void {
   if (h.messageKey !== undefined) {
     expect(typeof h.messageKey).toBe("string");
   }
+  expect(typeof h.explanation).toBe("string");
+  expect(h.explanation.length).toBeGreaterThan(0);
 }
 
 describe("mapSolveStepToHintResult", () => {
@@ -95,6 +97,7 @@ describe("mapSolveStepToHintResult", () => {
     assertHintShape(hint);
     expect(hint.technique).toBe(TechniqueIds.UniqueCandidate);
     expect(hint.messageKey).toBe(TechniqueIds.UniqueCandidate);
+    expect(hint.explanation).toContain("唯一候选");
     expect(hint.cells.some((p) => p.r === 0 && p.c === 0)).toBe(true);
     expect(hint.highlightCandidates?.some((e) => e.r === 0 && e.c === 0 && e.digits.includes(5))).toBe(
       true,
@@ -150,6 +153,24 @@ describe("mapSolveStepToHintResult", () => {
     expect(hint.cells.length).toBeGreaterThan(0);
   });
 
+  it("maps hidden-single-shaped step to cells and Chinese explanation", () => {
+    const step: SolveStep = {
+      technique: TechniqueIds.HiddenSingle,
+      highlights: [
+        { kind: "unit", ref: { type: "row", index: 2 } },
+        { kind: "cell", ref: { r: 2, c: 5 } },
+        { kind: "candidate", ref: { r: 2, c: 5, digit: 4 } },
+      ],
+      explanationKey: TechniqueIds.HiddenSingle,
+    };
+    const hint = mapSolveStepToHintResult(step);
+    assertHintShape(hint);
+    expect(hint.explanation).toContain("隐唯一");
+    expect(hint.explanation).toContain("第 3 行");
+    expect(hint.explanation).toMatch(/4/);
+    expect(hint.cells.some((p) => p.r === 2 && p.c === 5)).toBe(true);
+  });
+
   it("passes explanationKey through as messageKey and does not mutate step", () => {
     const step: SolveStep = {
       technique: "custom-tech",
@@ -159,6 +180,7 @@ describe("mapSolveStepToHintResult", () => {
     const frozen = JSON.stringify(step);
     const hint = mapSolveStepToHintResult(step);
     expect(hint.messageKey).toBe("explanation.custom");
+    expect(hint.explanation.length).toBeGreaterThan(0);
     expect(JSON.stringify(step)).toBe(frozen);
   });
 });

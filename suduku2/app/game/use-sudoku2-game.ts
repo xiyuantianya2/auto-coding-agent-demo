@@ -61,6 +61,11 @@ export type UseSudoku2GameResult = {
   selected: { r: number; c: number } | null;
   paused: boolean;
   hint: HintResult | null;
+  /**
+   * 最近一次点击「提示」时求解器未返回可展示步（`getNextHint` 为 `null`），
+   * 供界面展示「暂无可用提示」等说明；盘面变化或成功提示后会清除。
+   */
+  noHintAvailable: boolean;
   canUndo: boolean;
   canRedo: boolean;
   candidates: CandidatesGrid;
@@ -87,6 +92,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
   const [selected, setSelected] = useState<{ r: number; c: number } | null>(null);
   const [paused, setPaused] = useState(false);
   const [hint, setHint] = useState<HintResult | null>(null);
+  const [noHintAvailable, setNoHintAvailable] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -126,6 +132,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
       }
       onGameStateChange(next);
       setHint(null);
+      setNoHintAvailable(false);
       refreshUndoUi();
     },
     [onGameStateChange, refreshUndoUi],
@@ -262,6 +269,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     );
     onGameStateChange(prev);
     setHint(null);
+    setNoHintAvailable(false);
     refreshUndoUi();
   }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
 
@@ -280,6 +288,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     );
     onGameStateChange(next);
     setHint(null);
+    setNoHintAvailable(false);
     refreshUndoUi();
   }, [candidates, gameState, interactionLocked, onGameStateChange, refreshUndoUi]);
 
@@ -287,7 +296,9 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     if (interactionLocked) {
       return;
     }
-    setHint(getNextHint(gameState));
+    const next = getNextHint(gameState);
+    setHint(next);
+    setNoHintAvailable(next === null);
   }, [gameState, interactionLocked]);
 
   const fillAllPencilNotes = useCallback(() => {
@@ -328,6 +339,7 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     selected,
     paused,
     hint,
+    noHintAvailable,
     canUndo,
     canRedo,
     candidates,
