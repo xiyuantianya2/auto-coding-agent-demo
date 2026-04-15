@@ -57,7 +57,7 @@
         "路径绘制与 requirements 中的段数/拐弯约束一致。",
         "场景测试或截图辅助验收无报错。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 6,

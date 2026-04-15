@@ -24,6 +24,8 @@ func _init() -> void:
 	_test_adjacent()
 	_test_detour_when_straight_blocked()
 	_test_horizontal_through_empty()
+	_test_post_match_segment_rules()
+	_test_cleared_cells_empty_for_next_path()
 	_test_layout_board_shape_and_pairs()
 	_test_layout_deterministic_seed()
 	_test_layout_multiple_solvable()
@@ -63,6 +65,39 @@ func _test_horizontal_through_empty() -> void:
 	var bends: Array = r["bend_points"]
 	if bends.size() != 0:
 		_fail("straight line should have no bends")
+
+func _test_post_match_segment_rules() -> void:
+	var board = _BoardModelScript.new()
+	board.set_pattern(0, 0, 7)
+	board.set_pattern(0, 1, 7)
+	var r = _LinkPathFinderScript.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 1}, board)
+	if not bool(r["ok"]):
+		_fail("adjacent pair should link for segment rule test")
+	var poly: Array = r["polyline"]
+	var bends: Array = r["bend_points"]
+	if bends.size() > 2:
+		_fail("bend points should be at most 2")
+	var seg: int = maxi(poly.size() - 1, 0)
+	if seg > 3:
+		_fail("orthogonal path should have at most 3 segments")
+
+func _test_cleared_cells_empty_for_next_path() -> void:
+	var board = _BoardModelScript.new()
+	board.set_pattern(0, 0, 3)
+	board.set_pattern(0, 1, 3)
+	var r1 = _LinkPathFinderScript.find_link_path({"row": 0, "col": 0}, {"row": 0, "col": 1}, board)
+	if not bool(r1["ok"]):
+		_fail("first pair should link before clear")
+	board.cells[0][0] = null
+	board.cells[0][1] = null
+	board.set_pattern(0, 2, 1)
+	board.set_pattern(0, 6, 1)
+	var r2 = _LinkPathFinderScript.find_link_path({"row": 0, "col": 2}, {"row": 0, "col": 6}, board)
+	if not bool(r2["ok"]):
+		_fail("should link through cleared cells as empty")
+	var bends2: Array = r2["bend_points"]
+	if bends2.size() > 2:
+		_fail("second path should respect bend limit")
 
 func _test_layout_board_shape_and_pairs() -> void:
 	var gen = _BoardLayoutGeneratorScript.new()

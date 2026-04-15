@@ -24,7 +24,17 @@ var current_board
 var layout_generator
 
 var _status_label: Label
+var _score_label: Label
+var _remain_label: Label
 var _cell_panels: Array = [] ## Array[Array] ROWS×COLS → Panel
+var _grid: GridContainer
+var _path_overlay: Control
+var _path_line: Line2D
+
+var score: int = 0
+var remaining_tiles: int = COLS * ROWS
+
+var _busy: bool = false
 var _sel_r: int = -1
 var _sel_c: int = -1
 
@@ -50,8 +60,12 @@ func restart_new_game(rng_seed: int = -1):
 	current_board = layout_generator.restart_new_game(rng_seed)
 	_sel_r = -1
 	_sel_c = -1
+	score = 0
+	remaining_tiles = COLS * ROWS
+	_hide_path_line()
 	_sync_cells_from_board()
 	_refresh_selection_highlight()
+	_update_hud()
 	_set_status("新局已生成，请点选两格进行路径判定。", Color.LIGHT_GRAY)
 	return current_board
 
@@ -86,6 +100,22 @@ func _build_ui() -> void:
 	title.add_theme_font_size_override("font_size", 22)
 	vbox.add_child(title)
 
+	var hud := HBoxContainer.new()
+	hud.name = "HudRow"
+	hud.alignment = BoxContainer.ALIGNMENT_CENTER
+	hud.add_theme_constant_override("separation", 28)
+	var score_l := Label.new()
+	score_l.name = "ScoreLabel"
+	score_l.add_theme_font_size_override("font_size", 16)
+	hud.add_child(score_l)
+	var rem_l := Label.new()
+	rem_l.name = "RemainLabel"
+	rem_l.add_theme_font_size_override("font_size", 16)
+	hud.add_child(rem_l)
+	vbox.add_child(hud)
+	_score_label = score_l
+	_remain_label = rem_l
+
 	var aspect := AspectRatioContainer.new()
 	aspect.name = "BoardAspect"
 	aspect.ratio = float(COLS) / float(ROWS)
@@ -93,12 +123,35 @@ func _build_ui() -> void:
 	aspect.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	vbox.add_child(aspect)
 
+	var board_wrap := Control.new()
+	board_wrap.name = "BoardWrap"
+	board_wrap.set_anchors_preset(Control.PRESET_FULL_RECT)
+	aspect.add_child(board_wrap)
+
 	var grid := GridContainer.new()
+	_grid = grid
 	grid.name = "BoardGrid"
 	grid.columns = COLS
+	grid.set_anchors_preset(Control.PRESET_FULL_RECT)
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	aspect.add_child(grid)
+	board_wrap.add_child(grid)
+
+	_path_overlay = Control.new()
+	_path_overlay.name = "PathOverlay"
+	_path_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_path_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	board_wrap.add_child(_path_overlay)
+
+	_path_line = Line2D.new()
+	_path_line.name = "PathLine"
+	_path_line.width = 4.0
+	_path_line.default_color = Color(0.35, 0.92, 0.98, 0.95)
+	_path_line.joint_mode = Line2D.LINE_JOINT_ROUND
+	_path_line.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	_path_line.end_cap_mode = Line2D.LINE_CAP_ROUND
+	_path_line.visible = false
+	_path_overlay.add_child(_path_line)
 
 	_cell_panels.clear()
 	for r in range(ROWS):
@@ -118,6 +171,7 @@ func _build_ui() -> void:
 	vbox.add_child(_status_label)
 
 	_set_status("先点一格，再点另一格：将调用路径判定（非法选择会有提示）。", Color.LIGHT_GRAY)
+	_update_hud()
 
 	get_viewport().size_changed.connect(_on_viewport_size_changed)
 
@@ -125,6 +179,73 @@ func _build_ui() -> void:
 func _on_viewport_size_changed() -> void:
 	# 依赖 AspectRatioContainer + Grid；窗口变化时刷新一次高亮与排版
 	_refresh_selection_highlight()
+	if _path_line.visible:
+		_hide_path_line()
+
+
+func _update_hud() -> void:
+	_score_label.text = "得分：%d" % score
+	_remain_label.text = "剩余牌：%d" % remaining_tiles
+
+
+func _assert_path_rules(path_res: Dictionary) -> void:
+	var bends: Array = path_res["bend_points"]
+	if bends.size() > 2:
+		push_error("link-game-godot: bend count > 2 (should not happen)")
+	var poly: Array = path_res["polyline"]
+	var seg: int = maxi(poly.size() - 1, 0)
+	if seg > 3:
+		push_error("link-game-godot: segment count > 3 (should not happen)")
+
+
+func _logical_center_global(lr: int, lc: int) -> Vector2:
+	var gr := _grid.get_global_rect()
+	var cw := gr.size.x / float(COLS)
+	var ch := gr.size.y / float(ROWS)
+	return Vector2(gr.position.x + (float(lc) + 0.5) * cw, gr.position.y + (float(lr) + 0.5) * ch)
+
+
+func _polyline_to_line_local(poly: Array) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for p in poly:
+		var lr: int = int(p["row"])
+		var lc: int = int(p["col"])
+		var g: Vector2 = _logical_center_global(lr, lc)
+		pts.append(_path_line.to_local(g))
+	return pts
+
+
+func _show_path_for_result(path_res: Dictionary) -> void:
+	var poly: Array = path_res["polyline"]
+	_path_line.points = _polyline_to_line_local(poly)
+	_path_line.visible = true
+
+
+func _hide_path_line() -> void:
+	_path_line.visible = false
+	_path_line.clear_points()
+
+
+func _begin_match_resolve(ar: int, ac: int, br: int, bc: int, path_res: Dictionary) -> void:
+	_busy = true
+	_assert_path_rules(path_res)
+	_show_path_for_result(path_res)
+	await get_tree().create_timer(0.38).timeout
+	current_board.cells[ar][ac] = null
+	current_board.cells[br][bc] = null
+	score += 10
+	remaining_tiles = maxi(remaining_tiles - 2, 0)
+	_hide_path_line()
+	_sync_cells_from_board()
+	_update_hud()
+	_set_status(
+		(
+			"已消除一对！得分 %d，剩余 %d 张。折点 %d 个。"
+			% [score, remaining_tiles, int(path_res["bend_points"].size())]
+		),
+		Color(0.65, 0.95, 0.75),
+	)
+	_busy = false
 
 
 func _make_cell_panel(r: int, c: int) -> Panel:
@@ -170,6 +291,8 @@ func _on_cell_gui_input(event: InputEvent, r: int, c: int) -> void:
 
 
 func _on_cell_clicked(r: int, c: int) -> void:
+	if _busy:
+		return
 	var v: Variant = current_board.cells[r][c]
 	if v == null:
 		var msg := "无效：空格不可选择。"
@@ -220,11 +343,9 @@ func _on_cell_clicked(r: int, c: int) -> void:
 		_reset_selection_after_attempt()
 		return
 
-	var bends: Array = path_res["bend_points"]
-	var ok_msg := "可连：路径判定成功（折点 %d 个）。消除动画将在后续任务接入。" % bends.size()
-	print("link-game-godot: %s polyline=%s" % [ok_msg, str(path_res["polyline"])])
-	_set_status(ok_msg, Color(0.65, 0.95, 0.75))
+	print("link-game-godot: match ok polyline=%s bends=%s" % [str(path_res["polyline"]), str(path_res["bend_points"])])
 	_reset_selection_after_attempt()
+	_begin_match_resolve(ar, ac, br, bc, path_res)
 
 
 func _reset_selection_after_attempt() -> void:
