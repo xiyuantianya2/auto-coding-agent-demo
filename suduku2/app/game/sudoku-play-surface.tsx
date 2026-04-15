@@ -237,8 +237,8 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
       className={[
         "flex w-full min-w-0 max-w-full flex-col gap-4 overflow-x-hidden pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]",
         "[@media(min-width:768px)_and_(orientation:landscape)]:mx-auto [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(1600px,100%)]",
-        /* 全屏：铺满视口、四边安全区内边距；主内容区 flex-1 占满剩余高度以便棋盘按栏内空间放大 */
-        "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:min-h-0 data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
+        /* 全屏：铺满视口、四边安全区内边距；主内容区 flex-1 占满剩余高度以便棋盘按栏内空间放大（勿再加 min-h-0，否则会覆盖 min-h-[100dvh]） */
+        "data-[fullscreen=true]:box-border data-[fullscreen=true]:min-h-[100dvh] data-[fullscreen=true]:max-h-[100dvh] data-[fullscreen=true]:w-full data-[fullscreen=true]:overflow-y-auto data-[fullscreen=true]:overflow-x-hidden",
         "data-[fullscreen=true]:pt-[calc(0.75rem+env(safe-area-inset-top,0px))] data-[fullscreen=true]:pr-[calc(0.75rem+env(safe-area-inset-right,0px))] data-[fullscreen=true]:pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] data-[fullscreen=true]:pl-[calc(0.75rem+env(safe-area-inset-left,0px))]",
       ].join(" ")}
       data-fullscreen={isFullscreen ? "true" : "false"}
@@ -346,14 +346,16 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
         className={[
           "flex w-full min-w-0 flex-col gap-3 md:flex-row md:justify-between md:gap-4 lg:gap-7 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-9",
           /* 非全屏须 align-start，避免侧栏过高时把棋盘行纵向拉伸破坏 aspect-square */
-          isFullscreen ? "min-h-0 flex-1 md:items-stretch" : "md:items-start",
+          isFullscreen
+            ? "min-h-0 flex-1 md:items-stretch max-md:landscape:flex-row max-md:landscape:items-stretch max-md:landscape:gap-3"
+            : "md:items-start",
         ].join(" ")}
       >
         <div
           className={[
             "mx-auto flex w-full min-w-0 justify-center md:mx-0 [@media(min-width:768px)_and_(orientation:landscape)]:min-w-0 [@media(min-width:768px)_and_(orientation:landscape)]:flex-1 [@media(min-width:768px)_and_(orientation:landscape)]:justify-center",
             isFullscreen
-              ? "s2-board-area min-h-0 flex-1 items-center md:min-h-0 md:flex-[1.35_1_0%]"
+              ? "s2-board-area min-h-0 flex-1 items-center max-md:landscape:min-h-0 max-md:landscape:flex-[1.35_1_0%] md:min-h-0 md:flex-[1.35_1_0%]"
               : "",
           ].join(" ")}
         >
@@ -477,7 +479,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           className={[
             "s2-play-sidebar flex w-full min-w-0 flex-col",
             isFullscreen
-              ? "max-w-[min(100%,min(96vw,52rem))] min-h-0 shrink flex-1 justify-center gap-5 overflow-y-auto overscroll-y-contain py-2 sm:gap-6 sm:py-3 md:max-w-[min(100%,min(48vw,48rem))] md:flex-[0.95_1_20rem] lg:max-w-[min(100%,min(42vw,48rem))]"
+              ? "max-w-[min(100%,min(96vw,52rem))] min-h-0 shrink flex-1 justify-center gap-5 overflow-y-auto overscroll-y-contain py-2 sm:gap-6 sm:py-3 max-md:landscape:max-w-[min(100%,min(46vw,22rem))] max-md:landscape:min-w-[min(100%,12.5rem)] max-md:landscape:flex-none max-md:landscape:justify-start md:max-w-[min(100%,min(48vw,48rem))] md:flex-[0.95_1_20rem] lg:max-w-[min(100%,min(42vw,48rem))]"
               : "shrink-0 gap-4 md:max-w-md [@media(min-width:768px)_and_(orientation:landscape)]:min-w-[min(100%,280px)] [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(100%,min(32rem,42vw))] [@media(min-width:1024px)_and_(orientation:landscape)]:max-w-[min(100%,min(36rem,44vw))]",
           ].join(" ")}
         >
@@ -574,6 +576,22 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   : "同一空格再点一次可切到填数"}
               </span>
             </p>
+
+            <button
+              type="button"
+              className={[
+                "w-full touch-manipulation rounded-xl bg-[var(--s2-btn-secondary-bg)] px-4 py-3 font-semibold text-[var(--s2-btn-secondary-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] transition-colors hover:bg-[var(--s2-btn-secondary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--s2-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--s2-card-muted)] disabled:opacity-40",
+                isFullscreen
+                  ? "min-h-[clamp(3.25rem,min(8.5vmin,9vh),6.5rem)] shrink-0 text-[clamp(0.95rem,min(2.8vmin,3.2vh),1.35rem)] sm:rounded-2xl sm:px-5"
+                  : "min-h-[48px] text-sm [@media(min-width:768px)_and_(orientation:landscape)]:min-h-[clamp(3.25rem,min(8vmin,8.5vh),6rem)] [@media(min-width:768px)_and_(orientation:landscape)]:text-[clamp(0.92rem,min(2.6vmin,2.9vh),1.25rem)] [@media(min-width:768px)_and_(orientation:landscape)]:sm:rounded-2xl",
+              ].join(" ")}
+              data-testid="sudoku-fill-all-pencil-notes"
+              aria-label="一键为所有空格填入约束候选笔记"
+              disabled={interactionLocked}
+              onClick={() => actions.fillAllPencilNotes()}
+            >
+              一键笔记
+            </button>
           </div>
 
           {digitPadSingleCandidateLock && singlePlacementDigit !== null ? (

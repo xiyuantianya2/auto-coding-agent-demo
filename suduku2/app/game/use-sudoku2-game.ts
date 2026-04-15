@@ -12,6 +12,7 @@ import {
 import { getNextHint, type HintResult } from "@/lib/hint";
 import {
   applyCommand,
+  applyFullBoardPencilNotes,
   createUndoRedo,
   type NotesCommand,
   type UndoRedoApi,
@@ -35,6 +36,8 @@ export type Sudoku2GameActions = {
   redo: () => void;
   /** 切换暂停；暂停时冻结交互与计时。 */
   togglePause: () => void;
+  /** 一键笔记：批量写入约束候选（任务 20）；经 `commit` 入撤销栈。 */
+  fillAllPencilNotes: () => void;
 };
 
 export type UseSudoku2GameParams = {
@@ -261,6 +264,17 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
     setHint(getNextHint(gameState));
   }, [gameState, interactionLocked]);
 
+  const fillAllPencilNotes = useCallback(() => {
+    if (interactionLocked) {
+      return;
+    }
+    const next = applyFullBoardPencilNotes(gameState);
+    if (serializeGameState(next) === serializeGameState(gameState)) {
+      return;
+    }
+    commit(next);
+  }, [commit, gameState, interactionLocked]);
+
   const togglePause = useCallback(() => {
     if (disabled) {
       return;
@@ -278,8 +292,9 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
       undo,
       redo,
       togglePause,
+      fillAllPencilNotes,
     }),
-    [clear, digit, redo, requestHint, selectCell, setMode, togglePause, undo],
+    [clear, digit, fillAllPencilNotes, redo, requestHint, selectCell, setMode, togglePause, undo],
   );
 
   return {

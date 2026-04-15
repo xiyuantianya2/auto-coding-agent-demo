@@ -231,7 +231,7 @@
         "若实现撤销：一键笔记后按撤销可恢复点击前的笔记/填数状态。",
         "`npm run lint` 与 `npm run build` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 22,
