@@ -299,7 +299,7 @@
         "`npm test`（Vitest）相关用例通过。",
         "`npm run lint` 与 `npm run build` 通过。"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 28,

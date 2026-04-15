@@ -47,7 +47,25 @@ function notesEqual(a: Set<number> | undefined, b: Set<number>): boolean {
   return true;
 }
 
-describe("applyFullBoardPencilNotes (task 20)", () => {
+function expectEveryEmptyCellNotesMatchCandidates(
+  stateBefore: GameState,
+  out: GameState,
+): void {
+  const expected = computeCandidates(stateBefore);
+  for (let r = 0; r < 9; r++) {
+    for (let c = 0; c < 9; c++) {
+      const ex = expected[r][c];
+      const cell = out.cells[r][c];
+      if (ex === null) {
+        expect(cell.notes).toBeUndefined();
+        continue;
+      }
+      expect(notesEqual(cell.notes, ex)).toBe(true);
+    }
+  }
+}
+
+describe("applyFullBoardPencilNotes (task 27: constraint candidates only)", () => {
   it("does not mutate the input state", () => {
     const grid = makeEmptyGrid();
     const cells = makeEmptyCells();
@@ -61,7 +79,7 @@ describe("applyFullBoardPencilNotes (task 20)", () => {
     expect(state).toEqual(before);
   });
 
-  it("multi-empty cells: each playable empty cell matches computeCandidates", () => {
+  it("fixed board: every empty cell notes match computeCandidates grid", () => {
     const grid = makeEmptyGrid();
     const cells = makeEmptyCells();
     setDigit(grid, cells, 8, 0, 1, "given");
@@ -69,23 +87,11 @@ describe("applyFullBoardPencilNotes (task 20)", () => {
     setDigit(grid, cells, 7, 7, 3, "given");
     setDigit(grid, cells, 1, 1, 6, "value");
     const state = makeState(grid, cells);
-    const expected = computeCandidates(state);
     const out = applyFullBoardPencilNotes(state);
-
-    for (let r = 0; r < 9; r++) {
-      for (let c = 0; c < 9; c++) {
-        const ex = expected[r][c];
-        const cell = out.cells[r][c];
-        if (ex === null) {
-          expect(cell.notes).toBeUndefined();
-          continue;
-        }
-        expect(notesEqual(cell.notes, ex)).toBe(true);
-      }
-    }
+    expectEveryEmptyCellNotesMatchCandidates(state, out);
   });
 
-  it("partial notes on empties are replaced by full constraint candidates (not merged)", () => {
+  it("wrong/extra pencil notes are replaced by feasible constraint set (not merged)", () => {
     const grid = makeEmptyGrid();
     const cells = makeEmptyCells();
     setDigit(grid, cells, 0, 1, 5, "value");
@@ -112,6 +118,23 @@ describe("applyFullBoardPencilNotes (task 20)", () => {
       [...at22].sort((a, b) => a - b),
     );
     expect([...at22].sort((a, b) => a - b)).not.toEqual([1]);
+  });
+
+  it("empty candidate set clears notes on that cell (invalid board still bounded)", () => {
+    const grid = makeEmptyGrid();
+    const cells = makeEmptyCells();
+    /* Row 0 cols 1–8 hold 1..8; (1,0)=9 blocks 9 for (0,0); each 1..8 blocked in row */
+    for (let col = 1; col <= 8; col++) {
+      setDigit(grid, cells, 0, col, col, "value");
+    }
+    setDigit(grid, cells, 1, 0, 9, "value");
+    cells[0][0] = { notes: new Set([1, 2, 3, 4, 5, 6, 7, 8, 9]) };
+    const state = makeState(grid, cells);
+    expect(computeCandidates(state)[0][0]?.size).toBe(0);
+
+    const out = applyFullBoardPencilNotes(state);
+    expect(out.cells[0][0].notes).toBeUndefined();
+    expectEveryEmptyCellNotesMatchCandidates(state, out);
   });
 
   it("given and player-filled cells are not written with pencil notes", () => {
