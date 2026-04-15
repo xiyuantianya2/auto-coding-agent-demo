@@ -1,0 +1,19 @@
+# Godot
+.godot/
+*.import
+# 导出产物（可按需改为提交 Web 测试用构建）
+export/
+
+# Node
+node_modules/
+
+# Playwright
+test-results/
+playwright-report/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

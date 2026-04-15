@@ -1,0 +1,22 @@
+{
+  "name": "link-game-godot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Godot 4 连连看（桌面 + Android），含 npm/Playwright 基线与 Godot 无头测试入口",
+  "scripts": {
+    "dev": "serve public -l 3004",
+    "build": "node ./scripts/verify-godot-project.mjs",
+    "lint": "eslint e2e playwright.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^20.19.0",
+    "eslint": "^9.39.1",
+    "serve": "^14.2.5",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0"
+  }
+}

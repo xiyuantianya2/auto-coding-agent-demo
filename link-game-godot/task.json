@@ -1,0 +1,129 @@
+{
+  "project": "连连看-godot",
+  "description": "Godot 4 连连看（8×12、双弯路径、提示/洗牌、120 秒限时、桌面+Android）；Godot 内自动化测试 + npm/Playwright 基线；需求见 requirements-archive.md。",
+  "tasks": [
+    {
+      "id": 1,
+      "title": "脚手架与基础配置",
+      "description": "建立 Godot 4 工程、主场景占位、run_tests.gd 无头入口占位、npm/Playwright（端口 3004）、public 静态页、README 与 architecture.md。",
+      "steps": [
+        "用 Godot 4 打开 link-game-godot/project.godot，F5 能运行主场景且无报错。",
+        "在 link-game-godot/ 执行 PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm install 成功。",
+        "npm run dev 可在 http://localhost:3004 访问占位页。",
+        "npm run lint、npm run build、npm run test:e2e 均可成功执行。",
+        "godot --headless -s run_tests.gd（若本机已配置 godot 命令）以退出码 0 结束。"
+      ],
+      "passes": true
+    },
+    {
+      "id": 2,
+      "title": "棋盘数据模型与路径判定核心",
+      "description": "实现 8×12 网格、图案对子、已消除空位；实现最多 2 拐（≤3 段直线）且不可斜连的路径判定 API，供后续 UI 与测试复用。",
+      "steps": [
+        "提供清晰的 GDScript API（或独立脚本模块）输入两格坐标，输出是否可连及路径折点。",
+        "为边界与空位穿越规则编写单元/场景测试用例并可在 headless 下运行。",
+        "代码注释或 architecture 补充说明与 requirements-archive 规则一致。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 3,
+      "title": "可解随机布局生成",
+      "description": "生成单局随机布局（约 8 种图案各 2 枚），保证存在合法解或采用可证明的生成策略；暴露重开新局接口。",
+      "steps": [
+        "连续多次生成不出现死锁（或失败时可检测并重roll，直至可解）。",
+        "为生成器添加至少一个确定性种子用例，便于回归。",
+        "在 Godot 内测试中断言棋盘尺寸与牌对数量正确。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 4,
+      "title": "主对局场景与方块交互",
+      "description": "主场景展示网格与占位图块（彩色矩形/简单图标）；鼠标点选两格，非法选择有清晰反馈。",
+      "steps": [
+        "编辑器内可点选两格并调用路径判定逻辑。",
+        "非法对（不可连或非同图案）给出可见/日志反馈且不崩溃。",
+        "基础布局适配窗口（stretch 或最小分辨率策略与文档一致）。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 5,
+      "title": "连线可视化与消除动画",
+      "description": "合法路径绘制折线（或分段线），消除后格子变为空且可参与后续路径；动画可简化但状态须正确。",
+      "steps": [
+        "成功配对后两格清空，得分/剩余牌数状态更新正确。",
+        "路径绘制与 requirements 中的段数/拐弯约束一致。",
+        "场景测试或截图辅助验收无报错。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 6,
+      "title": "计时、提示与洗牌",
+      "description": "实现 120 秒倒计时；提示高亮一对可连牌（若无解则洗牌或明确提示）；洗牌保持规则与可玩性。",
+      "steps": [
+        "时间到触发失败或结束流程（与设计方案一致并在 README 说明）。",
+        "提示在可解时能找到一对；洗牌后棋盘仍符合生成规则。",
+        "针对提示/洗牌与计时器编写至少一个自动化断言。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 7,
+      "title": "胜负与「再来一局」",
+      "description": "全部消除为胜；弹窗或层显示结果并提供「再来一局」重置棋盘与计时。",
+      "steps": [
+        "完整玩一局可胜利并进入再来一局；无存档需求。",
+        "弹窗按钮可点且状态重置正确。",
+        "在 Godot 内测试或场景脚本中断言胜利条件。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "Godot 自动化测试套件接入",
+      "description": "将 run_tests.gd 扩展为真实入口：集成 GUT 或自定义场景测试，覆盖路径查找、消除与胜负关键路径；支持 godot --headless -s run_tests.gd。",
+      "steps": [
+        "CI/本地一键命令运行全部 Godot 测试且退出码非 0 表示失败。",
+        "测试覆盖路径判定与至少一处完整选牌-消除流程。",
+        "README 更新命令与依赖（如 GUT 插件路径）。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 9,
+      "title": "桌面与 Android 导出预设",
+      "description": "配置 Windows 桌面导出；配置 Android 导出所需参数说明（SDK/密钥由开发者本机配置）；记录已知限制。",
+      "steps": [
+        "在 Windows 上可导出可执行包并双击运行当前版本。",
+        "Android 导出步骤与依赖在 README 中写清；若本仓库不提交密钥，明确说明。",
+        "export/ 或构建产物路径加入 .gitignore（若适用）。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 10,
+      "title": "Playwright 与 CI 文档（可选 HTML5）",
+      "description": "若启用 Web 导出：将 npm dev 指向导出目录或保持占位并说明；补充 GitHub Actions（Windows runner）示例：安装 Godot、运行 run_tests.gd；Playwright 保持冒烟。",
+      "steps": [
+        "文档中给出 Windows CI 示例命令（godot --headless -s run_tests.gd）。",
+        "npm run test:e2e 在干净环境下可通过（含 webServer）。",
+        "README 区分「Godot 内测试」与「Playwright 冒烟」职责。"
+      ],
+      "passes": false
+    },
+    {
+      "id": 11,
+      "title": "收尾与整体验收",
+      "description": "对照 requirements-archive 全项走查；修复崩溃与明显体验问题；更新 architecture 与 README 最终版。",
+      "steps": [
+        "编辑器内完整玩一局（含提示/洗牌/超时路径至少抽测）。",
+        "godot --headless -s run_tests.gd 全绿；npm run lint/build/test:e2e 全绿。",
+        "需求留档未被清空；task.json 中各项 passes 与事实一致。"
+      ],
+      "passes": false
+    }
+  ]
+}
