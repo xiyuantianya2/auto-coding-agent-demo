@@ -1,5 +1,22 @@
 # Progress Log
 
+## 2026-04-16 - Task: link-game-godot task id=11 — 收尾与整体验收
+
+### What was done:
+- `package.json`：新增 `npm test`（`vitest run`），与验收流程对齐。
+- `architecture.md`：更新为最终版（棋盘规模 8×12、8 种图案各 12 枚、模块与目录、测试分层、npm 脚本表）。
+- `README.md`：补充 `npm test` 说明与推荐验收顺序（lint → build → Vitest → Godot 无头 → Playwright）；lint 范围注明含 `src/`。
+- `link-game-godot/task.json`：id=11 `passes: true`。
+- 对照 `requirements-archive.md`：规则与实现一致，需求留档未改动历史条目。
+
+### Testing:
+- `cd link-game-godot && npm run lint`、`npm run build`、`npm test`（25）、`godot --headless -s run_tests.gd`（退出码 0）、`npm run test:e2e`（1）均通过。
+
+### Notes:
+- 编辑器内试玩与提示/洗牌/超时路径需在 Godot 中人工抽测；自动化以 Godot 无头 + Vitest + Playwright 冒烟为准。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=26 — 空白格：填数模式下不显示 1–9 笔记占位
 
 ### What was done:

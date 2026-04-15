@@ -152,9 +152,20 @@ npm install
 | 命令 | 说明 |
 |------|------|
 | `npm run build` | 校验关键 Godot 文件是否存在 + TypeScript `tsc` |
-| `npm run lint` | 对 `e2e/` 与 `playwright.config.ts` 运行 ESLint |
+| `npm test` | **Vitest**：运行 `src/**/*.test.ts`（路径/生成器/规则镜像等单元与集成测试；**不含 Playwright**） |
+| `npm run lint` | 对 `e2e/`、`playwright.config.ts`、`src/` 运行 ESLint |
 | `npm run dev:web` | （可选）对 `export/web/` 启动静态服务（需已完成 HTML5 导出） |
 | `npm run test:godot` | 无头运行 `run_tests.gd`（需本机安装 Godot 4 并可执行） |
+
+## 验收顺序（本地 / CI）
+
+建议按 **lint → build → Vitest → Godot 无头 → Playwright** 执行，与 [`../.github/workflows/link-game-godot-ci.yml`](../.github/workflows/link-game-godot-ci.yml) 一致：
+
+1. `npm run lint`
+2. `npm run build`
+3. `npm test`
+4. `godot --headless -s run_tests.gd`（或 `npm run test:godot`）
+5. `npm run test:e2e`
 
 ## 架构与任务
 
