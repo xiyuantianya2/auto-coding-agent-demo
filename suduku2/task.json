@@ -121,7 +121,7 @@
         "npm run lint 无错误",
         "npm run build 成功"
       ],
-      "passes": false
+      "passes": true
     },
     {
       "id": 12,

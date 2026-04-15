@@ -415,6 +415,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   type="button"
                   className="min-h-[56px] min-w-0 touch-manipulation select-none rounded-xl bg-[var(--s2-digit-pad-bg)] px-2 py-3 text-lg font-semibold text-[var(--s2-digit-pad-text)] ring-1 ring-[var(--s2-btn-secondary-ring)] hover:opacity-90 disabled:opacity-40"
                   data-testid={`digit-pad-${n}`}
+                  aria-label={`数字 ${n}`}
                   onClick={() => actions.digit(n)}
                   disabled={interactionLocked}
                 >

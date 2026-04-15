@@ -1,5 +1,19 @@
 # Progress Log
 
+## 2026-04-15 - Task: suduku2 task id=11 — 可访问性稳定与测试定位约定
+
+### What was done:
+- `SudokuPlaySurface`：数字键 `1`–`9` 增加 `aria-label="数字 n"`，与既有 `data-testid="digit-pad-n"` 并列，便于 `getByRole('button', { name: … })` 与读屏。
+- 新增 `e2e/play-flow-locators.spec.ts`：专项练习路径下用 `getByRole('grid', { name: '数独棋盘' })`、`practice-board`、单元格与 `digit-pad`/`sudoku-pause` 串起「进入 → 选格 → 填数 → 暂停/继续」，无无上限 DOM 轮询。
+
+### Testing:
+- `cd suduku2 && npm run lint`、`npm run build`、`npm test`（266）、`npx playwright test --headed`（43）通过。
+
+### Notes:
+- 棋盘仍为 `role="grid"` + `aria-label="数独棋盘"`；格内为 `button` + `aria-label="单元格 r 行 c 列"`（与改版前一致）。模式页棋盘 testid：`practice-board` / `endless-board`；默认 `sudoku-board`。
+
+---
+
 ## 2026-04-15 - Task: suduku2 task id=10 — 首页、对局入口与教学壳页对齐新 UI
 
 ### What was done:
