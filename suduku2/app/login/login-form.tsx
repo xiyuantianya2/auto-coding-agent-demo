@@ -51,13 +51,13 @@ export function LoginForm(): JSX.Element {
   }
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[var(--s2-border)] bg-[var(--s2-card)] p-8 shadow-xl">
-      <div className="flex gap-2 rounded-lg bg-[var(--s2-card-muted)] p-1">
+    <div className="w-full max-w-md rounded-[var(--s2-r-2xl)] border border-[var(--s2-border)] bg-[var(--s2-card)] p-8 shadow-xl">
+      <div className="flex gap-2 rounded-[var(--s2-r-lg)] bg-[var(--s2-card-muted)] p-1">
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+          className={`flex-1 rounded-[var(--s2-r-md)] px-3 py-2 text-sm font-medium transition ${
             mode === "login"
-              ? "bg-emerald-600 text-white"
+              ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)]"
               : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
           onClick={() => {
@@ -70,9 +70,9 @@ export function LoginForm(): JSX.Element {
         </button>
         <button
           type="button"
-          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium transition ${
+          className={`flex-1 rounded-[var(--s2-r-md)] px-3 py-2 text-sm font-medium transition ${
             mode === "register"
-              ? "bg-emerald-600 text-white"
+              ? "bg-[var(--s2-accent)] text-[var(--s2-on-accent)]"
               : "text-[var(--s2-text-muted)] hover:text-[var(--s2-text)]"
           }`}
           onClick={() => {
@@ -94,7 +94,7 @@ export function LoginForm(): JSX.Element {
             id={usernameId}
             name="username"
             autoComplete="username"
-            className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+            className="mt-2 w-full rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
             value={username}
             onChange={(ev) => setUsername(ev.target.value)}
             required
@@ -110,7 +110,7 @@ export function LoginForm(): JSX.Element {
             name="password"
             type="password"
             autoComplete={mode === "login" ? "current-password" : "new-password"}
-            className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+            className="mt-2 w-full rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
             value={password}
             onChange={(ev) => setPassword(ev.target.value)}
             required
@@ -127,7 +127,7 @@ export function LoginForm(): JSX.Element {
               id={nicknameId}
               name="nickname"
               autoComplete="nickname"
-              className="mt-2 w-full rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none ring-emerald-500/0 transition focus:border-emerald-500/60 focus:ring-2"
+              className="mt-2 w-full rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-sm text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
               value={nickname}
               onChange={(ev) => setNickname(ev.target.value)}
               data-testid="auth-nickname"
@@ -142,7 +142,7 @@ export function LoginForm(): JSX.Element {
           className={
             message
               ? message.kind === "ok"
-                ? "text-sm text-emerald-600 dark:text-emerald-400"
+                ? "text-sm text-[var(--s2-status-ok)]"
                 : "text-sm text-rose-400"
               : "text-sm text-transparent"
           }
@@ -153,7 +153,7 @@ export function LoginForm(): JSX.Element {
         <button
           type="submit"
           disabled={busy}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-[var(--s2-r-lg)] bg-[var(--s2-accent)] px-4 py-2.5 text-sm font-semibold text-[var(--s2-on-accent)] transition hover:bg-[var(--s2-accent-hover)] disabled:cursor-not-allowed disabled:opacity-60"
           data-testid="auth-submit"
         >
           {busy ? "提交中…" : mode === "login" ? "登录" : "注册并登录"}
@@ -161,7 +161,10 @@ export function LoginForm(): JSX.Element {
       </form>
 
       <p className="mt-8 text-center text-sm text-[var(--s2-text-subtle)]">
-        <Link href="/" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400">
+        <Link
+          href="/"
+          className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
+        >
           返回首页
         </Link>
       </p>

@@ -157,7 +157,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
 
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between md:gap-6 [@media(min-width:768px)_and_(orientation:landscape)]:lg:gap-10">
         <div
-          className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-xl border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(88vmin,560px)] [@media(min-width:1024px)_and_(orientation:portrait)]:max-w-[min(92vw,480px)]"
+          className="mx-auto grid aspect-square w-full max-w-[min(92vw,420px)] grid-cols-[repeat(9,minmax(0,1fr))] grid-rows-[repeat(9,minmax(0,1fr))] gap-px overflow-hidden rounded-[var(--s2-r-xl)] border border-[var(--s2-board-border)] bg-[var(--s2-board-outer-bg)] p-2 [@media(min-width:768px)_and_(orientation:landscape)]:max-w-[min(88vmin,560px)] [@media(min-width:1024px)_and_(orientation:portrait)]:max-w-[min(92vw,480px)]"
           data-testid={boardTestId}
           role="grid"
           aria-label="数独棋盘"
@@ -286,7 +286,7 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="rounded-lg px-3 py-2 text-sm font-semibold ring-1 min-h-[44px] bg-[var(--s2-hint-btn-bg)] text-[var(--s2-hint-btn-text)] ring-amber-700/40 hover:opacity-90 disabled:opacity-40"
+              className="rounded-[var(--s2-r-lg)] px-3 py-2 text-sm font-semibold ring-1 min-h-[44px] bg-[var(--s2-hint-btn-bg)] text-[var(--s2-hint-btn-text)] ring-[var(--s2-hint-btn-ring)] hover:opacity-90 disabled:opacity-40"
               data-testid="sudoku-hint"
               disabled={interactionLocked}
               onClick={() => actions.requestHint()}

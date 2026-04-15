@@ -3,80 +3,184 @@
 /* 亮色为默认（SSR）；`html.dark` 由首屏脚本与 ThemeProvider 同步 */
 :root {
   color-scheme: light;
-  --s2-page-bg: #fafafa;
-  --s2-text: #18181b;
-  --s2-text-muted: #71717a;
-  --s2-text-subtle: #a1a1aa;
-  --s2-border: #d4d4d8;
-  --s2-border-strong: #a1a1aa;
-  --s2-card: #f4f4f5;
-  --s2-card-muted: #e4e4e7;
-  --s2-nav-border: #a1a1aa;
+
+  /* 圆角层级：小 → 大，触控界面略放大圆角便于识别可点区域 */
+  --s2-r-xs: 0.25rem;
+  --s2-r-sm: 0.375rem;
+  --s2-r-md: 0.5rem;
+  --s2-r-lg: 0.75rem;
+  --s2-r-xl: 1rem;
+  --s2-r-2xl: 1.25rem;
+
+  /* 页面与排版：冷灰底 + 深墨字，主副层级拉开 */
+  --s2-page-bg: #eef2f7;
+  --s2-text: #111827;
+  --s2-text-muted: #4b5563;
+  --s2-text-subtle: #6b7280;
+
+  --s2-border: #c8ced7;
+  --s2-border-strong: #64748b;
+
+  --s2-card: #ffffff;
+  --s2-card-muted: #e8ecf2;
+  --s2-nav-border: #94a3b8;
+
   --s2-input-bg: #ffffff;
-  --s2-input-border: #d4d4d8;
-  --s2-btn-secondary-bg: #e4e4e7;
-  --s2-btn-secondary-hover: #d4d4d8;
-  --s2-btn-secondary-text: #18181b;
-  --s2-btn-secondary-ring: #a1a1aa;
-  --s2-timer-text: #52525b;
-  --s2-board-outer-bg: #e4e4e7;
-  --s2-board-border: #a1a1aa;
-  --s2-cell-given-bg: #e4e4e7;
-  --s2-cell-given-text: #18181b;
+  --s2-input-border: #c8ced7;
+
+  /* 次级按钮 / 工具条 */
+  --s2-btn-secondary-bg: #e2e8f0;
+  --s2-btn-secondary-hover: #cbd5e1;
+  --s2-btn-secondary-text: #1e293b;
+  --s2-btn-secondary-ring: #94a3b8;
+
+  --s2-timer-text: #334155;
+
+  /* 棋盘：外框与粗线略加深，格线清晰 */
+  --s2-board-outer-bg: #dbeafe;
+  --s2-board-border: #64748b;
+  --s2-cell-given-bg: #f1f5f9;
+  --s2-cell-given-text: #0f172a;
   --s2-cell-empty-bg: #ffffff;
-  --s2-cell-fill-text: #047857;
-  --s2-cell-selected-ring: rgba(16, 185, 129, 0.75);
-  --s2-cell-hint-ring: rgba(245, 158, 11, 0.95);
-  --s2-cand-pip-muted: #d4d4d8;
-  --s2-cand-pip-on: #3f3f46;
-  --s2-cand-hint: #b45309;
-  --s2-digit-pad-bg: #e4e4e7;
-  --s2-digit-pad-text: #18181b;
+  --s2-cell-fill-text: #0f766e;
+  --s2-cell-selected-ring: rgba(13, 148, 136, 0.88);
+  --s2-cell-hint-ring: rgba(217, 119, 6, 0.95);
+
+  --s2-cand-pip-muted: #cbd5e1;
+  --s2-cand-pip-on: #334155;
+  --s2-cand-hint: #9a3412;
+
+  --s2-digit-pad-bg: #e2e8f0;
+  --s2-digit-pad-text: #0f172a;
+
   --s2-hint-btn-bg: rgba(245, 158, 11, 0.2);
   --s2-hint-btn-text: #92400e;
+  --s2-hint-btn-ring: rgba(180, 83, 9, 0.42);
+
   --s2-hint-banner: #92400e;
-  --s2-amber-warn-bg: rgba(245, 158, 11, 0.12);
-  --s2-amber-warn-border: rgba(245, 158, 11, 0.45);
+
+  --s2-amber-warn-bg: rgba(245, 158, 11, 0.14);
+  --s2-amber-warn-border: rgba(217, 119, 6, 0.42);
   --s2-amber-warn-text: #78350f;
+
+  /* 品牌主色：青绿强调，与填数色系统一 */
+  --s2-accent: #0d9488;
+  --s2-accent-hover: #0f766e;
+  --s2-accent-emphasis: #0f766e;
+  --s2-accent-emphasis-hover: #115e59;
+  --s2-on-accent: #ffffff;
+
+  --s2-link: #0f766e;
+  --s2-link-hover: #115e59;
+
+  --s2-eyebrow: #0d9488;
+
+  --s2-nav-hover-border: rgba(13, 148, 136, 0.55);
+  --s2-nav-hover-text: #0f766e;
+
+  --s2-focus-border: #0d9488;
+  --s2-focus-ring: rgba(13, 148, 136, 0.28);
+
+  --s2-status-ok: #0f766e;
+
+  --s2-accent-panel-bg: #ecfdf5;
+  --s2-accent-panel-border: rgba(13, 148, 136, 0.38);
+  --s2-accent-panel-fg: #064e3b;
+  --s2-accent-panel-muted: #047857;
+
+  --s2-tier-hover-border: rgba(13, 148, 136, 0.5);
+
+  --s2-tutorial-chip-bg: rgba(13, 148, 136, 0.14);
+  --s2-tutorial-chip-fg: #065f46;
+  --s2-tutorial-cta-border: rgba(13, 148, 136, 0.45);
+  --s2-tutorial-cta-bg: rgba(13, 148, 136, 0.1);
+  --s2-tutorial-cta-fg: #065f46;
+  --s2-tutorial-cta-hover-bg: rgba(13, 148, 136, 0.18);
 }
 
 html.dark {
   color-scheme: dark;
-  --s2-page-bg: #09090b;
-  --s2-text: #fafafa;
-  --s2-text-muted: #a1a1aa;
-  --s2-text-subtle: #71717a;
-  --s2-border: #3f3f46;
-  --s2-border-strong: #52525b;
-  --s2-card: rgba(24, 24, 27, 0.65);
-  --s2-card-muted: #18181b;
-  --s2-nav-border: #3f3f46;
-  --s2-input-bg: #09090b;
-  --s2-input-border: #3f3f46;
-  --s2-btn-secondary-bg: #18181b;
-  --s2-btn-secondary-hover: #27272a;
-  --s2-btn-secondary-text: #fafafa;
-  --s2-btn-secondary-ring: #3f3f46;
-  --s2-timer-text: #d4d4d8;
-  --s2-board-outer-bg: #18181b;
-  --s2-board-border: #3f3f46;
-  --s2-cell-given-bg: #27272a;
-  --s2-cell-given-text: #fafafa;
-  --s2-cell-empty-bg: #09090b;
-  --s2-cell-fill-text: #a7f3d0;
-  --s2-cell-selected-ring: rgba(52, 211, 153, 0.85);
+
+  --s2-page-bg: #0b1220;
+  --s2-text: #f1f5f9;
+  --s2-text-muted: #cbd5e1;
+  --s2-text-subtle: #94a3b8;
+
+  --s2-border: #3d4e60;
+  --s2-border-strong: #64748b;
+
+  --s2-card: rgba(15, 23, 42, 0.78);
+  --s2-card-muted: #151f2e;
+  --s2-nav-border: #475569;
+
+  --s2-input-bg: #0f172a;
+  --s2-input-border: #475569;
+
+  --s2-btn-secondary-bg: #1e293b;
+  --s2-btn-secondary-hover: #334155;
+  --s2-btn-secondary-text: #f1f5f9;
+  --s2-btn-secondary-ring: #475569;
+
+  --s2-timer-text: #cbd5e1;
+
+  --s2-board-outer-bg: #151f2e;
+  --s2-board-border: #64748b;
+  --s2-cell-given-bg: #1e293b;
+  --s2-cell-given-text: #f8fafc;
+  --s2-cell-empty-bg: #0f172a;
+  --s2-cell-fill-text: #5eead4;
+  --s2-cell-selected-ring: rgba(45, 212, 191, 0.9);
   --s2-cell-hint-ring: rgba(251, 191, 36, 0.95);
-  --s2-cand-pip-muted: #71717a;
-  --s2-cand-pip-on: #e4e4e7;
-  --s2-cand-hint: #fde68a;
-  --s2-digit-pad-bg: #18181b;
-  --s2-digit-pad-text: #fafafa;
-  --s2-hint-btn-bg: rgba(180, 83, 9, 0.45);
+
+  --s2-cand-pip-muted: #64748b;
+  --s2-cand-pip-on: #e2e8f0;
+  --s2-cand-hint: #fcd34d;
+
+  --s2-digit-pad-bg: #1e293b;
+  --s2-digit-pad-text: #f1f5f9;
+
+  --s2-hint-btn-bg: rgba(180, 83, 9, 0.5);
   --s2-hint-btn-text: #fffbeb;
+  --s2-hint-btn-ring: rgba(251, 191, 36, 0.42);
+
   --s2-hint-banner: #fef3c7;
+
   --s2-amber-warn-bg: rgba(245, 158, 11, 0.12);
-  --s2-amber-warn-border: rgba(245, 158, 11, 0.35);
+  --s2-amber-warn-border: rgba(251, 191, 36, 0.35);
   --s2-amber-warn-text: #fde68a;
+
+  --s2-accent: #14b8a6;
+  --s2-accent-hover: #0d9488;
+  --s2-accent-emphasis: #0f766e;
+  --s2-accent-emphasis-hover: #115e59;
+  --s2-on-accent: #ffffff;
+
+  --s2-link: #5eead4;
+  --s2-link-hover: #99f6e4;
+
+  --s2-eyebrow: #5eead4;
+
+  --s2-nav-hover-border: rgba(45, 212, 191, 0.45);
+  --s2-nav-hover-text: #ccfbf1;
+
+  --s2-focus-border: #2dd4bf;
+  --s2-focus-ring: rgba(45, 212, 191, 0.28);
+
+  --s2-status-ok: #5eead4;
+
+  --s2-accent-panel-bg: rgba(13, 148, 136, 0.24);
+  --s2-accent-panel-border: rgba(45, 212, 191, 0.38);
+  --s2-accent-panel-fg: #ecfdf5;
+  --s2-accent-panel-muted: #a7f3d0;
+
+  --s2-tier-hover-border: rgba(45, 212, 191, 0.45);
+
+  --s2-tutorial-chip-bg: rgba(45, 212, 191, 0.14);
+  --s2-tutorial-chip-fg: #ccfbf1;
+  --s2-tutorial-cta-border: rgba(45, 212, 191, 0.45);
+  --s2-tutorial-cta-bg: rgba(45, 212, 191, 0.1);
+  --s2-tutorial-cta-fg: #ccfbf1;
+  --s2-tutorial-cta-hover-bg: rgba(45, 212, 191, 0.2);
 }
 
 /* 候选数高对比：提高笔记数字与背景的对比度 */

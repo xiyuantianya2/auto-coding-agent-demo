@@ -43,7 +43,7 @@ export default function FullscreenSmokePage() {
         <span className="mx-2">·</span>
         <span>当前全屏：{isFullscreen ? "是" : "否"}</span>
         {lastError ? (
-          <span className="block text-amber-700 dark:text-amber-300">
+          <span className="block text-[var(--s2-amber-warn-text)]">
             最近错误：{lastError.kind}
             {lastError.message ? `（${lastError.message}）` : ""}
           </span>
@@ -52,7 +52,7 @@ export default function FullscreenSmokePage() {
 
       <div className="flex flex-wrap gap-2">
         <button
-          className="rounded border border-emerald-600 px-3 py-1.5 text-sm text-emerald-800 dark:text-emerald-200"
+          className="rounded-[var(--s2-r-sm)] border border-[var(--s2-accent)] px-3 py-1.5 text-sm text-[var(--s2-link)]"
           data-testid="fullscreen-smoke-enter"
           type="button"
           onClick={() => {

@@ -251,7 +251,10 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
         <p className="text-sm text-[var(--s2-text-muted)]">未指定专项模式。请从教学大纲点击「专项练习」进入。</p>
         <p className="mt-6">
-          <Link className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
+          <Link
+            className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
+            href="/tutorial"
+          >
             前往教学大纲
           </Link>
         </p>
@@ -264,7 +267,10 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <div className="mx-auto max-w-md px-6 py-16 text-center text-[var(--s2-text)]">
         <p className="text-sm text-[var(--s2-text-muted)]">无效的专项模式参数。</p>
         <p className="mt-6">
-          <Link className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline" href="/tutorial">
+          <Link
+            className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
+            href="/tutorial"
+          >
             返回教学大纲
           </Link>
         </p>
@@ -280,7 +286,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       >
         <h1 className="text-xl font-semibold">{phase.techniqueTitle}</h1>
         <div
-          className="rounded-xl border border-amber-500/35 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-50"
+          className="rounded-[var(--s2-r-xl)] border border-[var(--s2-amber-warn-border)] bg-[var(--s2-amber-warn-bg)] p-4 text-sm leading-relaxed text-[var(--s2-amber-warn-text)]"
           data-testid="practice-locked-gate"
           role="alert"
         >
@@ -288,7 +294,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         </div>
         <p>
           <Link
-            className="text-emerald-700 dark:text-emerald-400 underline-offset-4 hover:underline"
+            className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
             href="/tutorial"
             data-testid="practice-back-tutorial"
           >
@@ -307,11 +313,11 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
       <header className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400/90">专项练习</p>
+            <p className="text-xs font-medium uppercase tracking-[0.2em] text-[var(--s2-eyebrow)]">专项练习</p>
             <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
           </div>
           <Link
-            className="text-sm text-emerald-600 dark:text-emerald-400/90 underline-offset-4 hover:underline"
+            className="text-sm text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
             href="/tutorial"
             data-testid="practice-back-tutorial-header"
           >
@@ -362,14 +368,14 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
         <div className="flex flex-col gap-4">
           {justWon ? (
             <div
-              className="rounded-xl border border-emerald-500/30 bg-emerald-950/40 p-4 text-sm text-emerald-50"
+              className="rounded-[var(--s2-r-xl)] border border-[var(--s2-accent-panel-border)] bg-[var(--s2-accent-panel-bg)] p-4 text-sm text-[var(--s2-accent-panel-fg)]"
               data-testid="practice-win-banner"
             >
               <p className="font-semibold">恭喜完成本局！</p>
-              <p className="mt-2 text-emerald-100/90">专项连胜与最佳用时已写入服务器进度。</p>
+              <p className="mt-2 text-[var(--s2-accent-panel-muted)]">专项连胜与最佳用时已写入服务器进度。</p>
               <button
                 type="button"
-                className="mt-4 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
+                className="mt-4 rounded-[var(--s2-r-lg)] bg-[var(--s2-accent)] px-4 py-2 text-sm font-semibold text-[var(--s2-on-accent)] transition hover:bg-[var(--s2-accent-hover)] disabled:opacity-60"
                 onClick={() => void loadPuzzle()}
                 disabled={busy}
                 data-testid="practice-next-round"
@@ -391,7 +397,7 @@ export function PracticeModeView(props: { modeId: string }): JSX.Element {
               <>
                 <button
                   type="button"
-                  className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-600 disabled:opacity-40"
+                  className="rounded-[var(--s2-r-lg)] bg-[var(--s2-accent-emphasis)] px-4 py-2 text-sm font-semibold text-[var(--s2-on-accent)] hover:bg-[var(--s2-accent-emphasis-hover)] disabled:opacity-40"
                   onClick={() => void onSaveDraft()}
                   disabled={busy || justWon}
                   data-testid="practice-save-draft"

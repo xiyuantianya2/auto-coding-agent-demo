@@ -10,7 +10,7 @@ export default function Home() {
   return (
     <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-[var(--s2-page-bg)] px-6 py-16 text-[var(--s2-text)]">
       <div className="max-w-lg text-center">
-        <p className="text-sm font-medium uppercase tracking-[0.2em] text-emerald-600 dark:text-emerald-400/90">
+        <p className="text-sm font-medium uppercase tracking-[0.2em] text-[var(--s2-eyebrow)]">
           suduku2
         </p>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
@@ -30,25 +30,25 @@ export default function Home() {
           className="mt-10 flex flex-wrap justify-center gap-3 text-sm"
         >
           <Link
-            className="rounded-lg border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-200"
+            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
             href="/login"
           >
             登录
           </Link>
           <Link
-            className="rounded-lg border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-200"
+            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
             href="/tutorial"
           >
             教学
           </Link>
           <Link
-            className="rounded-lg border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-200"
+            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
             href="/game"
           >
             对局
           </Link>
           <Link
-            className="rounded-lg border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-emerald-500/60 hover:text-emerald-700 dark:hover:text-emerald-200"
+            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-nav-border)] px-4 py-2 text-[var(--s2-text)] transition hover:border-[var(--s2-nav-hover-border)] hover:text-[var(--s2-nav-hover-text)]"
             href="/game/endless"
           >
             无尽

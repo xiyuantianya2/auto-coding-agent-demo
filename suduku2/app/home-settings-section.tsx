@@ -148,7 +148,7 @@ export function HomeSettingsSection(): JSX.Element {
           主题
           <select
             data-testid="settings-theme-select"
-            className="rounded-lg border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-[var(--s2-text)] outline-none ring-emerald-500/0 focus:border-emerald-500/60 focus:ring-2"
+            className="rounded-[var(--s2-r-lg)] border border-[var(--s2-input-border)] bg-[var(--s2-input-bg)] px-3 py-2 text-[var(--s2-text)] outline-none transition focus:border-[var(--s2-focus-border)] focus:ring-2 focus:ring-[var(--s2-focus-ring)]"
             value={themePreference}
             onChange={onThemeChange}
           >
@@ -179,7 +179,7 @@ export function HomeSettingsSection(): JSX.Element {
         {!ready ? (
           <p className="mt-3 text-sm text-[var(--s2-text-subtle)]">会话加载中…</p>
         ) : !token ? (
-          <p className="mt-3 text-sm text-amber-700 dark:text-[var(--s2-amber-warn-text)]" role="status">
+          <p className="mt-3 text-sm text-[var(--s2-amber-warn-text)]" role="status">
             请先登录后再导出或导入进度。
           </p>
         ) : (
@@ -196,7 +196,7 @@ export function HomeSettingsSection(): JSX.Element {
             <button
               type="button"
               data-testid="progress-import-trigger"
-              className="rounded-lg border border-dashed border-[var(--s2-border)] px-4 py-2 text-sm font-semibold text-[var(--s2-text)] hover:border-emerald-500/50 disabled:opacity-50"
+              className="rounded-[var(--s2-r-lg)] border border-dashed border-[var(--s2-border)] px-4 py-2 text-sm font-semibold text-[var(--s2-text)] hover:border-[var(--s2-tier-hover-border)] disabled:opacity-50"
               disabled={busy !== null}
               onClick={() => fileRef.current?.click()}
             >

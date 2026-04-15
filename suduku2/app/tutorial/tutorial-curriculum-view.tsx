@@ -141,7 +141,7 @@ export function TutorialCurriculumView(): JSX.Element {
         </p>
         {!token && ready ? (
           <p
-            className="mt-4 rounded-lg border border-amber-500/35 bg-amber-500/10 px-3 py-2 text-sm text-amber-100"
+            className="mt-4 rounded-[var(--s2-r-lg)] border border-[var(--s2-amber-warn-border)] bg-[var(--s2-amber-warn-bg)] px-3 py-2 text-sm text-[var(--s2-amber-warn-text)]"
             data-testid="tutorial-login-hint"
             role="status"
           >
@@ -168,7 +168,7 @@ export function TutorialCurriculumView(): JSX.Element {
           }
           return (
             <section key={tier} aria-labelledby={`tier-${tier}`}>
-              <h2 id={`tier-${tier}`} className="text-lg font-medium text-emerald-600 dark:text-emerald-400/95">
+              <h2 id={`tier-${tier}`} className="text-lg font-medium text-[var(--s2-eyebrow)]">
                 {TIER_LABEL[tier]}
               </h2>
               <ul className="mt-4 space-y-3">
@@ -212,7 +212,7 @@ export function TutorialCurriculumView(): JSX.Element {
                           <span
                             className={
                               unlocked === true
-                                ? "rounded-md bg-emerald-500/15 px-2 py-0.5 text-xs text-emerald-800 dark:text-emerald-200"
+                                ? "rounded-[var(--s2-r-sm)] bg-[var(--s2-tutorial-chip-bg)] px-2 py-0.5 text-xs text-[var(--s2-tutorial-chip-fg)]"
                                 : unlocked === false
                                   ? "rounded-md bg-[var(--s2-card-muted)] px-2 py-0.5 text-xs text-[var(--s2-text-muted)]"
                                   : "rounded-md bg-[var(--s2-card-muted)] px-2 py-0.5 text-xs text-[var(--s2-text-subtle)]"
@@ -224,7 +224,7 @@ export function TutorialCurriculumView(): JSX.Element {
                           {token && fetchStatus === "ok" && unlocked === true ? (
                             <Link
                               href={`/game/practice?modeId=${encodeURIComponent(mod.practiceEndlessModeId)}`}
-                              className="inline-flex items-center rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-800 transition hover:bg-emerald-500/20 dark:text-emerald-200"
+                              className="inline-flex items-center rounded-[var(--s2-r-sm)] border border-[var(--s2-tutorial-cta-border)] bg-[var(--s2-tutorial-cta-bg)] px-2 py-1 text-xs font-medium text-[var(--s2-tutorial-cta-fg)] transition hover:bg-[var(--s2-tutorial-cta-hover-bg)]"
                               data-testid={`tutorial-practice-link-${mod.id}`}
                             >
                               专项练习
@@ -259,7 +259,7 @@ export function TutorialCurriculumView(): JSX.Element {
       <p className="mt-10 text-center">
         <Link
           href="/"
-          className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400"
+          className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
         >
           返回首页
         </Link>

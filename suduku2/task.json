@@ -56,6 +56,83 @@
         "npm run test:e2e 全部通过"
       ],
       "passes": true
+    },
+    {
+      "id": 6,
+      "title": "全局主题与设计令牌重做",
+      "description": "在现有 `sudoku2-theme-provider` 与全局样式（如 CSS 变量 `--s2-*`）基础上，重做数独2 的整体视觉方向：背景、主副文本、棋盘边框与单元格、按钮与强调色等。以「清晰可读、触控友好」为目标，采用简单稳定的配色与圆角层级即可，不追求理论上的最少用色或最细线宽。暗色/浅色切换若已存在则保持行为一致。",
+      "steps": [
+        "首页与进入对局后，新主题在亮/暗（若支持）下对比度可接受，主要文案与棋盘格线可读",
+        "未改动的业务逻辑下页面可正常操作",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": true
+    },
+    {
+      "id": 7,
+      "title": "棋盘放大与响应式版面",
+      "description": "在 `SudokuPlaySurface` 中显著提升 9×9 棋盘在常见视口下的可视面积（相较当前约 `min(92vw,420px)` 等上限适当提高），横屏与竖屏、含安全区与全屏模式（`data-fullscreen`）下均尽量占满合理空间且不裁切关键控件。使用 CSS `min`/`clamp`/媒体查询等静态规则即可；若需 JS 读尺寸，仅允许在 resize 或短时 effect 内更新，并设明确上限（例如单次布局 effect 内同步计算，禁止 `requestAnimationFrame` 无限链或无限重试循环）。",
+      "steps": [
+        "手机竖屏与桌面横屏下棋盘明显大于改版前同一视口下的观感，且单元格内数字与笔记仍清晰",
+        "全屏与普通模式下棋盘与侧栏不重叠、不出现横向溢出滚动条（除非内容有意允许纵向滚动）",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 8,
+      "title": "填数/笔记与数字区交互简化",
+      "description": "重组对局右侧（或底部，若改版布局）控制区：放大数字键触控区域、减少误触；将「填数 / 笔记」切换做得更直观（例如更醒目的模式指示或更少的步骤），仍基于现有 `GameState.mode` 与 `useSudoku2Game` 能力，避免为「最优交互」重写整套状态机。清除、提示、撤销、重做等保持功能完整。若增加长按、双击等分支，须在实现中避免无超时阻塞（例如长按用定时器并在 unmount 时清理）。",
+      "steps": [
+        "仅用点击/键盘即可完成：选格、切换模式（若保留）、输入数字、清除、撤销一次",
+        "暂停与提示仍可按现有 E2E 契约工作（若改了 `data-testid` 须在本阶段或任务 12 同步 e2e）",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 9,
+      "title": "对局 HUD 与工具条版式统一",
+      "description": "重做计时、暂停、全屏、提示与辅助按钮区域的排版与视觉层级，使常用操作在首屏易发现、触控目标足够大（与任务 6 令牌一致）。保持与全屏、暂停冻结交互的现有行为一致，不引入新的异步轮询；按钮文案以中文简短为主。",
+      "steps": [
+        "练习或无尽进入对局后，计时与暂停、全屏（若可用）布局协调，不挤压棋盘主体",
+        "键盘可聚焦主要按钮，aria-label / aria-pressed 等与改版前语义一致或更清晰",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 10,
+      "title": "首页、对局入口与教学壳页对齐新 UI",
+      "description": "将 `app/page.tsx`、对局相关入口页（如 `/game`、练习/无尽选择与 layout）、`home-session-bar` 等与对局内新视觉对齐：间距、背景、导航与卡片样式统一。仅调整结构与样式，不改变 API 与路由逻辑。不追求与第三方设计稿像素级一致，以一致性与可维护为先。",
+      "steps": [
+        "从首页经导航进入对局路径顺畅，样式与对局内不突兀",
+        "教学页入口与列表区域在新主题下可读、可点击区域足够大",
+        "npm run lint 与 npm run build 通过"
+      ],
+      "passes": false
+    },
+    {
+      "id": 11,
+      "title": "可访问性稳定与测试定位约定",
+      "description": "梳理改版后仍须稳定的 `data-testid` 与 `aria-*`：对变更的节点更新 `e2e/` 中对应选择器，或在本任务中列出迁移对照并在代码中一次性修正。确保 `role=\"grid\"`、单元格标签等仍合理。不添加无上限的 DOM 轮询测试；Playwright 等待使用项目默认超时与确定性断言。",
+      "steps": [
+        "主要对局流（进入页面、选格、填数、暂停）在 e2e 中仍可通过 testid 或 aria 定位",
+        "npm run lint 无错误",
+        "npm run build 成功"
+      ],
+      "passes": false
+    },
+    {
+      "id": 12,
+      "title": "全量回归：lint、build 与 Playwright E2E",
+      "description": "在完成 UI 重做相关改动后执行完整回归：`npm run lint`、`npm run build`、`npm run test:e2e`。若个别用例因视觉改版需放宽断言（如仅测存在性不测像素），须在描述中注明原因并保持单次运行时间在项目约定内，不嵌套在 Vitest 中重复跑 E2E。",
+      "steps": [
+        "npm run lint 无错误",
+        "npm run build 成功",
+        "npm run test:e2e 全部通过"
+      ],
+      "passes": false
     }
   ]
 }

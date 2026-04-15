@@ -38,7 +38,10 @@ export function HomeSessionBar(): JSX.Element {
   return (
     <p className="text-sm text-[var(--s2-text-subtle)]" data-testid="session-status">
       未登录 —{" "}
-      <Link href="/login" className="text-emerald-600 underline-offset-4 hover:underline dark:text-emerald-400">
+      <Link
+        href="/login"
+        className="text-[var(--s2-link)] underline-offset-4 hover:text-[var(--s2-link-hover)] hover:underline"
+      >
         前往登录
       </Link>
     </p>
