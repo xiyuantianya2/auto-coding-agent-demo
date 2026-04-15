@@ -121,6 +121,15 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
   const hintCells = useMemo(() => hintCellSet(hint), [hint]);
   const candHigh = useMemo(() => candidateHighlightMap(hint), [hint]);
 
+  /** 选中格为已填数字时，用于同数字全局高亮（空格选中时为 null） */
+  const focusDigit = useMemo(() => {
+    if (!selected) {
+      return null;
+    }
+    const fd = getEffectiveDigitAt(gameState, selected.r, selected.c);
+    return fd !== EMPTY_CELL ? fd : null;
+  }, [gameState, selected]);
+
   const surfaceRef = useRef<HTMLDivElement | null>(null);
   const { isSupported, isFullscreen, toggle } = useFullscreen(surfaceRef);
 
@@ -308,6 +317,8 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
             const isGiven = gameState.cells[r][c].given !== undefined;
             const isSel = selected?.r === r && selected?.c === c;
             const inRegion = isInSelectedRegion(r, c, selected);
+            const isSameDigitPeer =
+              focusDigit !== null && d !== EMPTY_CELL && d === focusDigit;
             const hintHere = hintCells.has(`${r},${c}`);
             const thickR = (c + 1) % 3 === 0 && c < 8;
             const thickB = (r + 1) % 3 === 0 && r < 8;
@@ -328,6 +339,9 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                   ? "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-region-empty-bg)]"
                   : "ring-2 ring-[var(--s2-cell-hint-ring)] ring-offset-1 ring-offset-[var(--s2-cell-empty-bg)]"
               : "";
+            const sameDigitInset = isSameDigitPeer
+              ? "shadow-[inset_0_0_0_2px_var(--s2-cell-same-digit-ring)]"
+              : "";
             return (
               <button
                 key={`${r}-${c}`}
@@ -335,22 +349,22 @@ export function SudokuPlaySurface(props: SudokuPlaySurfaceProps): JSX.Element {
                 className={[
                   "relative flex h-full min-h-0 w-full min-w-0 flex-col items-center justify-center p-0.5 text-[clamp(0.95rem,3.6vmin,1.35rem)] font-semibold transition-none",
                   cellBg,
+                  sameDigitInset,
                   isSel ? "z-[1] ring-2 ring-[var(--s2-cell-selected-ring)]" : "",
                   hintRing,
                   thickR ? "border-r-2 border-r-[var(--s2-border-strong)]" : "",
                   thickB ? "border-b-2 border-b-[var(--s2-border-strong)]" : "",
                 ].join(" ")}
                 data-testid={`sudoku-cell-${r}-${c}`}
+                data-s2-empty={d === EMPTY_CELL ? "true" : undefined}
+                data-s2-given={isGiven ? "true" : undefined}
                 data-s2-in-region={inRegion ? "true" : undefined}
+                data-s2-same-digit={isSameDigitPeer ? "true" : undefined}
                 data-hint-cell={hintHere ? "true" : undefined}
                 aria-label={`单元格 ${r + 1} 行 ${c + 1} 列`}
-                disabled={interactionLocked || isGiven}
+                disabled={interactionLocked}
                 onClick={() => {
                   if (interactionLocked) {
-                    return;
-                  }
-                  if (isGiven) {
-                    actions.selectCell(null);
                     return;
                   }
                   actions.selectCell({ r, c });

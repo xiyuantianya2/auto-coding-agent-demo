@@ -23,7 +23,9 @@ test.describe.serial("client-ui 集成回归", () => {
 
     await page.getByTestId("sudoku-mode-notes").click();
     const empty = page
-      .locator('[data-testid="endless-board"] button[data-testid^="sudoku-cell-"]:not([disabled])')
+      .locator(
+        '[data-testid="endless-board"] button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])',
+      )
       .first();
     await empty.click();
     await page.getByTestId("digit-pad-7").click();

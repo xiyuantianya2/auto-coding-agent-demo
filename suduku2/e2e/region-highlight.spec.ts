@@ -56,7 +56,7 @@ test("选格后行/列/宫区域高亮，切换选格时更新（减少动效）
 
   const board = page.getByTestId("practice-board");
   const firstEmpty = board
-    .locator('button[data-testid^="sudoku-cell-"]:not([disabled])')
+    .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
     .first();
   await firstEmpty.click();
 
@@ -75,7 +75,9 @@ test("选格后行/列/宫区域高亮，切换选格时更新（减少动效）
   await expect(board.locator('[data-s2-in-region="true"]')).toHaveCount(n1);
   expect(regionIds1).toHaveLength(n1);
 
-  const secondEmpty = board.locator('button[data-testid^="sudoku-cell-"]:not([disabled])').nth(5);
+  const secondEmpty = board
+    .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
+    .nth(5);
   await secondEmpty.click();
 
   const id2 = await secondEmpty.getAttribute("data-testid");

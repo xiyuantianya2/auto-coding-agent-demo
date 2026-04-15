@@ -136,7 +136,7 @@ test("笔记模式：可切换、打点可读；撤销/重做与按钮 disabled 
   await expect(page.getByTestId("sudoku-redo")).toBeDisabled();
 
   const emptyPlayerCell = page
-    .locator('button[data-testid^="sudoku-cell-"]:not([disabled])')
+    .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
     .first();
   await emptyPlayerCell.click();
 
@@ -192,7 +192,9 @@ test("填数模式：填一格后撤销清空、重做恢复（与 canUndo/canRe
   await page.getByTestId("sudoku-mode-fill").click();
   await expect(page.getByTestId("sudoku-mode-fill")).toHaveAttribute("aria-pressed", "true");
 
-  const cell = page.locator('button[data-testid^="sudoku-cell-"]:not([disabled])').first();
+  const cell = page
+    .locator('button[data-testid^="sudoku-cell-"][data-s2-empty="true"]:not([disabled])')
+    .first();
   await cell.click();
   const tid = await cell.getAttribute("data-testid");
   expect(tid).toMatch(/^sudoku-cell-\d+-\d+$/);

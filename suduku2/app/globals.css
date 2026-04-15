@@ -48,6 +48,8 @@
   --s2-cell-fill-text: #0f766e;
   --s2-cell-selected-ring: rgba(13, 148, 136, 0.88);
   --s2-cell-hint-ring: rgba(217, 119, 6, 0.95);
+  /* 与「当前关注数字」相同的已填格：内描边，与选中格外环区分 */
+  --s2-cell-same-digit-ring: rgba(124, 58, 237, 0.55);
   /* 选中格所在行/列/宫：略染青绿，与选中环区分 */
   --s2-cell-region-empty-bg: #ecfdf5;
   --s2-cell-region-given-bg: #e2f0ee;
@@ -137,6 +139,7 @@ html.dark {
   --s2-cell-fill-text: #5eead4;
   --s2-cell-selected-ring: rgba(45, 212, 191, 0.9);
   --s2-cell-hint-ring: rgba(251, 191, 36, 0.95);
+  --s2-cell-same-digit-ring: rgba(167, 139, 250, 0.62);
   --s2-cell-region-empty-bg: #1a2e32;
   --s2-cell-region-given-bg: #243647;
 

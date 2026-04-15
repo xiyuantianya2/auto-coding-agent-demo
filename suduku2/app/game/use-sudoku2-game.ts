@@ -20,7 +20,7 @@ import { computeCandidates, type CandidatesGrid } from "@/lib/solver";
 import { useSudokuSessionTimer } from "@/app/game/use-sudoku-session-timer";
 
 export type Sudoku2GameActions = {
-  /** 选中可编辑格；点给定格会清空选中。 */
+  /** 选中格（含给定格，用于同数字高亮）；传 null 清除选中。 */
   selectCell: (cell: { r: number; c: number } | null) => void;
   /** 切换填数 / 笔记模式（受暂停与 disabled 约束）。 */
   setMode: (mode: "fill" | "notes") => void;
@@ -164,13 +164,16 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
         return;
       }
       const { r, c } = selected;
+      if (gameState.cells[r][c].given !== undefined) {
+        return;
+      }
       if (gameState.mode === "notes") {
         apply({ type: "toggle", payload: { r, c, digit: n } });
         return;
       }
       apply({ type: "fill", payload: { r, c, digit: n } });
     },
-    [apply, gameState.mode, interactionLocked, onNeedCellSelection, selected],
+    [apply, gameState.cells, gameState.mode, interactionLocked, onNeedCellSelection, selected],
   );
 
   const clear = useCallback(() => {
@@ -178,6 +181,9 @@ export function useSudoku2Game(params: UseSudoku2GameParams): UseSudoku2GameResu
       return;
     }
     const { r, c } = selected;
+    if (gameState.cells[r][c].given !== undefined) {
+      return;
+    }
     const cell = gameState.cells[r][c];
     if (cell.value !== undefined) {
       apply({ type: "clearCell", payload: { r, c } });
